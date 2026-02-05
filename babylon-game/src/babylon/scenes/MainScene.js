@@ -1,5 +1,6 @@
 // src/babylon/scenes/MainScene.js
 import { BaseScene } from './BaseScene'
+import { CameraManager } from "../cameras/CameraManager"
 import { Player } from '../entities/Player'
 import { Coin } from '../entities/Coin'
 import { Enemy } from '../entities/Enemy'
@@ -23,7 +24,7 @@ export class MainScene extends BaseScene {
     this._createWorld()
     this._createUI()
     this.player = this.playerEntry.mesh;
-    this._createCamera()
+    this.cameraManager = new CameraManager(this.scene, this.player)
     this.verticalVelocity = 0;
     this.score = 0;
     this.coin = this.coinEntry.mesh;
@@ -90,124 +91,51 @@ export class MainScene extends BaseScene {
 
   }
 
-  /*
-  _createCamera() {
-    this.camera = new ArcRotateCamera("camera", -Math.PI / 2, Math.PI / 2.5, 10, this.player, this.scene);
-    this.camera.attachControl(this.scene.getEngine().getRenderingCanvas(), true)
-  }
-  */
-
-  _createCamera() {
-    this._createCameraTPS()
-    this._createCameraIso()
-
-    // caméra active au départ
-    this.scene.activeCamera = this.tpsCamera
-  }
-
-
-  _createCameraTPS() {
-    this.tpsCamera = new ArcRotateCamera(
-      "tpsCamera",
-      -Math.PI / 2,
-      Math.PI / 2.5,
-      10,
-      this.player,
-      this.scene
-    )
-    this.tpsCamera.attachControl(this.scene.getEngine().getRenderingCanvas(), true)
-  }
-
-  _createCameraIso() {
-    const camera = new ArcRotateCamera(
-      "isoCamera",
-      Math.PI / 4,
-      Math.PI / 3,
-      20,
-      this.player,
-      this.scene
-    )
-
-    camera.mode = Camera.ORTHOGRAPHIC_CAMERA
-
-    const engine = this.scene.getEngine()
-    const ratio = engine.getRenderWidth() / engine.getRenderHeight()
-
-    const size = 15
-    const yOffset = 5
-
-    camera.orthoTop = size + yOffset
-    camera.orthoBottom = -size + yOffset
-    camera.orthoRight = size * ratio
-    camera.orthoLeft = -size * ratio
-
-    // verrouillage propre
-    camera.lowerRadiusLimit = camera.radius
-    camera.upperRadiusLimit = camera.radius
-    camera.allowUpsideDown = false
-
-    this.isoCamera = camera
-  }
-
 
   update() {
     this.playerEntry.update(this.inputMap);
     this.coinEntry.update(this.player);
     this.enemyEntry.update(this.player);
 
-    const isIso = this.scene.activeCamera === this.isoCamera
-
+    // toggle caméra
     if (this.inputMap["c"] && !this._cameraSwitchLock) {
-      this._cameraSwitchLock = true
-
-      // détache toujours l'ancienne caméra
-      if (this.scene.activeCamera) {
-        this.scene.activeCamera.detachControl()
-      }
-
-      if (this.scene.activeCamera === this.tpsCamera) {
-        this.scene.activeCamera = this.isoCamera
-      } else {
-        this.scene.activeCamera = this.tpsCamera
-        this.tpsCamera.attachControl(
-          this.scene.getEngine().getRenderingCanvas(),
-          true
-        )
-      }
+      this._cameraSwitchLock = true;
+      this.cameraManager.toggle();
     }
-
-    if (this.scene.activeCamera === this.isoCamera) {
-      const dir = this._getIsoMovementDirection()
-      this.player.moveWithCollisions(dir.scale(0.2))
-    }
-
 
     if (!this.inputMap["c"]) {
-      this._cameraSwitchLock = false
+      this._cameraSwitchLock = false;
+    }
+
+    // mouvement en vue iso
+    if (this.cameraManager.isIso()) {
+      const dir = this._getIsoMovementDirection();
+      this.player.moveWithCollisions(dir.scale(0.2));
     }
   }
-
   
   _getIsoMovementDirection() {
-    const cam = this.isoCamera
+    const cam = this.cameraManager.iso.camera;
+    if (!cam) return Vector3.Zero();
 
     // directions caméra projetées au sol
-    const forward = cam.getForwardRay().direction
-    forward.y = 0
-    forward.normalize()
+    const forward = cam.getForwardRay().direction.clone();
+    forward.y = 0;
+    forward.normalize();
 
-    const right = Vector3.Cross(Vector3.Up(), forward)
-    right.normalize()
+    const right = Vector3.Cross(Vector3.Up(), forward);
+    right.normalize();
 
-    let move = Vector3.Zero()
+    let move = Vector3.Zero();
 
-    if (this.inputMap["z"]) move.addInPlace(forward)
-    if (this.inputMap["s"]) move.subtractInPlace(forward)
-    if (this.inputMap["d"]) move.addInPlace(right)
-    if (this.inputMap["q"]) move.subtractInPlace(right)
+    if (this.inputMap["z"]) move.addInPlace(forward);
+    if (this.inputMap["s"]) move.subtractInPlace(forward);
+    if (this.inputMap["d"]) move.addInPlace(right);
+    if (this.inputMap["q"]) move.subtractInPlace(right);
 
-    return move.normalize()
+    return move.normalize();
   }
+
 
 
 }
