@@ -17,4 +17,5 @@ export class BaseScene {
   dispose() {
     this.scene.dispose()
   }
+
 }

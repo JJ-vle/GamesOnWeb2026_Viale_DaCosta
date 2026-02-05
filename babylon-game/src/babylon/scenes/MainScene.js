@@ -10,7 +10,8 @@ import {
   MeshBuilder,
   ArcRotateCamera,
   Color3,
-  StandardMaterial
+  StandardMaterial,
+  Camera
 } from '@babylonjs/core'
 import { AdvancedDynamicTexture, TextBlock, Control } from '@babylonjs/gui'
 
@@ -27,6 +28,13 @@ export class MainScene extends BaseScene {
     this.score = 0;
     this.coin = this.coinEntry.mesh;
     this.enemy = this.enemyEntry.mesh;
+
+    
+    this.scene.getEngine().onResizeObservable.add(() => {
+      if (this.scene.activeCamera === this.isoCamera) {
+        this._updateIsoFrustum()
+      }
+    })
 
   }
 
@@ -55,12 +63,7 @@ export class MainScene extends BaseScene {
     this.scene.clearColor = new Color3(0.1, 0.1, 0.2)
 
     this._setupInputs()
-  }
-
-  _createCamera() {
-    this.camera = new ArcRotateCamera("camera", -Math.PI / 2, Math.PI / 2.5, 10, this.player, this.scene);
-    this.camera.attachControl(this.scene.getEngine().getRenderingCanvas(), true)
-  }
+  }  
 
   _setupInputs() {
     this.inputMap = {}
@@ -87,11 +90,125 @@ export class MainScene extends BaseScene {
 
   }
 
+  /*
+  _createCamera() {
+    this.camera = new ArcRotateCamera("camera", -Math.PI / 2, Math.PI / 2.5, 10, this.player, this.scene);
+    this.camera.attachControl(this.scene.getEngine().getRenderingCanvas(), true)
+  }
+  */
+
+  _createCamera() {
+    this._createCameraTPS()
+    this._createCameraIso()
+
+    // caméra active au départ
+    this.scene.activeCamera = this.tpsCamera
+  }
+
+
+  _createCameraTPS() {
+    this.tpsCamera = new ArcRotateCamera(
+      "tpsCamera",
+      -Math.PI / 2,
+      Math.PI / 2.5,
+      10,
+      this.player,
+      this.scene
+    )
+    this.tpsCamera.attachControl(this.scene.getEngine().getRenderingCanvas(), true)
+  }
+
+  _createCameraIso() {
+    const camera = new ArcRotateCamera(
+      "isoCamera",
+      Math.PI / 4,
+      Math.PI / 3,
+      20,
+      this.player,
+      this.scene
+    )
+
+    camera.mode = Camera.ORTHOGRAPHIC_CAMERA
+
+    const engine = this.scene.getEngine()
+    const ratio = engine.getRenderWidth() / engine.getRenderHeight()
+
+    const size = 15
+    const yOffset = 5
+
+    camera.orthoTop = size + yOffset
+    camera.orthoBottom = -size + yOffset
+    camera.orthoRight = size * ratio
+    camera.orthoLeft = -size * ratio
+
+    // verrouillage propre
+    camera.lowerRadiusLimit = camera.radius
+    camera.upperRadiusLimit = camera.radius
+    camera.allowUpsideDown = false
+
+    this.isoCamera = camera
+  }
+
 
   update() {
     this.playerEntry.update(this.inputMap);
     this.coinEntry.update(this.player);
     this.enemyEntry.update(this.player);
 
+    const isIso = this.scene.activeCamera === this.isoCamera
+
+    if (this.inputMap["c"] && !this._cameraSwitchLock) {
+      this._cameraSwitchLock = true
+
+      // détache toujours l'ancienne caméra
+      if (this.scene.activeCamera) {
+        this.scene.activeCamera.detachControl()
+      }
+
+      if (this.scene.activeCamera === this.tpsCamera) {
+        this.scene.activeCamera = this.isoCamera
+      } else {
+        this.scene.activeCamera = this.tpsCamera
+        this.tpsCamera.attachControl(
+          this.scene.getEngine().getRenderingCanvas(),
+          true
+        )
+      }
+    }
+
+    if (this.scene.activeCamera === this.isoCamera) {
+      const dir = this._getIsoMovementDirection()
+      this.player.moveWithCollisions(dir.scale(0.2))
+    }
+
+
+    if (!this.inputMap["c"]) {
+      this._cameraSwitchLock = false
+    }
   }
+
+  
+  _getIsoMovementDirection() {
+    const cam = this.isoCamera
+
+    // directions caméra projetées au sol
+    const forward = cam.getForwardRay().direction
+    forward.y = 0
+    forward.normalize()
+
+    const right = Vector3.Cross(Vector3.Up(), forward)
+    right.normalize()
+
+    let move = Vector3.Zero()
+
+    if (this.inputMap["z"]) move.addInPlace(forward)
+    if (this.inputMap["s"]) move.subtractInPlace(forward)
+    if (this.inputMap["d"]) move.addInPlace(right)
+    if (this.inputMap["q"]) move.subtractInPlace(right)
+
+    return move.normalize()
+  }
+
+
 }
+
