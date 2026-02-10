@@ -15,6 +15,10 @@ import {
   Camera
 } from '@babylonjs/core'
 import { AdvancedDynamicTexture, TextBlock, Control } from '@babylonjs/gui'
+import { PistolWeapon } from "../entities/weapons/PistolWeapon"
+import { LaserWeapon } from "../entities/weapons/LaserWeapon"
+import { WeaponSystem } from "../systems/WeaponSystem"
+
 
 export class MainScene extends BaseScene {
   constructor(engine) {
@@ -29,6 +33,15 @@ export class MainScene extends BaseScene {
     this.score = 0;
     this.coin = this.coinEntry.mesh;
     this.enemy = this.enemyEntry.mesh;
+        
+    this.weapon = new PistolWeapon(this.scene, this.playerEntry)
+    //this.weapon = new LaserWeapon(this.scene, this.playerEntry)
+
+    this.weaponSystem = new WeaponSystem(
+      this.scene,
+      this.playerEntry,
+      this.weapon
+    )
 
     
     this.scene.getEngine().onResizeObservable.add(() => {
@@ -91,7 +104,6 @@ export class MainScene extends BaseScene {
 
   }
 
-
   update() {
     this.playerEntry.update(this.inputMap);
     this.coinEntry.update(this.player);
@@ -112,6 +124,10 @@ export class MainScene extends BaseScene {
       const dir = this._getIsoMovementDirection();
       this.player.moveWithCollisions(dir.scale(0.2));
     }
+
+    const deltaTime = this.scene.getEngine().getDeltaTime() / 1000 // ms to secondes
+    this.weaponSystem.update(deltaTime)
+
   }
   
   _getIsoMovementDirection() {
@@ -135,8 +151,6 @@ export class MainScene extends BaseScene {
 
     return move.normalize();
   }
-
-
 
 }
 

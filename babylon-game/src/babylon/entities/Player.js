@@ -23,6 +23,10 @@ export class Player {
         return box;
     }
 
+    getForwardDirection() {
+        // direction "devant" le joueur
+        return new Vector3(0, 0, 1)
+    }
 
     update(inputMap) {
         const speed = 0.1
