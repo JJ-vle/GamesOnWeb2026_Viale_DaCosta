@@ -5,9 +5,19 @@ export class IsoCamera {
   constructor(scene, target) {
     this.scene = scene
 
+    /*
     this.camera = new ArcRotateCamera(
       "isoCamera",
       Math.PI / 4,
+      Math.PI / 3,
+      20,
+      target,
+      scene
+    )*/
+
+    this.camera = new ArcRotateCamera(
+      "isoCamera",
+      -Math.PI / 2, // caméra placée au SUD, regarde vers le NORD (+Z)
       Math.PI / 3,
       20,
       target,

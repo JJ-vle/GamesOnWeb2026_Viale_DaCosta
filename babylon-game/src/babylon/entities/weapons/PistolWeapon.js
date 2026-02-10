@@ -1,6 +1,6 @@
 // src/babylon/weapons/PistolWeapon.js
 import { Weapon } from "./Weapon"
-import { Projectile } from "./Projectile"
+import { PistolProjectile } from "./PistolProjectile"
 
 export class PistolWeapon extends Weapon {
   constructor(scene, player) {
@@ -27,7 +27,7 @@ export class PistolWeapon extends Weapon {
   _shoot(direction) {
     const start = this.player.mesh.position.add(direction.scale(2))
 
-    new Projectile(
+    new PistolProjectile(
       this.scene,
       start,
       direction,

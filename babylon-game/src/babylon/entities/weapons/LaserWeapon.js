@@ -1,6 +1,6 @@
-// src/babylon/weapons/LaserWeapon.js
 import { Weapon } from "./Weapon"
-import { MeshBuilder, StandardMaterial, Color3, Vector3, Space } from "@babylonjs/core"
+import { LaserProjectile } from "./LaserProjectile"
+import { Vector3 } from "@babylonjs/core"
 
 export class LaserWeapon extends Weapon {
   constructor(scene, player) {
@@ -10,16 +10,13 @@ export class LaserWeapon extends Weapon {
     this.pauseDuration = 2
     this.damagePerSecond = 40
 
-    this.isFiring = true;
-
+    this.isFiring = true
     this._fireTimer = 0
     this._pauseTimer = 0
-    this.laserMesh = null
-
-    this.size = { width: 0.2, height: 0.2, depth: 40 }
+    this.laser = null
   }
 
-  update(deltaTime, direction) {
+  update(deltaTime) {
     if (!this.isFiring) return
 
     // pause
@@ -30,11 +27,9 @@ export class LaserWeapon extends Weapon {
 
     this._fireTimer += deltaTime
 
-    if (!this.laserMesh) {
-      this._createLaser(direction)
+    if (!this.laser) {
+      this._startLaser()
     }
-
-    this._updateLaser(direction, deltaTime)
 
     if (this._fireTimer >= this.fireDuration) {
       this._stopLaser()
@@ -43,39 +38,34 @@ export class LaserWeapon extends Weapon {
     }
   }
 
-  _createLaser(direction) {
-
-
-      this.laserMesh = MeshBuilder.CreateBox(
-          "laserBeam",
-          { width: 0.2, height: 0.2, depth: this.size.depth },
-          this.scene
-      );
-
-      const mat = new StandardMaterial("laserMat", this.scene);
-      mat.emissiveColor = new Color3(1, 0, 0);
-      this.laserMesh.material = mat;
+  _startLaser() {
+    this.laser = new LaserProjectile(
+      this.scene,
+      this.player,
+      () => this._getAimDirection(),
+      {
+        duration: this.fireDuration,
+        damagePerSecond: this.damagePerSecond,
+        size: { width: 0.2, height: 0.2, depth: 40 }
+      }
+    )
   }
-
-
-
-  _updateLaser(direction, deltaTime) {
-    // Le centre du laser doit être à (this.size.depth / 2) unités du joueur dans la direction du tir
-    this.laserMesh.position = this.player.mesh.position.clone();
-    this.laserMesh.position.addInPlace(direction.scale(this.size.depth / 2));
-    
-    // Orienter le laser dans la direction de la souris
-    this.laserMesh.setDirection(direction);
-  }
-
-
-
 
   _stopLaser() {
-    if (this.laserMesh) {
-      this.laserMesh.dispose()
-      this.laserMesh = null
+    if (this.laser) {
+      this.laser.dispose()
+      this.laser = null
     }
+  }
+
+  _getAimDirection() {
+    const pick = this.scene.pick(this.scene.pointerX, this.scene.pointerY)
+    if (pick.hit) {
+      const dir = pick.pickedPoint.subtract(this.player.mesh.position)
+      dir.y = 0 // iso/top-down
+      return dir
+    }
+    return new Vector3(0, 0, 1)
   }
 
   stopFire() {

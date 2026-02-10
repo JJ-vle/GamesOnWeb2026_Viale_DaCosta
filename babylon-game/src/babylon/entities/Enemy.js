@@ -11,6 +11,7 @@ export class Enemy {
         this.enemy = this._createMesh();
         this.verticalVelocity = 0;
         this.contact = contact;
+        this.life = 10;
     }
 
     _createMesh() {

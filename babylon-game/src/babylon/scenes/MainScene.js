@@ -34,8 +34,8 @@ export class MainScene extends BaseScene {
     this.coin = this.coinEntry.mesh;
     this.enemy = this.enemyEntry.mesh;
         
-    this.weapon = new PistolWeapon(this.scene, this.playerEntry)
-    //this.weapon = new LaserWeapon(this.scene, this.playerEntry)
+    //this.weapon = new PistolWeapon(this.scene, this.playerEntry)
+    this.weapon = new LaserWeapon(this.scene, this.playerEntry)
 
     this.weaponSystem = new WeaponSystem(
       this.scene,
@@ -131,26 +131,32 @@ export class MainScene extends BaseScene {
   }
   
   _getIsoMovementDirection() {
-    const cam = this.cameraManager.iso.camera;
-    if (!cam) return Vector3.Zero();
-
-    // directions caméra projetées au sol
-    const forward = cam.getForwardRay().direction.clone();
-    forward.y = 0;
-    forward.normalize();
-
-    const right = Vector3.Cross(Vector3.Up(), forward);
-    right.normalize();
-
-    let move = Vector3.Zero();
-
-    if (this.inputMap["z"]) move.addInPlace(forward);
-    if (this.inputMap["s"]) move.subtractInPlace(forward);
-    if (this.inputMap["d"]) move.addInPlace(right);
-    if (this.inputMap["q"]) move.subtractInPlace(right);
-
-    return move.normalize();
+    const camera = this.scene.activeCamera
+    if (!camera) return Vector3.Zero()
+  
+    // direction caméra -> joueur
+    let forward = this.player.position.subtract(camera.position)
+    forward.y = 0
+    forward.normalize()
+  
+    // droite écran (perpendiculaire)
+    let right = Vector3.Cross(forward, Vector3.Up()).normalize()
+  
+    let move = Vector3.Zero()
+  
+    if (this.inputMap["z"]) move.addInPlace(forward)
+    if (this.inputMap["s"]) move.addInPlace(forward.scale(-1))
+    if (this.inputMap["d"]) move.addInPlace(right.scale(-1))
+    if (this.inputMap["q"]) move.addInPlace(right)
+  
+    if (move.lengthSquared() > 0) {
+      move.normalize()
+    }
+  
+    return move
   }
+  
+  
 
 }
 
