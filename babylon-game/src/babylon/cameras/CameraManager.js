@@ -9,7 +9,7 @@ export class CameraManager {
     this.tps = new TpsCamera(scene, target)
     this.iso = new IsoCamera(scene, target)
 
-    this.active = this.tps
+    this.active = this.iso
     this.scene.activeCamera = this.active.camera
     this.active.attach()
   }

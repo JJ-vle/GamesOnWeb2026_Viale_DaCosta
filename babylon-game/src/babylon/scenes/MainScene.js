@@ -30,11 +30,16 @@ export class MainScene extends BaseScene {
     this.score = 0;
     this.coin = this.coinEntry.mesh;
     this.enemy = this.enemyEntry.mesh;
-        
+    this.projectiles = []    
+
     this.collisionSystem = new CollisionSystem()
 
     this.weapon = new PistolWeapon(this.scene, this.playerEntry)
     //this.weapon = new LaserWeapon(this.scene, this.playerEntry)
+    this.weapon.onProjectileCreated = (projectile) => {
+      this.projectiles.push(projectile)
+    }
+
 
     this.weaponSystem = new WeaponSystem(
       this.scene,
@@ -130,8 +135,14 @@ export class MainScene extends BaseScene {
     const deltaTime = this.scene.getEngine().getDeltaTime() / 1000 // ms to secondes
     this.weaponSystem.update(deltaTime)
 
+    this.projectiles = this.projectiles.filter(p => {
+      const alive = p.update(deltaTime)
+      if (!alive) p.dispose()
+      return alive
+    })
+
     // --- collisions ---
-    this.collisionSystem.update()
+    this.collisionSystem.update(deltaTime)
 
   }
   

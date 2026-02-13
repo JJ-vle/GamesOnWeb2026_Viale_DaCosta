@@ -29,17 +29,19 @@ export class PistolWeapon extends Weapon {
 
     const start = this.player.mesh.position.add(direction.scale(2))
 
-    new PistolProjectile(
+    const projectile = new PistolProjectile(
       this.scene,
       start,
       direction,
       {
         speed: 40,
         size: 0.3,
-        color: "black",
         damage: this.damage
       }
     )
+
+    this._notifyProjectile(projectile)
   }
+
 
 }

@@ -19,8 +19,24 @@ export class CollisionSystem {
       this.projectiles = this.projectiles.filter(p => p !== projectile)
     }
   
-    update() {
+    update(deltaTime) {
       if (!this.player) return
+  
+      // --- Atualizar projectiles ---
+      for (let i = this.projectiles.length - 1; i >= 0; i--) {
+        const proj = this.projectiles[i]
+        if (!proj.mesh) {
+          this.projectiles.splice(i, 1)
+          continue
+        }
+        
+        const isAlive = proj.update(deltaTime)
+        if (!isAlive) {
+          proj.dispose()
+          this.projectiles.splice(i, 1)
+          continue
+        }
+      }
   
       // --- Projectiles vs Enemies ---
       for (let i = this.projectiles.length - 1; i >= 0; i--) {
