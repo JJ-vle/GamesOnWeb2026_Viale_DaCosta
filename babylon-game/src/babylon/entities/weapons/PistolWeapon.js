@@ -14,17 +14,19 @@ export class PistolWeapon extends Weapon {
   }
 
     update(deltaTime, direction) {
-    this._cooldownTimer -= deltaTime
-    if (this._cooldownTimer < 0) this._cooldownTimer = 0
+      this._cooldownTimer -= deltaTime
+      if (this._cooldownTimer < 0) this._cooldownTimer = 0
 
-    if (!this.isFiring || this._cooldownTimer > 0) return
+      if (!this.isFiring || this._cooldownTimer > 0) return
 
-    this._shoot(direction)
-    this._cooldownTimer = this.cooldown
+      this._shoot(direction)
+      this._cooldownTimer = this.cooldown
     }
 
 
   _shoot(direction) {
+    if (!direction) return
+
     const start = this.player.mesh.position.add(direction.scale(2))
 
     new PistolProjectile(
@@ -39,4 +41,5 @@ export class PistolWeapon extends Weapon {
       }
     )
   }
+
 }

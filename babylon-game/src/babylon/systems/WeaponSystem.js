@@ -2,10 +2,17 @@
 import * as BABYLON from "@babylonjs/core"
 
 export class WeaponSystem {
-  constructor(scene, player, weapon) {
+  constructor(scene, player, weapon, collisionSystem) {
     this.scene = scene
     this.player = player
     this.weapon = weapon
+
+    this.collisionSystem = collisionSystem
+
+    // On donne au weapon un callback pour enregistrer les projectiles
+    this.weapon.onProjectileCreated = (projectile) => {
+      this.collisionSystem.registerProjectile(projectile)
+    }
   }
 
   update(deltaTime) {

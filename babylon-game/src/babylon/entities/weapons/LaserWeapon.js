@@ -27,6 +27,7 @@ export class LaserWeapon extends Weapon {
 
     this._fireTimer += deltaTime
 
+    // mettre à jour le laser chaque frame
     if (!this.laser) {
       this._startLaser()
     }
@@ -37,6 +38,7 @@ export class LaserWeapon extends Weapon {
       this._fireTimer = 0
     }
   }
+
 
   _startLaser() {
     this.laser = new LaserProjectile(
@@ -49,6 +51,7 @@ export class LaserWeapon extends Weapon {
         size: { width: 0.2, height: 0.2, depth: 40 }
       }
     )
+    this._notifyProjectile(this.laser)
   }
 
   _stopLaser() {

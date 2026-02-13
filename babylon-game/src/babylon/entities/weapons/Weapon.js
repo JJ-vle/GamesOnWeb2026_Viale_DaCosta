@@ -7,6 +7,8 @@ export class Weapon {
     this.cooldown = 0
     this._cooldownTimer = 0
     this.isFiring = false
+
+    this.onProjectileCreated = null // callback
   }
 
   startFire() {
@@ -29,4 +31,11 @@ export class Weapon {
   _resetCooldown() {
     this._cooldownTimer = this.cooldown
   }
+
+  _notifyProjectile(projectile) {
+    if (this.onProjectileCreated) {
+      this.onProjectileCreated(projectile)
+    }
+  }
+
 }

@@ -8,13 +8,11 @@ import { Projectile } from "./Projectile"
 
 export class LaserProjectile extends Projectile {
   constructor(scene, player, getDirection, options = {}) {
-    // pas de direction dans le super, on gère dans update
     super(scene, player.mesh.position)
 
     this.player = player
     this.getDirection = getDirection // fonction renvoyant Vector3
     this.damagePerSecond = options.damagePerSecond ?? 40
-    this.lifeTime = options.duration ?? 5
     this.size = options.size ?? { width: 0.2, height: 0.2, depth: 40 }
 
     // créer le mesh
@@ -23,10 +21,7 @@ export class LaserProjectile extends Projectile {
     // attacher l’update à l’observable après création du mesh
     this._observer = this.scene.onBeforeRenderObservable.add(() => {
       const dt = this.scene.getEngine().getDeltaTime() / 1000
-      const alive = this.update(dt)
-      if (!alive) {
-        this.scene.onBeforeRenderObservable.remove(this._observer)
-      }
+      this.update(dt)
     })
   }
 
@@ -43,24 +38,34 @@ export class LaserProjectile extends Projectile {
   }
 
   update(deltaTime) {
-    if (!this.mesh) return true
+    if (!this.mesh) return
 
     const dirRaw = this.getDirection()
-    if (!dirRaw) return true
+    if (!dirRaw) return
+
     const direction = dirRaw.normalize()
 
     // positionner laser correctement : extrémité sur joueur
-    this.mesh.position.copyFrom(this.player.mesh.position.add(direction.scale(this.size.depth / 2)))
+    const startPos = this.player.mesh.position
+    this.mesh.position.copyFrom(
+      startPos.add(direction.scale(this.size.depth / 2))
+    )
 
     // orienter vers la souris
     this.mesh.setDirection(direction)
+  }
 
-    this.lifeTime -= deltaTime
-    if (this.lifeTime <= 0) {
-      this.dispose()
-      return false
+  dispose() {
+    if (this._observer) {
+      this.scene.onBeforeRenderObservable.remove(this._observer)
+      this._observer = null
     }
 
-    return true
+    if (this.mesh) {
+      this.mesh.dispose()
+      this.mesh = null
+    }
   }
+
+
 }

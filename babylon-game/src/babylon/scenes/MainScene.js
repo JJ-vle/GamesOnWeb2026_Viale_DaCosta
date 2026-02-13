@@ -5,19 +5,16 @@ import { Player } from '../entities/Player'
 import { Coin } from '../entities/Coin'
 import { Enemy } from '../entities/Enemy'
 import {
-  Vector3,
-  FreeCamera,
-  HemisphericLight,
-  MeshBuilder,
-  ArcRotateCamera,
-  Color3,
-  StandardMaterial,
-  Camera
+  Vector3, FreeCamera,
+  HemisphericLight, MeshBuilder,
+  ArcRotateCamera, Color3,
+  StandardMaterial, Camera
 } from '@babylonjs/core'
 import { AdvancedDynamicTexture, TextBlock, Control } from '@babylonjs/gui'
 import { PistolWeapon } from "../entities/weapons/PistolWeapon"
 import { LaserWeapon } from "../entities/weapons/LaserWeapon"
 import { WeaponSystem } from "../systems/WeaponSystem"
+import { CollisionSystem } from "../systems/CollisionSystem"
 
 
 export class MainScene extends BaseScene {
@@ -34,16 +31,21 @@ export class MainScene extends BaseScene {
     this.coin = this.coinEntry.mesh;
     this.enemy = this.enemyEntry.mesh;
         
-    //this.weapon = new PistolWeapon(this.scene, this.playerEntry)
-    this.weapon = new LaserWeapon(this.scene, this.playerEntry)
+    this.collisionSystem = new CollisionSystem()
+
+    this.weapon = new PistolWeapon(this.scene, this.playerEntry)
+    //this.weapon = new LaserWeapon(this.scene, this.playerEntry)
 
     this.weaponSystem = new WeaponSystem(
       this.scene,
       this.playerEntry,
-      this.weapon
+      this.weapon,
+      this.collisionSystem
     )
 
-    
+    this.collisionSystem.registerPlayer(this.playerEntry)
+    this.collisionSystem.registerEnemy(this.enemyEntry)
+
     this.scene.getEngine().onResizeObservable.add(() => {
       if (this.scene.activeCamera === this.isoCamera) {
         this._updateIsoFrustum()
@@ -128,6 +130,9 @@ export class MainScene extends BaseScene {
     const deltaTime = this.scene.getEngine().getDeltaTime() / 1000 // ms to secondes
     this.weaponSystem.update(deltaTime)
 
+    // --- collisions ---
+    this.collisionSystem.update()
+
   }
   
   _getIsoMovementDirection() {
@@ -159,4 +164,3 @@ export class MainScene extends BaseScene {
   
 
 }
-
