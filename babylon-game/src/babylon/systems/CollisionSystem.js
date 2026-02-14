@@ -63,6 +63,7 @@ export class CollisionSystem {
           enemy.contact?.() // callback si touche le joueur
         }
       }
-    }
   }
+  
+}
   

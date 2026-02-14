@@ -4,6 +4,7 @@ import { CameraManager } from "../cameras/CameraManager"
 import { Player } from '../entities/Player'
 import { Coin } from '../entities/Coin'
 import { Enemy } from '../entities/Enemy'
+import { EnemySpawner } from '../entities/EnemySpawner'
 import {
   Vector3, FreeCamera,
   HemisphericLight, MeshBuilder,
@@ -29,7 +30,7 @@ export class MainScene extends BaseScene {
     this.verticalVelocity = 0;
     this.score = 0;
     this.coin = this.coinEntry.mesh;
-    this.enemy = this.enemyEntry.mesh;
+    //this.enemy = this.enemyEntry.mesh;
     this.projectiles = []    
 
     this.collisionSystem = new CollisionSystem()
@@ -40,6 +41,20 @@ export class MainScene extends BaseScene {
       this.projectiles.push(projectile)
     }
 
+    this.enemies = []
+
+    // spawn en haut à droite du sol (sol = 60x60)
+    this.spawner = new EnemySpawner(
+      this.scene,
+      new Vector3(25, 1, 25), // haut droite
+      10 // toutes les 10 secondes
+    )
+
+    this.spawner.onEnemySpawned = (enemy) => {
+      this.enemies.push(enemy)
+      this.collisionSystem.registerEnemy(enemy) 
+    }
+    
 
     this.weaponSystem = new WeaponSystem(
       this.scene,
@@ -49,7 +64,7 @@ export class MainScene extends BaseScene {
     )
 
     this.collisionSystem.registerPlayer(this.playerEntry)
-    this.collisionSystem.registerEnemy(this.enemyEntry)
+    //this.collisionSystem.registerEnemy(this.enemyEntry)
 
     this.scene.getEngine().onResizeObservable.add(() => {
       if (this.scene.activeCamera === this.isoCamera) {
@@ -75,11 +90,13 @@ export class MainScene extends BaseScene {
       this.score++;
       this.scoreText.text = "Score: " + this.score;
     });
+
+    /*
     this.enemyEntry = new Enemy(this.scene, () => {
       // Cette fonction sera exécutée quand la pièce est touchée
       this.score = 0;
       this.scoreText.text = "Score: " + this.score;
-    });
+    });*/
 
     this.scene.clearColor = new Color3(0.1, 0.1, 0.2)
 
@@ -114,7 +131,7 @@ export class MainScene extends BaseScene {
   update() {
     this.playerEntry.update(this.inputMap);
     this.coinEntry.update(this.player);
-    this.enemyEntry.update(this.player);
+    //this.enemyEntry.update(this.player);
 
     // toggle caméra
     if (this.inputMap["c"] && !this._cameraSwitchLock) {
@@ -133,6 +150,23 @@ export class MainScene extends BaseScene {
     }
 
     const deltaTime = this.scene.getEngine().getDeltaTime() / 1000 // ms to secondes
+
+    // update spawner
+    this.spawner.update(deltaTime)
+
+    // update enemies
+    for (let i = this.enemies.length - 1; i >= 0; i--) {
+      const enemy = this.enemies[i]
+
+      if (!enemy.enemy) {
+        this.enemies.splice(i, 1)
+        continue
+      }
+
+      enemy.update(this.player, this.projectiles)
+    }
+
+
     this.weaponSystem.update(deltaTime)
 
     this.projectiles = this.projectiles.filter(p => {

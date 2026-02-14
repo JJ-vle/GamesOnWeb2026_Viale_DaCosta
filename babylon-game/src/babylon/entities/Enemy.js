@@ -26,20 +26,6 @@ export class Enemy {
 
         return enemy;
     }
-
-    /*
-    update(playerMesh) {
-        if (this.enemy.intersectsMesh(playerMesh, false)) {
-            if (this.contact) {
-                this.contact();
-            }
-        }
-        // La bonne façon :
-        let direction = playerMesh.position.subtract(this.enemy.position);
-        direction.normalize();
-        this.enemy.position.addInPlace(direction.scale(0.05));
-    }*/
-
     
     update(playerMesh, projectiles = []) {
         if (!this.enemy) return
