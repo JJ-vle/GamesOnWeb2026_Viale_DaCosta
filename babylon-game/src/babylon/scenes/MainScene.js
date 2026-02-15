@@ -25,8 +25,9 @@ export class MainScene extends BaseScene {
     this._createLights()
     this._createWorld()
     this._createUI()
-    this.player = this.playerEntry.mesh;
-    this.cameraManager = new CameraManager(this.scene, this.player)
+    //this.player = this.playerEntry.mesh;
+    this.player = this.playerEntry;
+    this.cameraManager = new CameraManager(this.scene, this.player.mesh)
     this.verticalVelocity = 0;
     this.score = 0;
     this.coin = this.coinEntry.mesh;
@@ -51,9 +52,16 @@ export class MainScene extends BaseScene {
     )
 
     this.spawner.onEnemySpawned = (enemy) => {
+
+      enemy.contact = () => {
+        this.score = 0
+        this.scoreText.text = "Score: " + this.score
+      }
+
       this.enemies.push(enemy)
-      this.collisionSystem.registerEnemy(enemy) 
+      this.collisionSystem.registerEnemy(enemy)
     }
+
     
 
     this.weaponSystem = new WeaponSystem(
@@ -130,7 +138,7 @@ export class MainScene extends BaseScene {
 
   update() {
     this.playerEntry.update(this.inputMap);
-    this.coinEntry.update(this.player);
+    this.coinEntry.update(this.player.mesh);
     //this.enemyEntry.update(this.player);
 
     // toggle caméra
@@ -146,7 +154,7 @@ export class MainScene extends BaseScene {
     // mouvement en vue iso
     if (this.cameraManager.isIso()) {
       const dir = this._getIsoMovementDirection();
-      this.player.moveWithCollisions(dir.scale(0.2));
+      this.player.mesh.moveWithCollisions(dir.scale(0.2));
     }
 
     const deltaTime = this.scene.getEngine().getDeltaTime() / 1000 // ms to secondes
@@ -163,7 +171,7 @@ export class MainScene extends BaseScene {
         continue
       }
 
-      enemy.update(this.player, this.projectiles)
+      enemy.update(this.player.mesh, this.projectiles)
     }
 
 
@@ -185,7 +193,7 @@ export class MainScene extends BaseScene {
     if (!camera) return Vector3.Zero()
   
     // direction caméra -> joueur
-    let forward = this.player.position.subtract(camera.position)
+    let forward = this.player.mesh.position.subtract(camera.position)
     forward.y = 0
     forward.normalize()
   

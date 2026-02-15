@@ -30,23 +30,6 @@ export class Enemy {
     update(playerMesh, projectiles = []) {
         if (!this.enemy) return
 
-        // Collision avec le joueur
-        if (this.enemy.intersectsMesh(playerMesh, false)) {
-            if (this.contact) this.contact()
-        }
-
-        // Collision avec les projectiles
-        for (let i = projectiles.length - 1; i >= 0; i--) {
-            const proj = projectiles[i]
-            if (!proj.mesh) continue
-
-            if (this.enemy.intersectsMesh(proj.mesh, false)) {
-                this.takeDamage(proj.damage || 1)
-                proj.dispose() // détruire le projectile après impact
-                projectiles.splice(i, 1) // enlever le projectile du tableau
-            }
-        }
-
         // Déplacement vers le joueur
         const direction = playerMesh.position.subtract(this.enemy.position).normalize()
         this.enemy.position.addInPlace(direction.scale(0.05))
