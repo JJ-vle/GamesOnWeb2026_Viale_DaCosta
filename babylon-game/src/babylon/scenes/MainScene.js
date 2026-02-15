@@ -32,7 +32,7 @@ export class MainScene extends BaseScene {
     this.score = 0;
     this.coin = this.coinEntry.mesh;
     //this.enemy = this.enemyEntry.mesh;
-    this.projectiles = []    
+    this.projectiles = []
 
     this.collisionSystem = new CollisionSystem()
 
@@ -62,8 +62,6 @@ export class MainScene extends BaseScene {
       this.collisionSystem.registerEnemy(enemy)
     }
 
-    
-
     this.weaponSystem = new WeaponSystem(
       this.scene,
       this.playerEntry,
@@ -79,7 +77,27 @@ export class MainScene extends BaseScene {
         this._updateIsoFrustum()
       }
     })
+    this.scene.collisionsEnabled = true;
 
+  }
+
+  _createBorders(width, height) {
+    const wallHeight = 10;
+    const thickness = 1;
+
+    const borders = [
+      { name: "wall_N", w: width, h: wallHeight, d: thickness, pos: new Vector3(0, wallHeight / 2, height / 2) },
+      { name: "wall_S", w: width, h: wallHeight, d: thickness, pos: new Vector3(0, wallHeight / 2, -height / 2) },
+      { name: "wall_E", w: thickness, h: wallHeight, d: height, pos: new Vector3(width / 2, wallHeight / 2, 0) },
+      { name: "wall_W", w: thickness, h: wallHeight, d: height, pos: new Vector3(-width / 2, wallHeight / 2, 0) },
+    ];
+
+    borders.forEach(b => {
+      const wall = MeshBuilder.CreateBox(b.name, { width: b.w, height: b.h, depth: b.d }, this.scene);
+      wall.position = b.pos;
+      wall.isVisible = false; // Rendre invisible
+      wall.checkCollisions = true;
+    });
   }
 
   _createLights() {
@@ -89,7 +107,10 @@ export class MainScene extends BaseScene {
 
   _createWorld() {
     // Sol
-    MeshBuilder.CreateGround('myGround', { width: 60, height: 60 }, this.scene)
+    const ground = MeshBuilder.CreateGround('myGround', { width: 130, height: 110 }, this.scene)
+    ground.checkCollisions = true;
+
+    this._createBorders(130, 110);
     this.verticalVelocity = 0;
 
     this.playerEntry = new Player(this.scene);
@@ -109,7 +130,7 @@ export class MainScene extends BaseScene {
     this.scene.clearColor = new Color3(0.1, 0.1, 0.2)
 
     this._setupInputs()
-  }  
+  }
 
   _setupInputs() {
     this.inputMap = {}
@@ -135,6 +156,37 @@ export class MainScene extends BaseScene {
     this.scoreText = textBlock;
 
   }
+
+
+  _getIsoMovementDirection() {
+    const camera = this.scene.activeCamera
+    if (!camera) return Vector3.Zero()
+
+    // direction caméra -> joueur
+    let forward = this.player.mesh.position.subtract(camera.position)
+    forward.y = 0
+    forward.normalize()
+
+    // droite écran (perpendiculaire)
+    let right = Vector3.Cross(forward, Vector3.Up()).normalize()
+
+    let move = Vector3.Zero()
+
+    if (this.inputMap["z"]) move.addInPlace(forward)
+    if (this.inputMap["s"]) move.addInPlace(forward.scale(-1))
+    if (this.inputMap["d"]) move.addInPlace(right.scale(-1))
+    if (this.inputMap["q"]) move.addInPlace(right)
+
+    if (move.lengthSquared() > 0) {
+      move.normalize()
+    }
+
+    return move
+  }
+
+
+
+
 
   update() {
     this.playerEntry.update(this.inputMap);
@@ -187,33 +239,4 @@ export class MainScene extends BaseScene {
     this.collisionSystem.update(deltaTime)
 
   }
-  
-  _getIsoMovementDirection() {
-    const camera = this.scene.activeCamera
-    if (!camera) return Vector3.Zero()
-  
-    // direction caméra -> joueur
-    let forward = this.player.mesh.position.subtract(camera.position)
-    forward.y = 0
-    forward.normalize()
-  
-    // droite écran (perpendiculaire)
-    let right = Vector3.Cross(forward, Vector3.Up()).normalize()
-  
-    let move = Vector3.Zero()
-  
-    if (this.inputMap["z"]) move.addInPlace(forward)
-    if (this.inputMap["s"]) move.addInPlace(forward.scale(-1))
-    if (this.inputMap["d"]) move.addInPlace(right.scale(-1))
-    if (this.inputMap["q"]) move.addInPlace(right)
-  
-    if (move.lengthSquared() > 0) {
-      move.normalize()
-    }
-  
-    return move
-  }
-  
-  
-
 }

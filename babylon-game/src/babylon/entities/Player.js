@@ -5,7 +5,7 @@ import {
     StandardMaterial
 } from '@babylonjs/core'
 export class Player {
-    
+
     constructor(scene) {
         this.scene = scene;
         this.mesh = this._createMesh();
@@ -20,6 +20,10 @@ export class Player {
         mat.diffuseColor = new Color3(1, 0, 0);
         box.material = mat;
 
+        // Configuration des collisions
+        box.checkCollisions = true;
+        box.ellipsoid = new Vector3(1, 1, 1); // Taille de la "bulle" de collision
+
         return box;
     }
 
@@ -30,18 +34,25 @@ export class Player {
 
     update(inputMap) {
         const speed = 0.1
+        let moveDir = new Vector3(0, 0, 0);
+
         if (inputMap["ArrowUp"] || inputMap["z"] || inputMap["w"]) {
-            this.mesh.position.z += speed
+            moveDir.z += speed;
         }
         if (inputMap["ArrowDown"] || inputMap["s"]) {
-            this.mesh.position.z -= speed
+            moveDir.z -= speed;
         }
         if (inputMap["ArrowLeft"] || inputMap["q"] || inputMap["a"]) {
-            this.mesh.position.x -= speed
+            moveDir.x -= speed;
         }
         if (inputMap["ArrowRight"] || inputMap["d"]) {
-            this.mesh.position.x += speed
+            moveDir.x += speed;
         }
+
+        if (moveDir.length() > 0) {
+            this.mesh.moveWithCollisions(moveDir);
+        }
+
         // Saut (Impulsion)
         if (inputMap[" "] && this.mesh.position.y <= 1.1) {
             this.verticalVelocity = 0.15;
