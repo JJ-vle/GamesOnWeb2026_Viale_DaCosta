@@ -8,7 +8,7 @@ export class PistolWeapon extends Weapon {
 
     this.cooldown = 0.25
     this._cooldownTimer = 0
-    this.damage = 60
+    this.damage = 2
 
     this.isFiring = true;
   }

@@ -11,9 +11,12 @@ export class Enemy {
         this.enemy = this._createMesh();
         this.verticalVelocity = 0;
         this.contact = contact;
-  
+
         this.maxLife = 10
         this.life = this.maxLife
+
+        this.material = this.enemy.material
+        this._hitTimer = 0
     }
 
     _createMesh() {
@@ -30,6 +33,14 @@ export class Enemy {
     update(playerMesh, projectiles = []) {
         if (!this.enemy) return
 
+        // Gestion du flash rouge
+        if (this._hitTimer > 0) {
+            this._hitTimer -= this.scene.getEngine().getDeltaTime() / 1000
+            if (this._hitTimer <= 0) {
+                this.material.diffuseColor = new Color3(1, 1, 1)
+            }
+        }
+
         // Déplacement vers le joueur
         const direction = playerMesh.position.subtract(this.enemy.position).normalize()
         this.enemy.position.addInPlace(direction.scale(0.05))
@@ -38,12 +49,15 @@ export class Enemy {
     
     takeDamage(amount) {
         this.life -= amount
+
+        this.material.diffuseColor = new Color3(1, 0, 0)
+        this._hitTimer = 0.1 
+        
         if (this.life <= 0) {
             this.life = 0
             this.destroy()
         }
     }
-
     
     destroy() {
         if (this.enemy) {

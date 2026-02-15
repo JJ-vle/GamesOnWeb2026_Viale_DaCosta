@@ -53,6 +53,28 @@ export class CollisionSystem {
             this.projectiles.splice(i, 1)
             break
           }
+          /*if (proj.mesh.intersectsMesh(enemy.enemy, false)) {
+
+            const projectileType = proj.constructor.name
+            const damage = proj.damage || 1
+            const targetName = enemy.enemy.name || "Enemy"
+
+            console.log("=== COLLISION ===")
+            console.log("Projectile:", projectileType)
+            console.log("Dégâts:", damage)
+            console.log("Cible:", targetName)
+            console.log("Vie avant:", enemy.life)
+
+            enemy.takeDamage(damage)
+
+            console.log("Vie après:", enemy.life)
+            console.log("=================")
+
+            proj.dispose()
+            this.projectiles.splice(i, 1)
+            break
+          }*/
+
         }
       }
   

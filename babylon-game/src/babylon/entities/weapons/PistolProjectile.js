@@ -13,7 +13,7 @@ export class PistolProjectile extends Projectile {
 
     // stats
     this.speed = options.speed ?? 18
-    this.damage = options.damage ?? 60
+    this.damage = options.damage ?? 2 //60
     this.lifeTime = options.lifeTime ?? 2
 
     // mesh
