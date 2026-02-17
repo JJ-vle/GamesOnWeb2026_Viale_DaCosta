@@ -10,6 +10,8 @@ export class Player {
         this.scene = scene;
         this.mesh = this._createMesh();
         this.verticalVelocity = 0;
+        this.maxLife = 100;
+        this.life = this.maxLife;
     }
 
     _createMesh() {
@@ -68,5 +70,19 @@ export class Player {
             this.verticalVelocity = 0;
         }
 
+    }
+
+    takeDamage(amount) {
+        this.life -= amount;
+        if (this.life < 0) {
+            this.life = 0;
+        }
+    }
+
+    heal(amount) {
+        this.life += amount;
+        if (this.life > this.maxLife) {
+            this.life = this.maxLife;
+        }
     }
 }
