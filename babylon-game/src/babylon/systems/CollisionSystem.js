@@ -4,6 +4,8 @@ export class CollisionSystem {
       this.player = null
       this.enemies = []
       this.projectiles = []
+      this.enemyDamageCooldown = new Map() // Track cooldown per enemy
+      this.DAMAGE_COOLDOWN = 1.0 // 1 second cooldown between damage
     }
   
     // enregistrement des objets
@@ -13,6 +15,7 @@ export class CollisionSystem {
   
     removeEnemy(enemy) {
       this.enemies = this.enemies.filter(e => e !== enemy)
+      this.enemyDamageCooldown.delete(enemy)
     }
   
     removeProjectile(projectile) {
@@ -21,6 +24,8 @@ export class CollisionSystem {
   
     update(deltaTime) {
       if (!this.player) return
+      
+      this.currentTime = (this.currentTime || 0) + deltaTime
   
       // --- Atualizar projectiles ---
       for (let i = this.projectiles.length - 1; i >= 0; i--) {
@@ -82,7 +87,14 @@ export class CollisionSystem {
       for (let enemy of this.enemies) {
         if (!enemy.enemy) continue
         if (enemy.enemy.intersectsMesh(this.player.mesh, false)) {
-          enemy.contact?.() // callback si touche le joueur
+          // Check if cooldown has expired
+          const lastDamageTime = this.enemyDamageCooldown.get(enemy) || -Infinity
+          const timeSinceLastDamage = this.currentTime - lastDamageTime
+          
+          if (timeSinceLastDamage >= this.DAMAGE_COOLDOWN) {
+            enemy.contact?.() // callback si touche le joueur
+            this.enemyDamageCooldown.set(enemy, this.currentTime) // Reset cooldown
+          }
         }
       }
   }

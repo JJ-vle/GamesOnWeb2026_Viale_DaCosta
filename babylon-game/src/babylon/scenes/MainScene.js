@@ -10,7 +10,7 @@ import {
   ArcRotateCamera, Color3,
   StandardMaterial, Camera
 } from '@babylonjs/core'
-import { AdvancedDynamicTexture, TextBlock, Control } from '@babylonjs/gui'
+import { AdvancedDynamicTexture, TextBlock, Control, Rectangle } from '@babylonjs/gui'
 import { PistolWeapon } from "../entities/weapons/PistolWeapon"
 import { LaserWeapon } from "../entities/weapons/LaserWeapon"
 import { WeaponSystem } from "../systems/WeaponSystem"
@@ -53,6 +53,7 @@ export class MainScene extends BaseScene {
     this.spawner.onEnemySpawned = (enemy) => {
 
       enemy.contact = () => {
+        this.playerEntry.takeDamage(5);
         this.score = 0
         this.scoreText.text = "Score: " + this.score
       }
@@ -146,6 +147,8 @@ export class MainScene extends BaseScene {
 
   _createUI() {
     const advancedTexture = AdvancedDynamicTexture.CreateFullscreenUI("UI");
+    
+    // Score text (top)
     const textBlock = new TextBlock();
     textBlock.text = "Score: 0";
     textBlock.color = "white";
@@ -154,8 +157,30 @@ export class MainScene extends BaseScene {
     advancedTexture.addControl(textBlock);
     this.scoreText = textBlock;
 
-  }
+    // Life bar background (bottom left)
+    const lifeBarBg = new Rectangle();
+    lifeBarBg.width = "300px";
+    lifeBarBg.height = "40px";
+    lifeBarBg.top = "-30px";
+    lifeBarBg.leftInPixels = 30;
+    lifeBarBg.bottomInPixels = 60;
+    lifeBarBg.background = "black";
+    lifeBarBg.thickness = 4;
+    lifeBarBg.borderColor = "white";
+    lifeBarBg.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+    lifeBarBg.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
+    advancedTexture.addControl(lifeBarBg);
+    
+    // Life bar fill
+    const lifeBarFill = new Rectangle();
+    lifeBarFill.width = "100%";
+    lifeBarFill.height = "100%";
+    lifeBarFill.background = "green";
+    lifeBarFill.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+    lifeBarBg.addControl(lifeBarFill);
+    this.lifeBarFill = lifeBarFill;
 
+  }
 
   _getIsoMovementDirection() {
     const camera = this.scene.activeCamera
@@ -182,10 +207,6 @@ export class MainScene extends BaseScene {
 
     return move
   }
-
-
-
-
 
   update() {
     this.playerEntry.update(this.inputMap);
@@ -237,5 +258,17 @@ export class MainScene extends BaseScene {
     // --- collisions ---
     this.collisionSystem.update(deltaTime)
 
+    // --- Update life bar ---
+    const lifePercent = this.playerEntry.life / this.playerEntry.maxLife;
+    this.lifeBarFill.width = (lifePercent * 100) + "%";
+    
+    // Change color based on health
+    if (lifePercent > 0.5) {
+      this.lifeBarFill.background = "green";
+    } else if (lifePercent > 0.2) {
+      this.lifeBarFill.background = "orange";
+    } else {
+      this.lifeBarFill.background = "red";
+    }
   }
 }
