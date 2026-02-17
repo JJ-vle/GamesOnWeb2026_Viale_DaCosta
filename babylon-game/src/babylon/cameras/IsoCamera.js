@@ -18,7 +18,7 @@ export class IsoCamera {
     this.camera = new ArcRotateCamera(
       "isoCamera",
       -Math.PI / 2, // caméra placée au SUD, regarde vers le NORD (+Z)
-      Math.PI / 3,
+      Math.PI / 2.6855,
       20,
       target,
       scene

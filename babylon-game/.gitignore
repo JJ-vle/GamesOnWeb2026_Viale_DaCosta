@@ -22,3 +22,11 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+#Extension anim
+*.glb
+*.fbx
+*.gif
+*.obj
+*.mtl
+*.png
+*.vox

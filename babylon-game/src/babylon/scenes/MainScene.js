@@ -148,7 +148,7 @@ export class MainScene extends BaseScene {
 
   _createUI() {
     const advancedTexture = AdvancedDynamicTexture.CreateFullscreenUI("UI");
-    
+
     // Score text (top)
     const textBlock = new TextBlock();
     textBlock.text = "Score: 0";
@@ -171,7 +171,7 @@ export class MainScene extends BaseScene {
     lifeBarBg.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
     lifeBarBg.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
     advancedTexture.addControl(lifeBarBg);
-    
+
     // Life bar fill
     const lifeBarFill = new Rectangle();
     lifeBarFill.width = "100%";
@@ -181,35 +181,29 @@ export class MainScene extends BaseScene {
     lifeBarBg.addControl(lifeBarFill);
     this.lifeBarFill = lifeBarFill;
 
+    // Debug Text
+    const debugText = new TextBlock();
+    debugText.text = "Debug";
+    debugText.color = "yellow";
+    debugText.fontSize = 18;
+    debugText.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+    debugText.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+    debugText.left = "10px";
+    debugText.top = "50px";
+    advancedTexture.addControl(debugText);
+    this.debugText = debugText;
   }
 
-  _getIsoMovementDirection() {
-    const camera = this.scene.activeCamera
-    if (!camera) return Vector3.Zero()
 
-    // direction caméra -> joueur
-    let forward = this.player.mesh.position.subtract(camera.position)
-    forward.y = 0
-    forward.normalize()
-
-    // droite écran (perpendiculaire)
-    let right = Vector3.Cross(forward, Vector3.Up()).normalize()
-
-    let move = Vector3.Zero()
-
-    if (this.inputMap["z"]) move.addInPlace(forward)
-    if (this.inputMap["s"]) move.addInPlace(forward.scale(-1))
-    if (this.inputMap["d"]) move.addInPlace(right.scale(-1))
-    if (this.inputMap["q"]) move.addInPlace(right)
-
-    if (move.lengthSquared() > 0) {
-      move.normalize()
-    }
-
-    return move
-  }
 
   update() {
+    if (this.debugText && this.playerEntry) {
+      const p = this.playerEntry;
+      const idleName = p.idleAnim ? p.idleAnim.name : "None";
+      const runName = p.runAnim ? p.runAnim.name : "None";
+      this.debugText.text = `State: ${p.currentAnim}\nIdle: ${idleName}\nRun: ${runName}`;
+    }
+
     this.playerEntry.update(this.inputMap);
     this.coinEntry.update(this.player.mesh);
     //this.enemyEntry.update(this.player);
@@ -225,10 +219,7 @@ export class MainScene extends BaseScene {
     }
 
     // mouvement en vue iso
-    if (this.cameraManager.isIso()) {
-      const dir = this._getIsoMovementDirection();
-      this.player.mesh.moveWithCollisions(dir.scale(0.2));
-    }
+
 
     const deltaTime = this.scene.getEngine().getDeltaTime() / 1000 // ms to secondes
 
@@ -262,7 +253,7 @@ export class MainScene extends BaseScene {
     // --- Update life bar ---
     const lifePercent = this.playerEntry.life / this.playerEntry.maxLife;
     this.lifeBarFill.width = (lifePercent * 100) + "%";
-    
+
     // Change color based on health
     if (lifePercent > 0.5) {
       this.lifeBarFill.background = "green";
