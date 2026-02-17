@@ -3,7 +3,6 @@ import { BaseScene } from './BaseScene'
 import { CameraManager } from "../cameras/CameraManager"
 import { Player } from '../entities/Player'
 import { Coin } from '../entities/Coin'
-import { Enemy } from '../entities/Enemy'
 import { EnemySpawner } from '../entities/EnemySpawner'
 import {
   Vector3, FreeCamera,

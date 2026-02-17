@@ -5,7 +5,7 @@ import {
     Color3
 } from '@babylonjs/core'
 
-import { Enemy } from './Enemy'
+import { SimpleEnemy } from './enemies/SimpleEnemy'
 
 export class EnemySpawner {
 
@@ -43,7 +43,7 @@ export class EnemySpawner {
     }
 
     spawnEnemy() {
-        const enemy = new Enemy(this.scene)
+        const enemy = new SimpleEnemy(this.scene)
         enemy.enemy.position = this.position.clone()
 
         if (this.onEnemySpawned) {
