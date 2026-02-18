@@ -4,6 +4,9 @@ import { CameraManager } from "../cameras/CameraManager"
 import { Player } from '../entities/Player'
 import { Coin } from '../entities/Coin'
 import { EnemySpawner } from '../entities/EnemySpawner'
+import { Zone } from '../Zone'
+import { Round } from '../Round'
+import { SimpleEnemy } from '../entities/enemies/SimpleEnemy'
 import {
   Vector3, FreeCamera,
   HemisphericLight, MeshBuilder,
@@ -24,53 +27,77 @@ export class MainScene extends BaseScene {
     this._createLights()
     this._createWorld()
     this._createUI()
-    //this.player = this.playerEntry.mesh;
     this.player = this.playerEntry;
-    this.cameraManager = new CameraManager(this.scene, this.player.mesh)
+    this.cameraManager = new CameraManager(this.scene, this.player.mesh);
     this.verticalVelocity = 0;
     this.score = 0;
     this.coin = this.coinEntry.mesh;
-    //this.enemy = this.enemyEntry.mesh;
-    this.projectiles = []
+    this.projectiles = [];
 
-    this.collisionSystem = new CollisionSystem()
+    this.collisionSystem = new CollisionSystem();
 
-    this.weapon = new PistolWeapon(this.scene, this.playerEntry)
-    //this.weapon = new LaserWeapon(this.scene, this.playerEntry)
+    this.weapon = new PistolWeapon(this.scene, this.playerEntry);
     this.weapon.onProjectileCreated = (projectile) => {
-      this.projectiles.push(projectile)
-    }
+      this.projectiles.push(projectile);
+    };
 
-    this.enemies = []
+    this.enemies = [];
 
-    // spawn en haut à droite du sol (sol = 60x60)
-    this.spawner = new EnemySpawner(
-      this.scene,
-      new Vector3(25, 1, 25), // haut droite
-      10 // toutes les 10 secondes
-    )
+    // --- Initialiser le système de Zone et Round ---
+    this.zone = new Zone(this.scene);
 
-    this.spawner.onEnemySpawned = (enemy) => {
+    // Créer les spawners et les ajouter à la zone
+    const spawner1 = new EnemySpawner(this.scene, new Vector3(25, 1, 25), 4);
+    const spawner2 = new EnemySpawner(this.scene, new Vector3(-25, 1, -25), 4);
+    const spawner3 = new EnemySpawner(this.scene, new Vector3(25, 1, -25), 4);
+    
+    this.zone.addSpawner(spawner1);
+    this.zone.addSpawner(spawner2);
+    this.zone.addSpawner(spawner3);
 
-      enemy.contact = () => {
-        this.playerEntry.takeDamage(5);
-        this.score = 0
-        this.scoreText.text = "Score: " + this.score
+    // Configurer les callbacks pour tous les spawners
+    [spawner1, spawner2, spawner3].forEach(spawner => {
+      spawner.onEnemySpawned = (enemy) => {
+        enemy.contact = () => {
+          this.playerEntry.takeDamage(5);
+          this.score = 0;
+          this.scoreText.text = "Score: " + this.score;
+        };
+        this.enemies.push(enemy);
+        this.collisionSystem.registerEnemy(enemy);
+      };
+    });
+
+    // Créer un round et l'ajouter à la zone
+    this.currentRound = new Round(this.scene, this.zone);
+    this.currentRound.addMob({ type: SimpleEnemy, count: 5, spawnInterval: 2 });
+    this.zone.addRound(this.currentRound);
+
+    // When round ends, remove remaining enemies
+    this.currentRound.onRoundEnd = () => {
+      for (let i = this.enemies.length - 1; i >= 0; i--) {
+        const enemy = this.enemies[i];
+        if (!enemy) continue;
+        // destroy enemy mesh and trigger its onDeath
+        try { enemy.destroy(); } catch (e) { /* ignore */ }
+        // remove from collision system
+        try { this.collisionSystem.removeEnemy(enemy); } catch (e) { /* ignore */ }
+        // remove from local list
+        this.enemies.splice(i, 1);
       }
+    };
 
-      this.enemies.push(enemy)
-      this.collisionSystem.registerEnemy(enemy)
-    }
+    // Démarrer le premier round
+    this.currentRound.startRound();
 
     this.weaponSystem = new WeaponSystem(
       this.scene,
       this.playerEntry,
       this.weapon,
       this.collisionSystem
-    )
+    );
 
-    this.collisionSystem.registerPlayer(this.playerEntry)
-    //this.collisionSystem.registerEnemy(this.enemyEntry)
+    this.collisionSystem.registerPlayer(this.playerEntry);
 
     this.scene.getEngine().onResizeObservable.add(() => {
       if (this.scene.activeCamera === this.isoCamera) {
@@ -157,6 +184,30 @@ export class MainScene extends BaseScene {
     advancedTexture.addControl(textBlock);
     this.scoreText = textBlock;
 
+    // Round info (top-left)
+    const roundText = new TextBlock();
+    roundText.text = "Round: 0/0";
+    roundText.color = "white";
+    roundText.fontSize = 20;
+    roundText.leftInPixels = 10;
+    roundText.topInPixels = 10;
+    roundText.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+    roundText.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+    advancedTexture.addControl(roundText);
+    this.roundText = roundText;
+
+    // Timer (top-right)
+    const roundTimer = new TextBlock();
+    roundTimer.text = "00:00";
+    roundTimer.color = "white";
+    roundTimer.fontSize = 22;
+    roundTimer.topInPixels = 10;
+    roundTimer.left = "45%";
+    roundTimer.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
+    roundTimer.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+    advancedTexture.addControl(roundTimer);
+    this.roundTimer = roundTimer;
+
     // Life bar background (bottom left)
     const lifeBarBg = new Rectangle();
     lifeBarBg.width = "300px";
@@ -222,8 +273,14 @@ export class MainScene extends BaseScene {
 
     const deltaTime = this.scene.getEngine().getDeltaTime() / 1000 // ms to secondes
 
-    // update spawner
-    this.spawner.update(deltaTime)
+    // update spawners de la zone
+    const spawners = this.zone.getSpawners();
+    spawners.forEach(spawner => spawner.update(deltaTime));
+
+    // update round timers
+    if (this.currentRound && typeof this.currentRound.update === 'function') {
+      this.currentRound.update(deltaTime);
+    }
 
     // update enemies
     for (let i = this.enemies.length - 1; i >= 0; i--) {
@@ -248,6 +305,28 @@ export class MainScene extends BaseScene {
 
     // --- collisions ---
     this.collisionSystem.update(deltaTime)
+
+    // --- Update round UI ---
+    if (this.roundText && this.roundTimer && this.zone && this.currentRound) {
+      const rounds = this.zone.getRounds();
+      const currentIndex = Math.max(0, rounds.indexOf(this.currentRound));
+      const total = rounds.length || 0;
+      this.roundText.text = `Round: ${currentIndex + 1}/${total}`;
+
+      if (this.currentRound.state === "waiting") {
+        const secs = Math.max(0, Math.ceil(this.currentRound.remainingBefore));
+        this.roundTimer.text = `Starts in ${secs}s`;
+      } else if (this.currentRound.state === "running") {
+        const secs = Math.max(0, Math.ceil(this.currentRound.remainingTime));
+        const mm = Math.floor(secs / 60).toString().padStart(2, '0');
+        const ss = (secs % 60).toString().padStart(2, '0');
+        this.roundTimer.text = `${mm}:${ss}`;
+      } else if (this.currentRound.state === "finished") {
+        this.roundTimer.text = "Finished";
+      } else {
+        this.roundTimer.text = "--:--";
+      }
+    }
 
     // --- Update life bar ---
     const lifePercent = this.playerEntry.life / this.playerEntry.maxLife;

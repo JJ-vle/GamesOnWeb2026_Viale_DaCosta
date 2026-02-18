@@ -18,6 +18,16 @@ export class Player {
         this.maxLife = 100;
         this.life = this.maxLife;
         this._loadCharacter();
+
+        
+        // STATS (INUTILISÉES POUR L'INSTANT)
+        this.strength = 1;  // force
+        this.speed = 1;     // vitesse de déplacement
+        this.speedshot = 1; // vitesse de tir
+        this.luck = 1;      // chance de probabilité (ex: coup critique)
+        this.regen = 1;     // régénération de vie
+        this.lifesteal = 1; // vol de vie (% de chance de récupérer de la vie en infligeant des dégâts)
+        this.armor = 1;     // armure
     }
 
     async _loadCharacter() {
