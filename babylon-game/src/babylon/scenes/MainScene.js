@@ -18,6 +18,7 @@ import { PistolWeapon } from "../entities/weapons/PistolWeapon"
 import { LaserWeapon } from "../entities/weapons/LaserWeapon"
 import { WeaponSystem } from "../systems/WeaponSystem"
 import { CollisionSystem } from "../systems/CollisionSystem"
+import { UISystem } from "../systems/UISystem"
 
 
 export class MainScene extends BaseScene {
@@ -26,7 +27,9 @@ export class MainScene extends BaseScene {
 
     this._createLights()
     this._createWorld()
-    this._createUI()
+    //this._createUI()
+    this.uiSystem = new UISystem(this.scene);
+
     this.player = this.playerEntry;
     this.cameraManager = new CameraManager(this.scene, this.player.mesh);
     this.verticalVelocity = 0;
@@ -144,7 +147,7 @@ export class MainScene extends BaseScene {
     this.coinEntry = new Coin(this.scene, () => {
       // Cette fonction sera exécutée quand la pièce est touchée
       this.score++;
-      this.scoreText.text = "Score: " + this.score;
+      this.uiSystem.updateScore(this.score);
     });
 
     /*
@@ -172,6 +175,7 @@ export class MainScene extends BaseScene {
     })
   }
 
+  /*
   _createUI() {
     const advancedTexture = AdvancedDynamicTexture.CreateFullscreenUI("UI");
 
@@ -243,6 +247,7 @@ export class MainScene extends BaseScene {
     advancedTexture.addControl(debugText);
     this.debugText = debugText;
   }
+    */
 
 
 
@@ -269,8 +274,6 @@ export class MainScene extends BaseScene {
     }
 
     // mouvement en vue iso
-
-
     const deltaTime = this.scene.getEngine().getDeltaTime() / 1000 // ms to secondes
 
     // update spawners de la zone
@@ -307,38 +310,18 @@ export class MainScene extends BaseScene {
     this.collisionSystem.update(deltaTime)
 
     // --- Update round UI ---
-    if (this.roundText && this.roundTimer && this.zone && this.currentRound) {
-      const rounds = this.zone.getRounds();
-      const currentIndex = Math.max(0, rounds.indexOf(this.currentRound));
-      const total = rounds.length || 0;
-      this.roundText.text = `Round: ${currentIndex + 1}/${total}`;
+    this.uiSystem.updateScore(this.score);
+    this.uiSystem.updateLife(this.playerEntry.life, this.playerEntry.maxLife);
 
-      if (this.currentRound.state === "waiting") {
-        const secs = Math.max(0, Math.ceil(this.currentRound.remainingBefore));
-        this.roundTimer.text = `Starts in ${secs}s`;
-      } else if (this.currentRound.state === "running") {
-        const secs = Math.max(0, Math.ceil(this.currentRound.remainingTime));
-        const mm = Math.floor(secs / 60).toString().padStart(2, '0');
-        const ss = (secs % 60).toString().padStart(2, '0');
-        this.roundTimer.text = `${mm}:${ss}`;
-      } else if (this.currentRound.state === "finished") {
-        this.roundTimer.text = "Finished";
-      } else {
-        this.roundTimer.text = "--:--";
-      }
-    }
+    const rounds = this.zone.getRounds();
+    const currentIndex = rounds.indexOf(this.currentRound) + 1;
 
-    // --- Update life bar ---
-    const lifePercent = this.playerEntry.life / this.playerEntry.maxLife;
-    this.lifeBarFill.width = (lifePercent * 100) + "%";
+    this.uiSystem.updateRound(
+      currentIndex,
+      rounds.length,
+      this.currentRound.state,
+      this.currentRound.remainingTime || this.currentRound.remainingBefore
+    );
 
-    // Change color based on health
-    if (lifePercent > 0.5) {
-      this.lifeBarFill.background = "green";
-    } else if (lifePercent > 0.2) {
-      this.lifeBarFill.background = "orange";
-    } else {
-      this.lifeBarFill.background = "red";
-    }
   }
 }
