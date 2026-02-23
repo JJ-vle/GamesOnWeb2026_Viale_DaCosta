@@ -32,8 +32,16 @@ export class UISystem {
     this.roundTimer = new TextBlock();
     this.roundTimer.color = "white";
     this.roundTimer.fontSize = 22;
+
+    this.roundTimer.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
+    this.roundTimer.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+
+    this.roundTimer.rightInPixels = 20;
     this.roundTimer.topInPixels = 10;
-    this.roundTimer.left = "45%";
+
+    this.roundTimer.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
+    this.roundTimer.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+
     this.ui.addControl(this.roundTimer);
   }
 

@@ -64,7 +64,9 @@ export class MainScene extends BaseScene {
         enemy.contact = () => {
           this.playerEntry.takeDamage(5);
           this.score = 0;
-          this.scoreText.text = "Score: " + this.score;
+          if (this.uiSystem && typeof this.uiSystem.updateScore === 'function') {
+            this.uiSystem.updateScore(this.score);
+          }
         };
         this.enemies.push(enemy);
         this.collisionSystem.registerEnemy(enemy);
@@ -316,11 +318,16 @@ export class MainScene extends BaseScene {
     const rounds = this.zone.getRounds();
     const currentIndex = rounds.indexOf(this.currentRound) + 1;
 
+    // pass the correct remaining time depending on the round state
+    const remaining = this.currentRound.state === 'waiting'
+      ? this.currentRound.remainingBefore
+      : this.currentRound.remainingTime;
+
     this.uiSystem.updateRound(
       currentIndex,
       rounds.length,
       this.currentRound.state,
-      this.currentRound.remainingTime || this.currentRound.remainingBefore
+      remaining
     );
 
   }
