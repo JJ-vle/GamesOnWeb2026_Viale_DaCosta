@@ -1,5 +1,4 @@
 import { Enemy } from "./entities/enemies/Enemy.js";
-import { EnemySpawner } from "./entities/EnemySpawner.js";
 
 export class Round {
     /**
@@ -33,9 +32,10 @@ export class Round {
     configureSpawners() {
         if (!this.zone || !this.zone.getSpawners) return;
         const spawners = this.zone.getSpawners();
-        for (let i = 0; i < spawners.length; i++) {
-            const mob = this.mobs[i % this.mobs.length];
-            const spawner = spawners[i];
+        // Maintenant, on a généralement un seul SpawnerSystem
+        if (spawners.length > 0) {
+            const mob = this.mobs[0]; // Première configuration
+            const spawner = spawners[0];
             spawner.configure({
                 enemyType: mob.type,
                 spawnInterval: mob.spawnInterval || 2
@@ -53,7 +53,7 @@ export class Round {
         this.remainingTime = this.timelimit;
         this.state = this.timebefore > 0 ? "waiting" : "running";
         spawners.forEach(spawner => {
-            spawner.isSpawning = false;
+            spawner.stop();
             spawner._timer = 0;
         });
     }
@@ -63,7 +63,7 @@ export class Round {
         if (!this.zone || !this.zone.getSpawners) return;
         const spawners = this.zone.getSpawners();
         spawners.forEach(spawner => {
-            spawner.isSpawning = false;
+            spawner.stop();
         });
         this.state = "finished";
         if (this.onRoundEnd) this.onRoundEnd();
@@ -79,7 +79,7 @@ export class Round {
                 // start spawning
                 const spawners = this.zone.getSpawners();
                 spawners.forEach(spawner => {
-                    spawner.isSpawning = true;
+                    spawner.start();
                     spawner._timer = 0;
                 });
                 this.state = "running";

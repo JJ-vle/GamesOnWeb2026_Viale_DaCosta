@@ -3,7 +3,7 @@ import { BaseScene } from './BaseScene'
 import { CameraManager } from "../cameras/CameraManager"
 import { Player } from '../entities/Player'
 import { Coin } from '../entities/Coin'
-import { EnemySpawner } from '../entities/EnemySpawner'
+import { SpawnerSystem } from '../systems/SpawnerSystem'
 import { Zone } from '../Zone'
 import { Round } from '../Round'
 import { SimpleEnemy } from '../entities/enemies/SimpleEnemy'
@@ -49,29 +49,23 @@ export class MainScene extends BaseScene {
     // --- Initialiser le système de Zone et Round ---
     this.zone = new Zone(this.scene);
 
-    // Créer les spawners et les ajouter à la zone
-    const spawner1 = new EnemySpawner(this.scene, new Vector3(25, 1, 25), 4);
-    const spawner2 = new EnemySpawner(this.scene, new Vector3(-25, 1, -25), 4);
-    const spawner3 = new EnemySpawner(this.scene, new Vector3(25, 1, -25), 4);
+    // Créer le système de spawn aléatoire
+    this.spawnerSystem = new SpawnerSystem(this.scene, 130, 110, 5);
     
-    this.zone.addSpawner(spawner1);
-    this.zone.addSpawner(spawner2);
-    this.zone.addSpawner(spawner3);
+    this.zone.addSpawner(this.spawnerSystem);
 
-    // Configurer les callbacks pour tous les spawners
-    [spawner1, spawner2, spawner3].forEach(spawner => {
-      spawner.onEnemySpawned = (enemy) => {
-        enemy.contact = () => {
-          this.playerEntry.takeDamage(5);
-          this.score = 0;
-          if (this.uiSystem && typeof this.uiSystem.updateScore === 'function') {
-            this.uiSystem.updateScore(this.score);
-          }
-        };
-        this.enemies.push(enemy);
-        this.collisionSystem.registerEnemy(enemy);
+    // Configurer le callback pour les ennemis spawned
+    this.spawnerSystem.onEnemySpawned = (enemy) => {
+      enemy.contact = () => {
+        this.playerEntry.takeDamage(5);
+        this.score = 0;
+        if (this.uiSystem && typeof this.uiSystem.updateScore === 'function') {
+          this.uiSystem.updateScore(this.score);
+        }
       };
-    });
+      this.enemies.push(enemy);
+      this.collisionSystem.registerEnemy(enemy);
+    };
 
     // Créer un round et l'ajouter à la zone
     this.currentRound = new Round(this.scene, this.zone);
@@ -177,82 +171,6 @@ export class MainScene extends BaseScene {
     })
   }
 
-  /*
-  _createUI() {
-    const advancedTexture = AdvancedDynamicTexture.CreateFullscreenUI("UI");
-
-    // Score text (top)
-    const textBlock = new TextBlock();
-    textBlock.text = "Score: 0";
-    textBlock.color = "white";
-    textBlock.fontSize = 24;
-    textBlock.top = "-45%";
-    advancedTexture.addControl(textBlock);
-    this.scoreText = textBlock;
-
-    // Round info (top-left)
-    const roundText = new TextBlock();
-    roundText.text = "Round: 0/0";
-    roundText.color = "white";
-    roundText.fontSize = 20;
-    roundText.leftInPixels = 10;
-    roundText.topInPixels = 10;
-    roundText.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
-    roundText.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
-    advancedTexture.addControl(roundText);
-    this.roundText = roundText;
-
-    // Timer (top-right)
-    const roundTimer = new TextBlock();
-    roundTimer.text = "00:00";
-    roundTimer.color = "white";
-    roundTimer.fontSize = 22;
-    roundTimer.topInPixels = 10;
-    roundTimer.left = "45%";
-    roundTimer.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
-    roundTimer.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
-    advancedTexture.addControl(roundTimer);
-    this.roundTimer = roundTimer;
-
-    // Life bar background (bottom left)
-    const lifeBarBg = new Rectangle();
-    lifeBarBg.width = "300px";
-    lifeBarBg.height = "40px";
-    lifeBarBg.top = "-30px";
-    lifeBarBg.leftInPixels = 30;
-    lifeBarBg.bottomInPixels = 60;
-    lifeBarBg.background = "black";
-    lifeBarBg.thickness = 4;
-    lifeBarBg.borderColor = "white";
-    lifeBarBg.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
-    lifeBarBg.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
-    advancedTexture.addControl(lifeBarBg);
-
-    // Life bar fill
-    const lifeBarFill = new Rectangle();
-    lifeBarFill.width = "100%";
-    lifeBarFill.height = "100%";
-    lifeBarFill.background = "green";
-    lifeBarFill.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
-    lifeBarBg.addControl(lifeBarFill);
-    this.lifeBarFill = lifeBarFill;
-
-    // Debug Text
-    const debugText = new TextBlock();
-    debugText.text = "Debug";
-    debugText.color = "yellow";
-    debugText.fontSize = 18;
-    debugText.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
-    debugText.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
-    debugText.left = "10px";
-    debugText.top = "50px";
-    advancedTexture.addControl(debugText);
-    this.debugText = debugText;
-  }
-    */
-
-
-
   update() {
     if (this.debugText && this.playerEntry) {
       const p = this.playerEntry;
@@ -278,9 +196,10 @@ export class MainScene extends BaseScene {
     // mouvement en vue iso
     const deltaTime = this.scene.getEngine().getDeltaTime() / 1000 // ms to secondes
 
-    // update spawners de la zone
-    const spawners = this.zone.getSpawners();
-    spawners.forEach(spawner => spawner.update(deltaTime));
+    // update spawner system
+    if (this.spawnerSystem && typeof this.spawnerSystem.update === 'function') {
+      this.spawnerSystem.update(deltaTime, this.player.mesh.position);
+    }
 
     // update round timers
     if (this.currentRound && typeof this.currentRound.update === 'function') {
