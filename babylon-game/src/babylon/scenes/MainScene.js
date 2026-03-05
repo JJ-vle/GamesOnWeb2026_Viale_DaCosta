@@ -8,12 +8,9 @@ import { Zone } from '../Zone'
 import { Round } from '../Round'
 import { SimpleEnemy } from '../entities/enemies/SimpleEnemy'
 import {
-  Vector3, FreeCamera,
-  HemisphericLight, MeshBuilder,
-  ArcRotateCamera, Color3,
-  StandardMaterial, Camera
+  Vector3, FreeCamera, HemisphericLight, MeshBuilder,
+  ArcRotateCamera, Color3, StandardMaterial, Camera
 } from '@babylonjs/core'
-import { AdvancedDynamicTexture, TextBlock, Control, Rectangle } from '@babylonjs/gui'
 import { PistolWeapon } from "../entities/weapons/PistolWeapon"
 import { LaserWeapon } from "../entities/weapons/LaserWeapon"
 import { WeaponSystem } from "../systems/WeaponSystem"
@@ -48,6 +45,7 @@ export class MainScene extends BaseScene {
 
     // --- Initialiser le système de Zone et Round ---
     this.zone = new Zone(this.scene);
+    this.currentRoundIndex = 0;               // track which round is active
 
     // Créer le système de spawn aléatoire
     this.spawnerSystem = new SpawnerSystem(this.scene, 130, 110, 5);
@@ -67,26 +65,44 @@ export class MainScene extends BaseScene {
       this.collisionSystem.registerEnemy(enemy);
     };
 
-    // Créer un round et l'ajouter à la zone
-    this.currentRound = new Round(this.scene, this.zone);
-    this.currentRound.addMob({ type: SimpleEnemy, count: 5, spawnInterval: 2 });
-    this.zone.addRound(this.currentRound);
+    // Construire la liste des rounds puis ajouter à la zone
+    const round1 = new Round(this.scene, this.zone);
+    round1.addMob({ type: SimpleEnemy, count: 5, spawnInterval: 2 });
+    this.zone.addRound(round1);
 
-    // When round ends, remove remaining enemies
-    this.currentRound.onRoundEnd = () => {
+    const round2 = new Round(this.scene, this.zone);
+    round2.addMob({ type: SimpleEnemy, count: 13, spawnInterval: 4 });
+    this.zone.addRound(round2);
+
+    // Référence vers le round actif
+    this.currentRound = this.zone.getRounds()[this.currentRoundIndex];
+
+    // gestionnaire commun de fin de round (avance vers le suivant)
+    this._handleRoundEnd = () => {
+      // purge des ennemis restants
       for (let i = this.enemies.length - 1; i >= 0; i--) {
         const enemy = this.enemies[i];
         if (!enemy) continue;
-        // destroy enemy mesh and trigger its onDeath
         try { enemy.destroy(); } catch (e) { /* ignore */ }
-        // remove from collision system
         try { this.collisionSystem.removeEnemy(enemy); } catch (e) { /* ignore */ }
-        // remove from local list
         this.enemies.splice(i, 1);
+      }
+
+      const rounds = this.zone.getRounds();
+      if (this.currentRoundIndex + 1 < rounds.length) {
+        // passer au round suivant
+        this.currentRoundIndex++;
+        this.currentRound = rounds[this.currentRoundIndex];
+        this.currentRound.onRoundEnd = this._handleRoundEnd;
+        this.currentRound.startRound();
+      } else {
+        console.log('Tous les rounds sont terminés.');
+        // TODO: gérer la fin de partie (score final, etc.)
       }
     };
 
-    // Démarrer le premier round
+    // lier le callback et démarrer
+    this.currentRound.onRoundEnd = this._handleRoundEnd;
     this.currentRound.startRound();
 
     this.weaponSystem = new WeaponSystem(
