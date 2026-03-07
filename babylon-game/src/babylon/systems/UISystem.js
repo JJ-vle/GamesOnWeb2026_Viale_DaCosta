@@ -8,6 +8,7 @@ export class UISystem {
     this._createScore();
     this._createRound();
     this._createLifeBar();
+    this._createCooldownDisplay();
   }
 
   _createScore() {
@@ -67,6 +68,19 @@ export class UISystem {
     bg.addControl(this.lifeFill);
   }
 
+  _createCooldownDisplay() {
+    this.cooldownText = new TextBlock();
+    this.cooldownText.color = "white";
+    this.cooldownText.fontSize = 18;
+    this.cooldownText.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+    this.cooldownText.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
+    // position right of life bar
+    this.cooldownText.leftInPixels = 340; // 30 + 300 + 10 spacing
+    this.cooldownText.bottomInPixels = 70;
+    this.cooldownText.text = "";
+    this.ui.addControl(this.cooldownText);
+  }
+
   updateScore(score) {
     this.scoreText.text = `Score: ${score}`;
   }
@@ -78,6 +92,19 @@ export class UISystem {
     if (percent > 0.5) this.lifeFill.background = "green";
     else if (percent > 0.2) this.lifeFill.background = "orange";
     else this.lifeFill.background = "red";
+  }
+
+  /**
+   * @param {number} remaining seconds remaining (>=0)
+   * @param {number} total total cooldown value
+   */
+  updateCooldown(remaining, total) {
+    if (remaining <= 0) {
+      this.cooldownText.text = "Ready";
+    } else {
+      const secs = Math.ceil(remaining);
+      this.cooldownText.text = `CD: ${secs}s`;
+    }
   }
 
   updateRound(index, total, state, remaining) {

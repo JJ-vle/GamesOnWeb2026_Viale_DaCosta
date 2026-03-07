@@ -17,6 +17,9 @@ import { WeaponSystem } from "../systems/WeaponSystem"
 import { CollisionSystem } from "../systems/CollisionSystem"
 import { UISystem } from "../systems/UISystem"
 
+// secondary / activable items
+import { GrenadeActivable } from "../entities/weapons/GrenadeActivable"
+
 
 export class MainScene extends BaseScene {
   constructor(engine) {
@@ -112,6 +115,24 @@ export class MainScene extends BaseScene {
       this.collisionSystem
     );
 
+    // secondary activable weapon (grenade for now)
+    // secondary activable (grenade for now, could be heal, etc.)
+    this.secondaryActivable = new GrenadeActivable(this.scene, this.playerEntry, this.collisionSystem, {
+      cooldown: 10.0,
+      explosionRadius: 6,
+      explosionDamage: 15,
+      projectileOptions: {
+        speed: 20,
+        initialY: 10,
+        gravity: -25,
+        size: 0.4
+      }
+    });
+    this.secondaryActivable.onActivated = (proj) => {
+      // same behaviour as weapon: keep track of projectiles if any
+      this.projectiles.push(proj);
+    };
+
     this.collisionSystem.registerPlayer(this.playerEntry);
 
     this.scene.getEngine().onResizeObservable.add(() => {
@@ -176,6 +197,8 @@ export class MainScene extends BaseScene {
 
   _setupInputs() {
     this.inputMap = {}
+    this._spaceLock = false // prevent repeated activations while holding space
+
     this.scene.onKeyboardObservable.add((kbInfo) => {
       const type = kbInfo.type
       // 1 = KeyDown, 2 = KeyUp
@@ -209,6 +232,18 @@ export class MainScene extends BaseScene {
       this._cameraSwitchLock = false;
     }
 
+    // --- secondary activable launch (espace)
+    if (this.inputMap[" "] && !this._spaceLock) {
+      const dir = this.weaponSystem._getMouseDirection()
+      if (dir && this.secondaryActivable) {
+        this.secondaryActivable.activate(dir)
+      }
+      this._spaceLock = true
+    }
+    if (!this.inputMap[" "]) {
+      this._spaceLock = false
+    }
+
     // mouvement en vue iso
     const deltaTime = this.scene.getEngine().getDeltaTime() / 1000 // ms to secondes
 
@@ -236,6 +271,15 @@ export class MainScene extends BaseScene {
 
 
     this.weaponSystem.update(deltaTime)
+
+    // update secondary cooldown
+    if (this.secondaryActivable) {
+      this.secondaryActivable.update(deltaTime);
+      // send cooldown info to UI when available
+      if (this.uiSystem && typeof this.uiSystem.updateCooldown === 'function') {
+        this.uiSystem.updateCooldown(this.secondaryActivable._cooldownTimer, this.secondaryActivable.cooldown);
+      }
+    }
 
     this.projectiles = this.projectiles.filter(p => {
       const alive = p.update(deltaTime)

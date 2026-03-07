@@ -98,6 +98,21 @@ export class CollisionSystem {
         }
       }
   }
-  
+
+  /**
+   * Utility: damage all registered enemies within a radius from a point.
+   * @param {BABYLON.Vector3} center
+   * @param {number} radius
+   * @param {number} damage
+   */
+  damageEnemiesInRadius(center, radius, damage) {
+    for (let enemy of this.enemies) {
+      if (!enemy.enemy) continue
+      const dist = enemy.enemy.position.subtract(center).length()
+      if (dist <= radius) {
+        enemy.takeDamage(damage)
+      }
+    }
+  }
 }
   
