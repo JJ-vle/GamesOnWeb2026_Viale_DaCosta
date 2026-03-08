@@ -19,6 +19,7 @@ import { UISystem } from "../systems/UISystem"
 
 // secondary / activable items
 import { GrenadeActivable } from "../entities/weapons/GrenadeActivable"
+import { HealActivable } from "../entities/weapons/HealActivable"
 
 
 export class MainScene extends BaseScene {
@@ -115,8 +116,8 @@ export class MainScene extends BaseScene {
       this.collisionSystem
     );
 
-    // secondary activable weapon (grenade for now)
-    // secondary activable (grenade for now, could be heal, etc.)
+    // secondary activable weapon GRENADE
+    /*
     this.secondaryActivable = new GrenadeActivable(this.scene, this.playerEntry, this.collisionSystem, {
       cooldown: 10.0,
       explosionRadius: 6,
@@ -131,6 +132,18 @@ export class MainScene extends BaseScene {
     this.secondaryActivable.onActivated = (proj) => {
       // same behaviour as weapon: keep track of projectiles if any
       this.projectiles.push(proj);
+    };
+    */
+
+
+    // secondary activable (heal for now, could be grenade, etc.)
+    this.secondaryActivable = new HealActivable(this.scene, this.playerEntry, {
+      cooldown: 15.0,
+      healAmount: 25
+    });
+    this.secondaryActivable.onActivated = (payload) => {
+      // optional: handle heal notification, e.g., show effect or log
+      console.log(`Healed for ${payload.amount} life`);
     };
 
     this.collisionSystem.registerPlayer(this.playerEntry);
