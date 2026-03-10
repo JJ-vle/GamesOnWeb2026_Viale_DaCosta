@@ -16,12 +16,14 @@ export class SpawnerSystem {
     this.groundWidth = groundWidth;
     this.groundHeight = groundHeight;
     this.borderThickness = borderThickness;
-    this.spawnInterval = 2; // secondes entre chaque spawn
+    this.spawnInterval = 2;
     this.enemyType = null;
     this.isSpawning = false;
     this._timer = 0;
     this.onEnemySpawned = null;
-    this.minSpawnDistance = 15; // distance minimale du joueur pour spawner
+    this.minSpawnDistance = 15;
+    this.maxSpawns = null;    // null = illimité
+    this.spawnedCount = 0;    // combien ont été spawnés ce round
   }
 
   /**
@@ -31,6 +33,8 @@ export class SpawnerSystem {
   configure(config) {
     if (config.enemyType) this.enemyType = config.enemyType;
     if (config.spawnInterval) this.spawnInterval = config.spawnInterval;
+    if (config.maxSpawns != null) this.maxSpawns = config.maxSpawns;
+    this.spawnedCount = 0; // reset au configure
   }
 
   /**
@@ -92,6 +96,11 @@ export class SpawnerSystem {
    */
   update(deltaTime, playerPosition = null) {
     if (this.isSpawning && this.enemyType) {
+      // Arrêter si on a atteint le maximum
+      if (this.maxSpawns != null && this.spawnedCount >= this.maxSpawns) {
+        this.stop();
+        return;
+      }
       this._timer += deltaTime;
       if (this._timer >= this.spawnInterval) {
         this._timer = 0;
@@ -131,6 +140,8 @@ export class SpawnerSystem {
       enemy.position = spawnPos;
     }
 
+    this.spawnedCount++;
+
     if (this.onEnemySpawned) {
       this.onEnemySpawned(enemy);
     }
@@ -142,6 +153,7 @@ export class SpawnerSystem {
   start() {
     this.isSpawning = true;
     this._timer = 0;
+    // Ne pas réinitialiser spawnedCount ici (géré par configure)
   }
 
   /**

@@ -17,6 +17,7 @@ export class Enemy {
         this.life = this.maxLife
 
         this._hitTimer = 0
+        this.onDeath = null // callback() quand l'ennemi meurt
     }
 
     _createMesh() {

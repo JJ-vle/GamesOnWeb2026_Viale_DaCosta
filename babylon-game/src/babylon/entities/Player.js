@@ -15,7 +15,7 @@ export class Player {
         this.speedZ = 0.2;
         this.speedX = 0.1;
 
-        this.maxLife = 100;
+        this.maxLife = 20;
         this.life = this.maxLife;
         this._loadCharacter();
 
@@ -228,19 +228,9 @@ export class Player {
             }
         }
 
-        // Saut (Impulsion)
-        if (inputMap[" "] && this.mesh.position.y <= 1.1) {
-            this.verticalVelocity = 0.15;
-
-        }
-        // Appliquer la gravité
-        this.verticalVelocity -= 0.005; // C'est un nombre, pas un vecteur, donc pas de .y
-        this.mesh.position.y += this.verticalVelocity;
-
-        // Collision avec le sol
+        // Maintenir le joueur au sol (pas de saut — Espace = capacité active)
         if (this.mesh.position.y < 1) {
-            this.mesh.position.y = 1; // On ne modifie que l'axe Y, pas tout l'objet position
-            this.verticalVelocity = 0;
+            this.mesh.position.y = 1;
         }
 
     }
