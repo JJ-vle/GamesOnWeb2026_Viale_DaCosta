@@ -126,6 +126,30 @@ export class UISystem {
         this.roundText.fontFamily = "monospace";
         this.roundText.fontStyle = "bold";
         roundBg.addControl(this.roundText);
+    this._createScore();
+    this._createRound();
+    this._createLifeBar();
+    this._createCooldownDisplay();
+  }
+
+  _createScore() {
+    this.scoreText = new TextBlock();
+    this.scoreText.text = "Score: 0";
+    this.scoreText.color = "white";
+    this.scoreText.fontSize = 24;
+    this.scoreText.top = "-45%";
+    this.ui.addControl(this.scoreText);
+  }
+
+  _createRound() {
+    this.roundText = new TextBlock();
+    this.roundText.color = "white";
+    this.roundText.fontSize = 20;
+    this.roundText.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+    this.roundText.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+    this.roundText.leftInPixels = 10;
+    this.roundText.topInPixels = 10;
+    this.ui.addControl(this.roundText);
 
         // ── Timer (haut-centre) ──
         const timerBg = new Rectangle("timerBg");
@@ -259,6 +283,31 @@ export class UISystem {
     // ─────────────────────────────────────────────────────
     // UPDATE METHODS
     // ─────────────────────────────────────────────────────
+    this.lifeFill = new Rectangle();
+    this.lifeFill.width = "100%";
+    this.lifeFill.height = "100%";
+    this.lifeFill.background = "green";
+    this.lifeFill.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+
+    bg.addControl(this.lifeFill);
+  }
+
+  _createCooldownDisplay() {
+    this.cooldownText = new TextBlock();
+    this.cooldownText.color = "white";
+    this.cooldownText.fontSize = 18;
+    this.cooldownText.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+    this.cooldownText.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
+    // position right of life bar
+    this.cooldownText.leftInPixels = 340; // 30 + 300 + 10 spacing
+    this.cooldownText.bottomInPixels = 70;
+    this.cooldownText.text = "";
+    this.ui.addControl(this.cooldownText);
+  }
+
+  updateScore(score) {
+    this.scoreText.text = `Score: ${score}`;
+  }
 
     updateLife(current, max) {
         const percent = Math.max(0, current / max);
@@ -289,6 +338,27 @@ export class UISystem {
     updateKills(kills) {
         this.killText.text = `☠ ${kills} kills`;
     }
+  updateLife(current, max) {
+    const percent = current / max;
+    this.lifeFill.width = (percent * 100) + "%";
+
+    if (percent > 0.5) this.lifeFill.background = "green";
+    else if (percent > 0.2) this.lifeFill.background = "orange";
+    else this.lifeFill.background = "red";
+  }
+
+  /**
+   * @param {number} remaining seconds remaining (>=0)
+   * @param {number} total total cooldown value
+   */
+  updateCooldown(remaining, total) {
+    if (remaining <= 0) {
+      this.cooldownText.text = "Ready";
+    } else {
+      const secs = Math.ceil(remaining);
+      this.cooldownText.text = `CD: ${secs}s`;
+    }
+  }
 
     updateRound(index, total, state, remaining) {
         this.roundText.text = `ROUND ${index}/${total}`;

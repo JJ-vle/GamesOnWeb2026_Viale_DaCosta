@@ -9,15 +9,13 @@ import { SimpleEnemy } from '../entities/enemies/SimpleEnemy'
 import { HeavyEnemy } from '../entities/enemies/HeavyEnemy'
 import { MetroidEnemy } from '../entities/enemies/MetroidEnemy'
 import {
-  Vector3, HemisphericLight,
-  MeshBuilder, Color3,
-  StandardMaterial, DirectionalLight,
+  Vector3, FreeCamera, HemisphericLight, MeshBuilder,
+  ArcRotateCamera, Color3, StandardMaterial, Camera
 } from '@babylonjs/core'
 import { PistolWeapon } from "../entities/weapons/PistolWeapon"
 import { WeaponSystem } from "../systems/WeaponSystem"
 import { CollisionSystem } from "../systems/CollisionSystem"
 import { UISystem } from "../systems/UISystem"
-import { ActiveAbilitySystem } from "../systems/ActiveAbilitySystem"
 
 
 export class MainScene extends BaseScene {
@@ -45,10 +43,13 @@ export class MainScene extends BaseScene {
 
     this.enemies = []
 
-    // ── Zone & Round ──
-    this.zone = new Zone(this.scene)
-    this.spawnerSystem = new SpawnerSystem(this.scene, 130, 110, 5)
-    this.zone.addSpawner(this.spawnerSystem)
+    // --- Initialiser le système de Zone et Round ---
+    this.zone = new Zone(this.scene);
+
+    // Créer le système de spawn aléatoire
+    this.spawnerSystem = new SpawnerSystem(this.scene, 130, 110, 5);
+    
+    this.zone.addSpawner(this.spawnerSystem);
 
     // Callback ennemi spawné
     this.spawnerSystem.onEnemySpawned = (enemy) => {
@@ -79,38 +80,34 @@ export class MainScene extends BaseScene {
       if (this.currentRound) this.currentRound.notifyEnemySpawned()
     }
 
-    // ── Round de base ──
-    // Round 1 : 5 SimpleEnemy + 2 HeavyEnemy + 2 MetroidEnemy, timer 60s
-    this.currentRound = new Round(this.scene, this.zone, { timelimit: 60, timebefore: 5 })
-    this.currentRound.addMob({ type: SimpleEnemy, count: 5, spawnInterval: 2 })
-    this.zone.addRound(this.currentRound)
+    // Créer un round et l'ajouter à la zone
+    this.currentRound = new Round(this.scene, this.zone);
+    this.currentRound.addMob({ type: SimpleEnemy, count: 5, spawnInterval: 2 });
+    this.zone.addRound(this.currentRound);
 
-    // Victoire round
-    this.currentRound.onVictory = () => {
-      this.uiSystem.showNotification('⚡ VAGUE TERMINÉE !', '#00ff88', 3000)
-      console.log('[MainScene] Round terminé ! Victoire.')
-    }
-
-    // Fin de round → purger les ennemis restants
+    // When round ends, remove remaining enemies
     this.currentRound.onRoundEnd = () => {
       for (let i = this.enemies.length - 1; i >= 0; i--) {
-        const enemy = this.enemies[i]
-        if (!enemy) continue
-        try { enemy.destroy() } catch (e) { /* ignore */ }
-        try { this.collisionSystem.removeEnemy(enemy) } catch (e) { /* ignore */ }
-        this.enemies.splice(i, 1)
+        const enemy = this.enemies[i];
+        if (!enemy) continue;
+        // destroy enemy mesh and trigger its onDeath
+        try { enemy.destroy(); } catch (e) { /* ignore */ }
+        // remove from collision system
+        try { this.collisionSystem.removeEnemy(enemy); } catch (e) { /* ignore */ }
+        // remove from local list
+        this.enemies.splice(i, 1);
       }
-    }
+    };
 
-    this.currentRound.startRound()
+    // Démarrer le premier round
+    this.currentRound.startRound();
 
-    // ── WeaponSystem ──
     this.weaponSystem = new WeaponSystem(
       this.scene,
       this.playerEntry,
       this.weapon,
       this.collisionSystem
-    )
+    );
 
     this.collisionSystem.registerPlayer(this.playerEntry)
 
@@ -191,6 +188,8 @@ export class MainScene extends BaseScene {
 
   _setupInputs() {
     this.inputMap = {}
+    this._spaceLock = false // prevent repeated activations while holding space
+
     this.scene.onKeyboardObservable.add((kbInfo) => {
       const type = kbInfo.type
       if (type === 1) {
@@ -222,6 +221,18 @@ export class MainScene extends BaseScene {
       this._cameraSwitchLock = false
     }
 
+    // --- secondary activable launch (espace)
+    if (this.inputMap[" "] && !this._spaceLock) {
+      const dir = this.weaponSystem._getMouseDirection()
+      if (dir && this.secondaryActivable) {
+        this.secondaryActivable.activate(dir)
+      }
+      this._spaceLock = true
+    }
+    if (!this.inputMap[" "]) {
+      this._spaceLock = false
+    }
+
     // Spawner
     if (this.spawnerSystem) {
       this.spawnerSystem.update(deltaTime, this.player.mesh.position)
@@ -244,6 +255,15 @@ export class MainScene extends BaseScene {
 
     // Arme
     this.weaponSystem.update(deltaTime)
+
+    // update secondary cooldown
+    if (this.secondaryActivable) {
+      this.secondaryActivable.update(deltaTime);
+      // send cooldown info to UI when available
+      if (this.uiSystem && typeof this.uiSystem.updateCooldown === 'function') {
+        this.uiSystem.updateCooldown(this.secondaryActivable._cooldownTimer, this.secondaryActivable.cooldown);
+      }
+    }
 
     // Projectiles
     this.projectiles = this.projectiles.filter(p => {
