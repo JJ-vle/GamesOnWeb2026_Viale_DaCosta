@@ -9,13 +9,14 @@ import { SimpleEnemy } from '../entities/enemies/SimpleEnemy'
 import { HeavyEnemy } from '../entities/enemies/HeavyEnemy'
 import { MetroidEnemy } from '../entities/enemies/MetroidEnemy'
 import {
-  Vector3, FreeCamera, HemisphericLight, MeshBuilder,
-  ArcRotateCamera, Color3, StandardMaterial, Camera
+  Vector3, HemisphericLight, MeshBuilder,
+  Color3, StandardMaterial
 } from '@babylonjs/core'
 import { PistolWeapon } from "../entities/weapons/PistolWeapon"
 import { WeaponSystem } from "../systems/WeaponSystem"
 import { CollisionSystem } from "../systems/CollisionSystem"
 import { UISystem } from "../systems/UISystem"
+import { ActiveAbilitySystem } from "../systems/ActiveAbilitySystem"
 
 
 export class MainScene extends BaseScene {
@@ -171,7 +172,7 @@ export class MainScene extends BaseScene {
     ground.checkCollisions = true
 
     const groundMat = new StandardMaterial('groundMat', this.scene)
-    groundMat.diffuseColor = new Color3(0.05, 0.05, 0.12)
+    groundMat.diffuseColor = new Color3(0.8, 0.8, 0.8)
     groundMat.specularColor = new Color3(0, 0, 0)
     ground.material = groundMat
 
@@ -181,7 +182,7 @@ export class MainScene extends BaseScene {
     // Pas de Coin pour l'instant (sera remplacé par le système d'engrenages)
     // this.coinEntry = new Coin(...)
 
-    this.scene.clearColor = new Color3(0.04, 0.04, 0.1)
+    this.scene.clearColor = new Color3(0.1, 0.1, 0.2)
 
     this._setupInputs()
   }
@@ -221,17 +222,6 @@ export class MainScene extends BaseScene {
       this._cameraSwitchLock = false
     }
 
-    // --- secondary activable launch (espace)
-    if (this.inputMap[" "] && !this._spaceLock) {
-      const dir = this.weaponSystem._getMouseDirection()
-      if (dir && this.secondaryActivable) {
-        this.secondaryActivable.activate(dir)
-      }
-      this._spaceLock = true
-    }
-    if (!this.inputMap[" "]) {
-      this._spaceLock = false
-    }
 
     // Spawner
     if (this.spawnerSystem) {
@@ -256,14 +246,6 @@ export class MainScene extends BaseScene {
     // Arme
     this.weaponSystem.update(deltaTime)
 
-    // update secondary cooldown
-    if (this.secondaryActivable) {
-      this.secondaryActivable.update(deltaTime);
-      // send cooldown info to UI when available
-      if (this.uiSystem && typeof this.uiSystem.updateCooldown === 'function') {
-        this.uiSystem.updateCooldown(this.secondaryActivable._cooldownTimer, this.secondaryActivable.cooldown);
-      }
-    }
 
     // Projectiles
     this.projectiles = this.projectiles.filter(p => {

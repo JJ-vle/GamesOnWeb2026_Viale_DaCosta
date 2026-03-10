@@ -3,21 +3,17 @@ import {
     TextBlock,
     Control,
     Rectangle,
-    Ellipse,
-    Image,
-    StackPanel,
 } from "@babylonjs/gui";
 
 /**
  * UISystem — Interface cyberpunk pour le Roguelike Robotique
  *
  * Zones :
- *   [Haut-Gauche]  Round + État (waiting/running/finished)
+ *   [Haut-Gauche]  Round label
  *   [Haut-Centre]  Timer compte à rebours
- *   [Haut-Droite]  Score (engrenages)
- *   [Bas-Gauche]   Barre de vie stylisée (segmentée)
- *   [Bas-Centre]   Capacité active (icône + cooldown)
- *   [Bas-Droite]   XP bar + niveau
+ *   [Haut-Droite]  Score / Engrenages
+ *   [Bas-Gauche]   Barre de vie stylisée + compteur kills
+ *   [Bas-Centre]   Capacité active (icône + overlay cooldown)
  */
 export class UISystem {
     constructor(scene) {
@@ -32,10 +28,9 @@ export class UISystem {
     }
 
     // ─────────────────────────────────────────────────────
-    // BARRE DE VIE (bas-gauche) — segmentée style cyberpunk
+    // BARRE DE VIE (bas-gauche)
     // ─────────────────────────────────────────────────────
     _buildLifeBar() {
-        // Conteneur principal
         const container = new Rectangle("lifeContainer");
         container.width = "280px";
         container.height = "56px";
@@ -46,7 +41,6 @@ export class UISystem {
         container.thickness = 0;
         this.ui.addControl(container);
 
-        // Label "HP"
         const hpLabel = new TextBlock("hpLabel");
         hpLabel.text = "HP";
         hpLabel.color = "#00ffcc";
@@ -58,7 +52,6 @@ export class UISystem {
         hpLabel.top = "-2px";
         container.addControl(hpLabel);
 
-        // Fond de la barre
         const lifeBg = new Rectangle("lifeBg");
         lifeBg.width = "280px";
         lifeBg.height = "24px";
@@ -69,17 +62,15 @@ export class UISystem {
         lifeBg.cornerRadius = 3;
         container.addControl(lifeBg);
 
-        // Remplissage
         this.lifeFill = new Rectangle("lifeFill");
         this.lifeFill.width = "100%";
         this.lifeFill.height = "100%";
-        this.lifeFill.background = "linear-gradient(90deg, #00ff88, #00ffcc)";
+        this.lifeFill.background = "#00ff88";
         this.lifeFill.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
         this.lifeFill.cornerRadius = 3;
         this.lifeFill.thickness = 0;
         lifeBg.addControl(this.lifeFill);
 
-        // Glow overlay (bord brillant)
         const glowLine = new Rectangle("glowLine");
         glowLine.width = "100%";
         glowLine.height = "3px";
@@ -91,7 +82,6 @@ export class UISystem {
         lifeBg.addControl(glowLine);
         this._lifeGlowLine = glowLine;
 
-        // Texte HP actuel
         this.lifeText = new TextBlock("lifeText");
         this.lifeText.text = "20 / 20";
         this.lifeText.color = "#ffffff";
@@ -105,7 +95,7 @@ export class UISystem {
     // UI ROUND (haut-gauche + haut-centre)
     // ─────────────────────────────────────────────────────
     _buildRoundUI() {
-        // ── Round label (haut-gauche) ──
+        // Round label — haut gauche
         const roundBg = new Rectangle("roundBg");
         roundBg.width = "160px";
         roundBg.height = "36px";
@@ -126,32 +116,8 @@ export class UISystem {
         this.roundText.fontFamily = "monospace";
         this.roundText.fontStyle = "bold";
         roundBg.addControl(this.roundText);
-    this._createScore();
-    this._createRound();
-    this._createLifeBar();
-    this._createCooldownDisplay();
-  }
 
-  _createScore() {
-    this.scoreText = new TextBlock();
-    this.scoreText.text = "Score: 0";
-    this.scoreText.color = "white";
-    this.scoreText.fontSize = 24;
-    this.scoreText.top = "-45%";
-    this.ui.addControl(this.scoreText);
-  }
-
-  _createRound() {
-    this.roundText = new TextBlock();
-    this.roundText.color = "white";
-    this.roundText.fontSize = 20;
-    this.roundText.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
-    this.roundText.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
-    this.roundText.leftInPixels = 10;
-    this.roundText.topInPixels = 10;
-    this.ui.addControl(this.roundText);
-
-        // ── Timer (haut-centre) ──
+        // Timer — haut centre
         const timerBg = new Rectangle("timerBg");
         timerBg.width = "140px";
         timerBg.height = "44px";
@@ -172,7 +138,7 @@ export class UISystem {
         this.roundTimer.fontStyle = "bold";
         timerBg.addControl(this.roundTimer);
 
-        // ── État du round (sous le timer) ──
+        // État du round — sous le timer
         this.roundStateText = new TextBlock("roundStateText");
         this.roundStateText.text = "";
         this.roundStateText.color = "#ffaa00";
@@ -214,7 +180,6 @@ export class UISystem {
     // CAPACITÉ ACTIVE (bas-centre)
     // ─────────────────────────────────────────────────────
     _buildActiveAbilityUI() {
-        // Conteneur centré en bas
         const container = new Rectangle("abilityContainer");
         container.width = "72px";
         container.height = "72px";
@@ -227,7 +192,6 @@ export class UISystem {
         container.cornerRadius = 8;
         this.ui.addControl(container);
 
-        // Label de la touche
         const keyLabel = new TextBlock("keyLabel");
         keyLabel.text = "SPACE";
         keyLabel.color = "#ffffff88";
@@ -237,24 +201,21 @@ export class UISystem {
         keyLabel.top = "-4px";
         container.addControl(keyLabel);
 
-        // Icône item
         this.abilityIcon = new TextBlock("abilityIcon");
-        this.abilityIcon.text = "💊"; // heal par défaut
+        this.abilityIcon.text = "💊";
         this.abilityIcon.fontSize = 28;
         this.abilityIcon.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
         this.abilityIcon.top = "8px";
         container.addControl(this.abilityIcon);
 
-        // Overlay de cooldown (rectangle sombre qui couvre l'icône)
         this.abilityCooldownOverlay = new Rectangle("abilityCooldownOverlay");
         this.abilityCooldownOverlay.width = "100%";
-        this.abilityCooldownOverlay.height = "0%"; // commence à 0
+        this.abilityCooldownOverlay.height = "0%";
         this.abilityCooldownOverlay.background = "#000000aa";
         this.abilityCooldownOverlay.thickness = 0;
         this.abilityCooldownOverlay.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
         container.addControl(this.abilityCooldownOverlay);
 
-        // Texte cooldown
         this.abilityCooldownText = new TextBlock("abilityCooldownText");
         this.abilityCooldownText.text = "";
         this.abilityCooldownText.color = "#ffffff";
@@ -265,7 +226,7 @@ export class UISystem {
     }
 
     // ─────────────────────────────────────────────────────
-    // COMPTEUR DE KILLS (bas, près de la vie)
+    // COMPTEUR DE KILLS (bas-gauche, au-dessus de la vie)
     // ─────────────────────────────────────────────────────
     _buildKillCounter() {
         this.killText = new TextBlock("killText");
@@ -283,31 +244,6 @@ export class UISystem {
     // ─────────────────────────────────────────────────────
     // UPDATE METHODS
     // ─────────────────────────────────────────────────────
-    this.lifeFill = new Rectangle();
-    this.lifeFill.width = "100%";
-    this.lifeFill.height = "100%";
-    this.lifeFill.background = "green";
-    this.lifeFill.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
-
-    bg.addControl(this.lifeFill);
-  }
-
-  _createCooldownDisplay() {
-    this.cooldownText = new TextBlock();
-    this.cooldownText.color = "white";
-    this.cooldownText.fontSize = 18;
-    this.cooldownText.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
-    this.cooldownText.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
-    // position right of life bar
-    this.cooldownText.leftInPixels = 340; // 30 + 300 + 10 spacing
-    this.cooldownText.bottomInPixels = 70;
-    this.cooldownText.text = "";
-    this.ui.addControl(this.cooldownText);
-  }
-
-  updateScore(score) {
-    this.scoreText.text = `Score: ${score}`;
-  }
 
     updateLife(current, max) {
         const percent = Math.max(0, current / max);
@@ -326,7 +262,7 @@ export class UISystem {
         }
     }
 
-    // Maintenu pour compatibilité (alias)
+    /** Alias pour compatibilité avec l'ancienne API */
     updateScore(score) {
         this.updateGears(score);
     }
@@ -338,27 +274,6 @@ export class UISystem {
     updateKills(kills) {
         this.killText.text = `☠ ${kills} kills`;
     }
-  updateLife(current, max) {
-    const percent = current / max;
-    this.lifeFill.width = (percent * 100) + "%";
-
-    if (percent > 0.5) this.lifeFill.background = "green";
-    else if (percent > 0.2) this.lifeFill.background = "orange";
-    else this.lifeFill.background = "red";
-  }
-
-  /**
-   * @param {number} remaining seconds remaining (>=0)
-   * @param {number} total total cooldown value
-   */
-  updateCooldown(remaining, total) {
-    if (remaining <= 0) {
-      this.cooldownText.text = "Ready";
-    } else {
-      const secs = Math.ceil(remaining);
-      this.cooldownText.text = `CD: ${secs}s`;
-    }
-  }
 
     updateRound(index, total, state, remaining) {
         this.roundText.text = `ROUND ${index}/${total}`;
@@ -369,17 +284,12 @@ export class UISystem {
             this.roundStateText.text = "⚠ PRÉPAREZ-VOUS";
             this.roundStateText.color = "#ffaa00";
         } else if (state === "running") {
-            this.roundTimer.color = "#ffffff";
             const secs = Math.ceil(remaining);
             const mm = Math.floor(secs / 60).toString().padStart(2, "0");
             const ss = (secs % 60).toString().padStart(2, "0");
             this.roundTimer.text = `${mm}:${ss}`;
             this.roundStateText.text = "";
-
-            // Timer rouge si < 10s
-            if (secs <= 10) {
-                this.roundTimer.color = "#ff4444";
-            }
+            this.roundTimer.color = secs <= 10 ? "#ff4444" : "#ffffff";
         } else if (state === "finished") {
             this.roundTimer.color = "#00ff88";
             this.roundTimer.text = "✓ WIN";
@@ -389,30 +299,32 @@ export class UISystem {
     }
 
     /**
-     * Met à jour l'UI de la capacité active
-     * @param {number} cooldownPercent - 0 = prêt, 1 = juste utilisé
-     * @param {'heal'|'grenade'|null} itemType - item équipé
-     * @param {number} cooldownRemaining - secondes restantes
+     * Met à jour le slot de capacité active
+     * @param {number} cooldownPercent  0 = prêt, 1 = vient d'être utilisé
+     * @param {'heal'|'grenade'|null} itemType
+     * @param {number} cooldownRemaining  secondes restantes
      */
     updateActiveAbility(cooldownPercent, itemType, cooldownRemaining = 0) {
-        // Icône
-        const icons = { heal: "💊", grenade: "💣", null: "—" };
+        const icons = { heal: "💊", grenade: "💣" };
         this.abilityIcon.text = icons[itemType] ?? "—";
 
-        // Overlay cooldown
         const overlayHeight = Math.round(cooldownPercent * 100);
         this.abilityCooldownOverlay.height = overlayHeight + "%";
 
-        // Texte
-        if (cooldownRemaining > 0.1) {
-            this.abilityCooldownText.text = Math.ceil(cooldownRemaining).toString();
-        } else {
-            this.abilityCooldownText.text = "";
-        }
+        this.abilityCooldownText.text = cooldownRemaining > 0.1
+            ? Math.ceil(cooldownRemaining).toString()
+            : "";
+    }
+
+    /** Alias générique pour la compatibilité avec secondaryActivable.updateCooldown */
+    updateCooldown(remaining, total) {
+        // Redirige vers updateActiveAbility si disponible
+        const percent = total > 0 ? remaining / total : 0;
+        this.updateActiveAbility(percent, this._lastItemType ?? "heal", remaining);
     }
 
     /**
-     * Affiche une notification flash au centre de l'écran (ex: "VICTOIRE!")
+     * Notification flash animée au centre de l'écran
      * @param {string} text
      * @param {string} [color="#00ff88"]
      * @param {number} [duration=2500] ms
