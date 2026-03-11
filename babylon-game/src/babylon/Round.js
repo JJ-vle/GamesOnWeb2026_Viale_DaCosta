@@ -67,16 +67,31 @@ export class Round {
     configureSpawners() {
         if (!this.zone || !this.zone.getSpawners) return;
         const spawners = this.zone.getSpawners();
-        if (spawners.length > 0 && this.mobs.length > 0) {
-            const mob = this.mobs[0];
-            const spawner = spawners[0];
-            this._maxSpawnCount = mob.count ?? Infinity;
-            spawner.configure({
-                enemyType: mob.type,
-                spawnInterval: mob.spawnInterval || 2,
-                maxSpawns: mob.count,
-            });
+        if (spawners.length === 0 || this.mobs.length === 0) return;
+
+        // Construire un tableau cyclique de types selon les counts
+        // Ex: [SimpleEnemy x5, HeavyEnemy x2] → [S,S,S,S,S,H,H] puis on cycle
+        const typeSequence = [];
+        let totalCount = 0;
+        for (const mob of this.mobs) {
+            for (let i = 0; i < (mob.count ?? 1); i++) {
+                typeSequence.push(mob.type);
+            }
+            totalCount += mob.count ?? 1;
         }
+
+        this._maxSpawnCount = totalCount;
+
+        // Interval minimal parmi tous les mobs
+        const minInterval = Math.min(...this.mobs.map(m => m.spawnInterval || 2));
+
+        const spawner = spawners[0];
+        spawner.configure({
+            enemyTypeSequence: typeSequence,  // tableau cyclique
+            enemyType: typeSequence[0],       // fallback si le spawner n'est pas mis à jour
+            spawnInterval: minInterval,
+            maxSpawns: totalCount,
+        });
     }
 
     startRound() {

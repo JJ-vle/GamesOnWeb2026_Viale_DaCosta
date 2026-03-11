@@ -39,6 +39,29 @@ export class Enemy {
         }
     }
     
+    _getFlockingVector(enemiesArray, separationDistance = 3, separationForce = 0.5) {
+        let sep = new Vector3(0, 0, 0)
+        if (!this.enemy || !enemiesArray) return sep
+        
+        let count = 0
+        for (const other of enemiesArray) {
+            if (other === this || !other.enemy) continue
+            const dist = Vector3.Distance(this.enemy.position, other.enemy.position)
+            if (dist < separationDistance && dist > 0.001) {
+                const away = this.enemy.position.subtract(other.enemy.position)
+                away.y = 0
+                away.normalize()
+                sep.addInPlace(away.scale(separationDistance - dist))
+                count++
+            }
+        }
+        if (count > 0) {
+            sep.scaleInPlace(separationForce / count)
+        }
+        sep.y = 0
+        return sep
+    }
+    
     destroy() {
         if (this.enemy) {
             this.enemy.dispose()

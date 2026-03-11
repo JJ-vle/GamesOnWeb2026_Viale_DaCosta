@@ -36,7 +36,7 @@ export class HeavyEnemy extends Enemy {
         return enemy
     }
 
-    update(playerMesh, projectiles = []) {
+    update(playerMesh, projectiles = [], enemies = []) {
         if (!this.enemy) return
 
         // Flash rouge au hit
@@ -47,11 +47,17 @@ export class HeavyEnemy extends Enemy {
             }
         }
 
-        // Déplacement vers le joueur (plus lent que SimpleEnemy)
-        const direction = playerMesh.position.subtract(this.enemy.position)
+        const slow = (this._slowFactor !== undefined && this._slowFactor >= 0) ? this._slowFactor : 1
+
+        let direction = playerMesh.position.subtract(this.enemy.position)
         direction.y = 0
         direction.normalize()
-        this.enemy.position.addInPlace(direction.scale(this.speed))
+
+        // Séparation
+        const separation = this._getFlockingVector(enemies, 4.5, 0.8)
+        direction.addInPlace(separation).normalize()
+
+        this.enemy.position.addInPlace(direction.scale(this.speed * slow))
     }
 
     takeDamage(amount) {

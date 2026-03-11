@@ -18,12 +18,14 @@ export class SpawnerSystem {
     this.borderThickness = borderThickness;
     this.spawnInterval = 2;
     this.enemyType = null;
+    this.enemyTypeSequence = null;  // tableau cyclique de types
+    this._sequenceIndex = 0;
     this.isSpawning = false;
     this._timer = 0;
     this.onEnemySpawned = null;
     this.minSpawnDistance = 15;
-    this.maxSpawns = null;    // null = illimité
-    this.spawnedCount = 0;    // combien ont été spawnés ce round
+    this.maxSpawns = null;
+    this.spawnedCount = 0;
   }
 
   /**
@@ -31,10 +33,18 @@ export class SpawnerSystem {
    * @param {Object} config - { enemyType, spawnInterval }
    */
   configure(config) {
-    if (config.enemyType) this.enemyType = config.enemyType;
+    if (config.enemyTypeSequence) {
+      this.enemyTypeSequence = config.enemyTypeSequence;
+      this.enemyType = config.enemyTypeSequence[0];
+      this._sequenceIndex = 0;
+    } else if (config.enemyType) {
+      this.enemyType = config.enemyType;
+      this.enemyTypeSequence = null;
+    }
     if (config.spawnInterval) this.spawnInterval = config.spawnInterval;
     if (config.maxSpawns != null) this.maxSpawns = config.maxSpawns;
-    this.spawnedCount = 0; // reset au configure
+    this.spawnedCount = 0;
+    this._sequenceIndex = 0;
   }
 
   /**
@@ -132,8 +142,18 @@ export class SpawnerSystem {
       break;
     } while (attempts < maxAttempts);
 
+    // Sélectionner le type selon la séquence ou le type unique
+    let EnemyClass;
+    if (this.enemyTypeSequence && this.enemyTypeSequence.length > 0) {
+      EnemyClass = this.enemyTypeSequence[this._sequenceIndex % this.enemyTypeSequence.length];
+      this._sequenceIndex++;
+    } else {
+      EnemyClass = this.enemyType;
+    }
+    if (!EnemyClass) return;
+
     // Créer l'ennemi
-    const enemy = new this.enemyType(this.scene);
+    const enemy = new EnemyClass(this.scene);
     if (enemy.enemy && enemy.enemy.position) {
       enemy.enemy.position = spawnPos;
     } else if (enemy.position) {
@@ -141,10 +161,7 @@ export class SpawnerSystem {
     }
 
     this.spawnedCount++;
-
-    if (this.onEnemySpawned) {
-      this.onEnemySpawned(enemy);
-    }
+    if (this.onEnemySpawned) this.onEnemySpawned(enemy);
   }
 
   /**

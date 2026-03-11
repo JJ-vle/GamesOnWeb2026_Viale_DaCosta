@@ -4,11 +4,13 @@ export class CollisionSystem {
       this.player = null
       this.enemies = []
       this.projectiles = []
-      this.enemyDamageCooldown = new Map() // Track cooldown per enemy
-      this.DAMAGE_COOLDOWN = 1.0 // 1 second cooldown between damage
+      this.enemyDamageCooldown = new Map()
+      this.DAMAGE_COOLDOWN = 1.0
+
+      /** Référence au BuildSystem pour déclencher les procs */
+      this.buildSystem = null
     }
   
-    // enregistrement des objets
     registerPlayer(player) { this.player = player }
     registerEnemy(enemy) { this.enemies.push(enemy) }
     registerProjectile(projectile) { this.projectiles.push(projectile) }
@@ -24,26 +26,18 @@ export class CollisionSystem {
   
     update(deltaTime) {
       if (!this.player) return
-      
+
       this.currentTime = (this.currentTime || 0) + deltaTime
   
-      // --- Atualizar projectiles ---
+      // ── Projectiles (mise à jour) ──
       for (let i = this.projectiles.length - 1; i >= 0; i--) {
         const proj = this.projectiles[i]
-        if (!proj.mesh) {
-          this.projectiles.splice(i, 1)
-          continue
-        }
-        
+        if (!proj.mesh) { this.projectiles.splice(i, 1); continue }
         const isAlive = proj.update(deltaTime)
-        if (!isAlive) {
-          proj.dispose()
-          this.projectiles.splice(i, 1)
-          continue
-        }
+        if (!isAlive) { proj.dispose(); this.projectiles.splice(i, 1); continue }
       }
   
-      // --- Projectiles vs Enemies ---
+      // ── Projectiles vs Enemies ──
       for (let i = this.projectiles.length - 1; i >= 0; i--) {
         const proj = this.projectiles[i]
         if (!proj.mesh) continue
@@ -51,68 +45,87 @@ export class CollisionSystem {
         for (let enemy of this.enemies) {
           if (!enemy.enemy) continue
           if (proj.mesh.intersectsMesh(enemy.enemy, false)) {
-            // dégâts
             enemy.takeDamage(proj.damage || 1)
-            // destruction du projectile
+            // Déclencher les procs d'items du joueur
+            this._triggerProcs(enemy)
             proj.dispose()
             this.projectiles.splice(i, 1)
             break
           }
-          /*if (proj.mesh.intersectsMesh(enemy.enemy, false)) {
-
-            const projectileType = proj.constructor.name
-            const damage = proj.damage || 1
-            const targetName = enemy.enemy.name || "Enemy"
-
-            console.log("=== COLLISION ===")
-            console.log("Projectile:", projectileType)
-            console.log("Dégâts:", damage)
-            console.log("Cible:", targetName)
-            console.log("Vie avant:", enemy.life)
-
-            enemy.takeDamage(damage)
-
-            console.log("Vie après:", enemy.life)
-            console.log("=================")
-
-            proj.dispose()
-            this.projectiles.splice(i, 1)
-            break
-          }*/
-
         }
       }
   
-      // --- Player vs Enemies ---
+      // ── Player vs Enemies (contact) ──
       for (let enemy of this.enemies) {
         if (!enemy.enemy) continue
         if (enemy.enemy.intersectsMesh(this.player.mesh, false)) {
-          // Check if cooldown has expired
           const lastDamageTime = this.enemyDamageCooldown.get(enemy) || -Infinity
-          const timeSinceLastDamage = this.currentTime - lastDamageTime
-          
-          if (timeSinceLastDamage >= this.DAMAGE_COOLDOWN) {
-            enemy.contact?.() // callback si touche le joueur
-            this.enemyDamageCooldown.set(enemy, this.currentTime) // Reset cooldown
+          if (this.currentTime - lastDamageTime >= this.DAMAGE_COOLDOWN) {
+            enemy.contact?.()
+            this.enemyDamageCooldown.set(enemy, this.currentTime)
           }
         }
       }
-  }
 
-  /**
-   * Utility: damage all registered enemies within a radius from a point.
-   * @param {BABYLON.Vector3} center
-   * @param {number} radius
-   * @param {number} damage
-   */
-  damageEnemiesInRadius(center, radius, damage) {
-    for (let enemy of this.enemies) {
-      if (!enemy.enemy) continue
-      const dist = enemy.enemy.position.subtract(center).length()
-      if (dist <= radius) {
-        enemy.takeDamage(damage)
+      // ── Effets de statut (brûlure, ralentissement) ──
+      this._tickStatusEffects(deltaTime)
+    }
+
+    /** Déclenche les procs des items équipés */
+    _triggerProcs(enemy) {
+      if (!this.buildSystem) return
+      const procItems = this.buildSystem.getProcItems()
+      for (const item of procItems) {
+        if (item.rollProc(this.player.luck)) {
+          item.onProc(enemy, this.player)
+        }
       }
     }
-  }
+
+    /** Tick des effets de statut sur les ennemis */
+    _tickStatusEffects(deltaTime) {
+      for (const enemy of this.enemies) {
+        if (!enemy.enemy) continue
+
+        // ── Brûlure (DoT) ──
+        if (enemy._burnTimer > 0) {
+          enemy._burnTimer -= deltaTime
+          enemy._burnDpsAccum = (enemy._burnDpsAccum || 0) + (enemy._burnDps || 1) * deltaTime
+          if (enemy._burnDpsAccum >= 1) {
+            const dmg = Math.floor(enemy._burnDpsAccum)
+            enemy._burnDpsAccum -= dmg
+            if (enemy.life > 0) enemy.takeDamage(dmg)
+          }
+          if (enemy.material?.emissiveColor) {
+            enemy.material.emissiveColor.r = 0.5;
+            enemy.material.emissiveColor.g = 0.15;
+            enemy.material.emissiveColor.b = 0;
+          }
+          if (enemy._burnTimer <= 0) {
+            enemy._burnTimer = 0
+            enemy._burnDpsAccum = 0
+            if (enemy.material?.emissiveColor) {
+              enemy.material.emissiveColor.r = 0;
+              enemy.material.emissiveColor.g = 0;
+              enemy.material.emissiveColor.b = 0;
+            }
+          }
+        }
+
+        // ── Ralentissement / gel ──
+        if ((enemy._slowTimer || 0) > 0) {
+          enemy._slowTimer -= deltaTime
+          if (enemy._slowTimer <= 0) {
+            enemy._slowTimer = 0
+            enemy._slowFactor = 1
+          }
+          // Teinte bleue
+          if (enemy.material?.emissiveColor && enemy._burnTimer <= 0) {
+            enemy.material.emissiveColor.r = 0;
+            enemy.material.emissiveColor.g = 0.1;
+            enemy.material.emissiveColor.b = 0.5;
+          }
+        }
+      }
+    }
 }
-  

@@ -20,14 +20,16 @@ export class Player {
         this._loadCharacter();
 
         
-        // STATS (INUTILISÉES POUR L'INSTANT)
-        this.strength = 1;  // force
-        this.speed = 1;     // vitesse de déplacement
-        this.speedshot = 1; // vitesse de tir
-        this.luck = 1;      // chance de probabilité (ex: coup critique)
-        this.regen = 1;     // régénération de vie
-        this.lifesteal = 1; // vol de vie (% de chance de récupérer de la vie en infligeant des dégâts)
-        this.armor = 1;     // armure
+        // STATS
+        this.strength = 1;  // multiplicateur de dégâts
+        this.speed = 1;     // multiplicateur de vitesse de déplacement
+        this.speedshot = 1; // multiplicateur cadence de tir
+        this.luck = 1;      // multiplie les chances de proc
+        this.regen = 0;     // HP/s régénération passive (0 = désactivé)
+        this.lifesteal = 0; // réservé
+        this.armor = 0;     // réduction de dégâts plate (ex: armor=2 → -2 dégâts reçus)
+
+        this._regenAccum = 0; // accumulateur regen (évite les micro-heals chaque frame)
     }
 
     async _loadCharacter() {
@@ -190,8 +192,8 @@ export class Player {
 
             let right = Vector3.Cross(forward, Vector3.Up()).normalize();
 
-            moveDir.addInPlace(forward.scale(forwardInput * this.speedZ));
-            moveDir.addInPlace(right.scale(sideInput * this.speedX));
+            moveDir.addInPlace(forward.scale(forwardInput * this.speedZ * this.speed));
+            moveDir.addInPlace(right.scale(sideInput * this.speedX * this.speed));
         }
 
         // --- GESTION ANIMATION ---
@@ -233,6 +235,16 @@ export class Player {
             this.mesh.position.y = 1;
         }
 
+        // ── Régénération passive ──
+        if (this.regen > 0 && this.life < this.maxLife) {
+            this._regenAccum += this.regen * (this.scene.getEngine().getDeltaTime() / 1000);
+            if (this._regenAccum >= 1) {
+                const healAmt = Math.floor(this._regenAccum);
+                this._regenAccum -= healAmt;
+                this.heal(healAmt);
+            }
+        }
+
     }
 
 
@@ -258,7 +270,9 @@ export class Player {
     }
 
     takeDamage(amount) {
-        this.life -= amount;
+        // L'armure réduit les dégâts (minimum 1)
+        const effective = Math.max(1, amount - this.armor);
+        this.life -= effective;
         if (this.life < 0) {
             this.life = 0;
         }

@@ -3,6 +3,7 @@ import {
     TextBlock,
     Control,
     Rectangle,
+    StackPanel,
 } from "@babylonjs/gui";
 
 /**
@@ -25,6 +26,9 @@ export class UISystem {
         this._buildGearCounter();
         this._buildActiveAbilityUI();
         this._buildKillCounter();
+        this._buildXPBar();
+        this._buildItemList();
+        this._buildStatsUI();
     }
 
     // ─────────────────────────────────────────────────────
@@ -242,6 +246,100 @@ export class UISystem {
     }
 
     // ─────────────────────────────────────────────────────
+    // BARRE XP (tout en bas, pleine largeur)
+    // ─────────────────────────────────────────────────────
+    _buildXPBar() {
+        // Fond
+        const xpBg = new Rectangle("xpBg");
+        xpBg.width = "100%";
+        xpBg.height = "6px";
+        xpBg.background = "#111122";
+        xpBg.thickness = 0;
+        xpBg.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
+        xpBg.bottomInPixels = 0;
+        this.ui.addControl(xpBg);
+
+        // Remplissage XP
+        this.xpFill = new Rectangle("xpFill");
+        this.xpFill.width = "0%";
+        this.xpFill.height = "100%";
+        this.xpFill.background = "#00ffcc";
+        this.xpFill.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+        this.xpFill.thickness = 0;
+        xpBg.addControl(this.xpFill);
+
+        // Niveau
+        this.levelText = new TextBlock("levelText");
+        this.levelText.text = "LVL 1";
+        this.levelText.color = "#00ffcc";
+        this.levelText.fontSize = 11;
+        this.levelText.fontFamily = "monospace";
+        this.levelText.fontStyle = "bold";
+        this.levelText.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
+        this.levelText.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
+        this.levelText.rightInPixels = 8;
+        this.levelText.bottomInPixels = 8;
+        this.ui.addControl(this.levelText);
+    }
+
+    // ─────────────────────────────────────────────────────
+    // LISTE DES ITEMS OBTENUS (droite)
+    // ─────────────────────────────────────────────────────
+    _buildItemList() {
+        const panel = new StackPanel("itemsPanel");
+        panel.width = "220px";
+        panel.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
+        panel.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+        panel.topInPixels = 90;
+        panel.rightInPixels = 20;
+        this.ui.addControl(panel);
+        
+        const title = new TextBlock("itemsTitle");
+        title.text = "MODULES RÉCUPÉRÉS";
+        title.color = "#ffffff88";
+        title.fontSize = 12;
+        title.height = "24px";
+        title.fontFamily = "monospace";
+        title.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
+        panel.addControl(title);
+        
+        this.itemsListPanel = new StackPanel("itemsList");
+        panel.addControl(this.itemsListPanel);
+    }
+
+    // ─────────────────────────────────────────────────────
+    // STATISTIQUES JOUEUR (gauche)
+    // ─────────────────────────────────────────────────────
+    _buildStatsUI() {
+        const panel = new StackPanel("statsPanel");
+        panel.width = "180px";
+        panel.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+        panel.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+        panel.topInPixels = 90;
+        panel.leftInPixels = 20;
+        this.ui.addControl(panel);
+        
+        const title = new TextBlock("statsTitle");
+        title.text = "STATISTIQUES";
+        title.color = "#ffffff88";
+        title.fontSize = 12;
+        title.height = "24px";
+        title.fontFamily = "monospace";
+        title.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+        panel.addControl(title);
+        
+        this.statsText = new TextBlock("statsText");
+        this.statsText.text = "";
+        this.statsText.color = "#00ffcc";
+        this.statsText.fontSize = 12;
+        this.statsText.height = "140px";
+        this.statsText.fontFamily = "monospace";
+        this.statsText.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+        this.statsText.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+        panel.addControl(this.statsText);
+    }
+
+    // ─────────────────────────────────────────────────────
     // UPDATE METHODS
     // ─────────────────────────────────────────────────────
 
@@ -273,6 +371,57 @@ export class UISystem {
 
     updateKills(kills) {
         this.killText.text = `☠ ${kills} kills`;
+    }
+
+    /**
+     * Met à jour la barre XP
+     * @param {number} progress  0→1 fraction vers le prochain niveau
+     * @param {number} level     niveau actuel
+     */
+    updateXP(progress, level) {
+        this.xpFill.width = Math.round(progress * 100) + "%";
+        this.levelText.text = `LVL ${level}`;
+    }
+
+    updateItems(items) {
+        // On recrée la liste (performance OK pour un tableau de < 50 items)
+        this.itemsListPanel.clearControls();
+        items.forEach(item => {
+            const txt = new TextBlock(`item_${item.id}_${Math.random()}`); // random pour éviter confit si items multiples
+            txt.text = `${item.icon} ${item.name} ${item.rarityStars}`;
+            txt.color = item.rarityColor;
+            txt.fontSize = 12;
+            txt.height = "20px";
+            txt.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
+            txt.fontFamily = "monospace";
+            this.itemsListPanel.addControl(txt);
+
+            const desc = new TextBlock(`itemDesc_${item.id}_${Math.random()}`);
+            desc.text = item.description;
+            desc.color = "#ffffff88";
+            desc.fontSize = 10;
+            desc.height = "16px";
+            desc.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
+            desc.fontFamily = "monospace";
+            this.itemsListPanel.addControl(desc);
+
+            // Petit séparateur
+            const spacer = new Rectangle("spacer_" + Math.random());
+            spacer.height = "8px";
+            spacer.thickness = 0;
+            this.itemsListPanel.addControl(spacer);
+        });
+    }
+
+    updateStats(player) {
+        let stats = "";
+        stats += `Dégâts : ${(player.strength || 1).toFixed(2)}\n`;
+        stats += `Vitesse: ${(player.speed || 1).toFixed(2)}\n`;
+        stats += `Cadence: ${(player.speedshot || 1).toFixed(2)}\n`;
+        stats += `Chance : ${(player.luck || 1).toFixed(2)}\n`;
+        stats += `Armure : ${player.armor || 0}\n`;
+        stats += `Regen  : ${player.regen || 0} \n`;
+        this.statsText.text = stats;
     }
 
     updateRound(index, total, state, remaining) {

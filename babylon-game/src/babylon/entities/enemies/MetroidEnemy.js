@@ -48,7 +48,7 @@ export class MetroidEnemy extends Enemy {
         return enemy
     }
 
-    update(playerMesh, projectiles = []) {
+    update(playerMesh, projectiles = [], enemies = []) {
         if (!this.enemy) return
 
         const dt = this.scene.getEngine().getDeltaTime() / 1000
@@ -75,6 +75,10 @@ export class MetroidEnemy extends Enemy {
         const dist = toPlayer.length()
         if (dist < 0.01) return
         const forward = toPlayer.normalize()
+        
+        // Intelligence: Séparation
+        const separation = this._getFlockingVector(enemies, 3.5, 1.0)
+        forward.addInPlace(separation).normalize()
 
         // Vecteur perpendiculaire (strafe)
         const right = new Vector3(-forward.z, 0, forward.x)
@@ -83,7 +87,9 @@ export class MetroidEnemy extends Enemy {
         const zPct = this._zigzagTimer / this._zigzagInterval // 0→1
         const lateral = Math.sin(zPct * Math.PI) * this._zigzagSide * this._zigzagStrength
 
-        const moveDir = forward.scale(this.speed).add(right.scale(lateral * 0.04))
+        const slow = (this._slowFactor !== undefined && this._slowFactor >= 0) ? this._slowFactor : 1
+
+        const moveDir = forward.scale(this.speed * slow).add(right.scale(lateral * 0.04 * slow))
         this.enemy.position.addInPlace(moveDir)
 
         // Flottement vertical sinusoïdal

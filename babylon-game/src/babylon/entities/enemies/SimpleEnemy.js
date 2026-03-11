@@ -26,10 +26,10 @@ export class SimpleEnemy extends Enemy {
         return enemy;
     }
     
-    update(playerMesh, projectiles = []) {
+    update(playerMesh, projectiles = [], enemies = []) {
         if (!this.enemy) return
 
-        // Gestion du flash rouge
+        // Flash rouge au hit
         if (this._hitTimer > 0) {
             this._hitTimer -= this.scene.getEngine().getDeltaTime() / 1000
             if (this._hitTimer <= 0) {
@@ -37,9 +37,18 @@ export class SimpleEnemy extends Enemy {
             }
         }
 
-        // Déplacement vers le joueur
-        const direction = playerMesh.position.subtract(this.enemy.position).normalize()
-        this.enemy.position.addInPlace(direction.scale(0.05))
+        const slow = (this._slowFactor !== undefined && this._slowFactor >= 0) ? this._slowFactor : 1
+        
+        // Direction vers le joueur
+        const direction = playerMesh.position.subtract(this.enemy.position)
+        direction.y = 0
+        direction.normalize()
+
+        // Intelligence: Séparation pour ne pas faire une boule d'ennemis et contourner
+        const separation = this._getFlockingVector(enemies, 3.5, 1.5)
+        direction.addInPlace(separation).normalize()
+
+        this.enemy.position.addInPlace(direction.scale(0.05 * slow))
     }
 
 }
