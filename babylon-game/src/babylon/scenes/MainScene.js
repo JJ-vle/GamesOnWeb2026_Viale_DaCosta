@@ -122,13 +122,17 @@ export class MainScene extends BaseScene {
 
     // Créer un round et l'ajouter à la zone
     this._roundNumber = 1
-    this.currentRound = new Round(this.scene, this.zone, { timelimit: 60, timebefore: 5 })
+    this.currentRound = new Round(this.scene, this.zone, { timelimit: 120, timebefore: 5 })
     this.currentRound.addMob({ type: VoltStriker, count: 5, spawnInterval: 2 })
     this.zone.addRound(this.currentRound)
 
     // Purge des ennemis restants et affichage du loot en fin de round
     this.currentRound.onRoundEnd = () => {
+      // Stopper le spawner immédiatement
+      if (this.spawnerSystem) this.spawnerSystem.stop()
+
       // Purger les survivants
+      const purged = this.enemies.length
       for (let i = this.enemies.length - 1; i >= 0; i--) {
         const enemy = this.enemies[i]
         if (!enemy) continue
@@ -136,6 +140,7 @@ export class MainScene extends BaseScene {
         try { this.collisionSystem.removeEnemy(enemy) } catch (e) { /* ignore */ }
         this.enemies.splice(i, 1)
       }
+      console.log(`[MainScene] Fin du round — ${purged} ennemis purgés`)
       // Afficher tout de suite l'écran de loot (round terminé = loot garanti)
       setTimeout(() => this._showLootScreen(this.xpSystem.level), 800)
     }
@@ -179,6 +184,8 @@ export class MainScene extends BaseScene {
     })
 
     this.scene.collisionsEnabled = true
+
+    this._setupDebugCommands()
   }
 
   // ─────────────────────────────────────────────
@@ -267,6 +274,71 @@ export class MainScene extends BaseScene {
         this.inputMap[kbInfo.event.key] = false
       }
     })
+  }
+
+  // 📝 Outils de triche pour F12
+  _setupDebugCommands() {
+    // 1. setStat('strength', 15) pour les dégâts, setStat('speed', 3) pour la vitesse...
+    window.setStat = (statName, value) => {
+      if (this.playerEntry && this.playerEntry[statName] !== undefined) {
+        this.playerEntry[statName] = value
+        console.log(`[Cheat] Statistique du joueur '${statName}' modifiée à ${value} !`)
+      } else {
+        console.warn(`[Cheat] Impossible de trouver la statistique '${statName}' sur le joueur. Les stats standards sont: life, maxLife, speed, strength, speedshot, luck, armor, regen`)
+      }
+    }
+
+    // 2. noCooldown() pour spammer Espace
+    window.noCooldown = () => {
+      if (this.activeAbilitySystem && this.activeAbilitySystem.activeAbility) {
+        this.activeAbilitySystem.activeAbility.baseCooldown = 0
+        this.activeAbilitySystem.activeAbility.cooldown = 0
+        console.log("[Cheat] Cooldown de la capacité actif supprimé ! SPAMME !")
+      } else {
+        console.warn("[Cheat] Aucune capacité active trouvée.")
+      }
+    }
+
+    // 3. clearEnemies() pour tuer instantanément tout le monde (déclenche la victoire par kill de fin de manche, gagne l'XP, etc)
+    window.clearEnemies = () => {
+      console.log(`[Cheat] Frappe Orbitale ! Éradication de ${this.enemies.length} ennemis...`)
+      // On boucle à l'envers car la liste se vide au fur et à mesure
+      for (let i = this.enemies.length - 1; i >= 0; i--) {
+        const enemy = this.enemies[i]
+        if (enemy) {
+          // Utiliser takeDamage fait pop les XP, augmente le score et alerte la manche
+          enemy.takeDamage(99999)
+        }
+      }
+    }
+
+    // 4. help() pour voir comment utiliser les commandes
+    window.help = () => {
+      console.log(`
+%c🛠️ COMMANDES DE TRICHE (Menu Développeur) 🛠️
+%c
+1. %csetStat(nom, valeur) %c- Modifie une statistique de base du joueur.
+   Stats disponibles : 'life', 'maxLife', 'speed', 'strength', 'speedshot', 'luck', 'armor', 'regen'.
+   Ex: %csetStat('strength', 20)%c  (Rend tes tirs hyper puissants)
+   Ex: %csetStat('luck', 10)%c      (Garantit des loots rares à la fin du round !)
+
+2. %cnoCooldown() %c- Annule complètement le temps de recharge pour l'objet Actif (Espace).
+   (Pratique pour spammer des millions de grenades 💥)
+
+3. %cclearEnemies() %c- Lance une frappe orbitale qui tue INSTANTANÉMENT tous les ennemis sur la carte.
+   (Tu gagnes tout de même l'XP et le Score pour chaque mort)
+
+4. %chelp() %c- Affiche ce menu.
+      `,
+        "font-size: 14px; font-weight: bold; color: #ffcc00;", "",
+        "color: #00ffaa; font-weight: bold;", "",
+        "color: #ff55bb;", "",
+        "color: #ff55bb;", "",
+        "color: #00ffaa; font-weight: bold;", "",
+        "color: #00ffaa; font-weight: bold;", "",
+        "color: #00ffaa; font-weight: bold;", ""
+      )
+    }
   }
 
   // ─────────────────────────────────────────────
@@ -375,7 +447,7 @@ export class MainScene extends BaseScene {
     const n = this._roundNumber
 
     const newRound = new Round(this.scene, this.zone, {
-      timelimit: 60 + n * 10,
+      timelimit: 120 + n * 20,
       timebefore: 5,
     })
 
