@@ -14,6 +14,8 @@ export class Round {
 
         this.timelimit = options.timelimit ?? 60;
         this.timebefore = options.timebefore ?? 5;
+        // Un round se termine au timer (pas au dernier kill).
+        this.endOnAllEnemiesDead = options.endOnAllEnemiesDead ?? false;
 
         this.moblimit = null;
         this.mobs = []; // [{ type: EnemyClass, count: number, spawnInterval?: number }]
@@ -86,11 +88,13 @@ export class Round {
         const minInterval = Math.min(...this.mobs.map(m => m.spawnInterval || 2));
 
         const spawner = spawners[0];
+        const shouldCapSpawns = this.endOnAllEnemiesDead;
         spawner.configure({
             enemyTypeSequence: typeSequence,  // tableau cyclique
             enemyType: typeSequence[0],       // fallback si le spawner n'est pas mis à jour
             spawnInterval: minInterval,
-            maxSpawns: totalCount,
+            // En mode timer-only, on laisse spawn en continu jusqu'à la fin du chrono.
+            maxSpawns: shouldCapSpawns ? totalCount : null,
         });
     }
 
@@ -166,6 +170,7 @@ export class Round {
      * Déclenche stopRound() si c'est le cas ET que le spawn est terminé.
      */
     _checkAllEnemiesDead() {
+        if (!this.endOnAllEnemiesDead) return;
         if (this.state !== "running") return;
 
         const spawnerDone = this._isSpawnerDone();

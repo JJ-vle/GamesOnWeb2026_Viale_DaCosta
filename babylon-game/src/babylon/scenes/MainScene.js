@@ -62,6 +62,8 @@ export class MainScene extends BaseScene {
     this.lootSystem = new LootSystem()
     this.xpSystem = new XPSystem()
     this.lootUI = new LootUI(this.scene)
+    this._isGamePausedForLoot = false
+    this._pendingLevelUpLootLevel = null
 
     this.buildSystem.onItemEquipped = (item) => {
       this.uiSystem.showNotification(`${item.icon} ${item.name} équipé!`, item.rarityColor, 2000)
@@ -71,7 +73,8 @@ export class MainScene extends BaseScene {
     // LevelUp → afficher l'écran de loot
     this.xpSystem.onLevelUp = (level) => {
       this.uiSystem.showNotification(`⬆ NIVEAU ${level} !`, '#ffcc00', 2000)
-      this._showLootScreen(level)
+      // On queue le loot de level-up pour éviter les collisions avec la fin de round.
+      this._pendingLevelUpLootLevel = level
     }
 
     // Arme : pistolet par défaut
@@ -141,8 +144,10 @@ export class MainScene extends BaseScene {
         this.enemies.splice(i, 1)
       }
       console.log(`[MainScene] Fin du round — ${purged} ennemis purgés`)
-      // Afficher tout de suite l'écran de loot (round terminé = loot garanti)
-      setTimeout(() => this._showLootScreen(this.xpSystem.level), 800)
+      // Afficher le loot de fin de round (garanti) après un court délai.
+      setTimeout(() => {
+        this._showLootScreen(this.xpSystem.level, { startNextRoundAfterPick: true })
+      }, 800)
     }
 
     // Démarrer le premier round
@@ -345,6 +350,25 @@ export class MainScene extends BaseScene {
   update() {
     const deltaTime = this.scene.getEngine().getDeltaTime() / 1000
 
+    // Pause globale pendant le menu de loot: on fige le gameplay.
+    if (this._isGamePausedForLoot) {
+      return
+    }
+
+    // Ouvre le loot de level-up uniquement si le round courant est encore actif.
+    // Si le round est déjà fini, on garde en attente et on affichera plus tard.
+    if (
+      this._pendingLevelUpLootLevel != null &&
+      !this.lootUI.isVisible &&
+      this.currentRound &&
+      this.currentRound.state !== 'finished'
+    ) {
+      const level = this._pendingLevelUpLootLevel
+      this._pendingLevelUpLootLevel = null
+      this._showLootScreen(level, { startNextRoundAfterPick: false })
+      return
+    }
+
     // Joueur
     this.playerEntry.update(this.inputMap)
 
@@ -429,12 +453,18 @@ export class MainScene extends BaseScene {
    * Affiche l'écran de sélection d'item (loot de round)
    * @param {number} level  niveau actuel du joueur
    */
-  _showLootScreen(level) {
+  _showLootScreen(level, options = {}) {
     if (this.lootUI.isVisible) return // déjà ouvert
+    const { startNextRoundAfterPick = false } = options
+
+    this._isGamePausedForLoot = true
     const pool = this.lootSystem.generatePool(3, this.playerEntry.luck)
     this.lootUI.show(pool, this.buildSystem, (item) => {
       console.log(`[MainScene] Item choisi: ${item.name}`)
-      this._startNextRound()
+      this._isGamePausedForLoot = false
+      if (startNextRoundAfterPick) {
+        this._startNextRound()
+      }
     }, level)
   }
 

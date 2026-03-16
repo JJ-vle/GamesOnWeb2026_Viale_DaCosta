@@ -25,6 +25,7 @@ export class LootUI {
         this.ui.isForeground = true; // toujours au-dessus de l'UI de jeu
         this._overlay = null;
         this._visible = false;
+        this._isClosing = false;
     }
 
     get isVisible() { return this._visible; }
@@ -43,6 +44,7 @@ export class LootUI {
     show(pool, buildSystem, onPick, level = 1) {
         this._clearUI();
         this._visible = true;
+        this._isClosing = false;
 
         // ── Fond sombre semi-transparent ──
         const overlay = new Rectangle('lootOverlay');
@@ -213,9 +215,10 @@ export class LootUI {
 
         // ── Click : équiper l'item ──
         const pickItem = () => {
+            if (this._isClosing) return;
+            this._isClosing = true;
             buildSystem.equipItem(item);
-            onPick(item);
-            this.hide();
+            this.hide(() => onPick(item));
         };
 
         btn.onPointerClickObservable.add(pickItem);
@@ -226,7 +229,7 @@ export class LootUI {
     // MASQUER L'ÉCRAN
     // ─────────────────────────────────────────────────────
 
-    hide() {
+    hide(onHidden = null) {
         this._visible = false;
         if (!this._overlay) return;
 
@@ -237,7 +240,9 @@ export class LootUI {
             overlay.alpha = 1 - t;
             if (t >= 1) {
                 this._clearUI();
+                this._isClosing = false;
                 this.scene.onBeforeRenderObservable.remove(fadeOut);
+                if (typeof onHidden === 'function') onHidden();
             }
         });
     }
