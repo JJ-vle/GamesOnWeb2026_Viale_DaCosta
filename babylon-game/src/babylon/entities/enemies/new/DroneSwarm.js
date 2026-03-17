@@ -21,6 +21,9 @@ export class DroneSwarm extends Enemy {
         this.damage = 1
 
         this._orbitOffsetTimer = Math.random() * Math.PI * 2
+
+        this.xpValue = 10
+        this.coinValue = 5
     }
 
     _createMesh() {

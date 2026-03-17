@@ -22,6 +22,9 @@ export class JammerUnit extends Enemy {
 
         this.jamRadius = 12
         this._ringScale = 0
+
+        this.xpValue = 10
+        this.coinValue = 5
     }
 
     _createMesh() {

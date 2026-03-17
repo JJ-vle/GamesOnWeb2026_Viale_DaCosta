@@ -22,6 +22,9 @@ export class NitroHusk extends Enemy {
 
         this.isExplosive = true
         this._pulseModifier = 0
+
+        this.xpValue = 10
+        this.coinValue = 5
     }
 
     _createMesh() {

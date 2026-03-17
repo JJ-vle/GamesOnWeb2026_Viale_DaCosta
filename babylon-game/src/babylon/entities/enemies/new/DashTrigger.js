@@ -23,6 +23,9 @@ export class DashTrigger extends Enemy {
         this.state = 'APPROACH' // APPROACH, CHARGING, DASHING, COOLDOWN
         this.stateTimer = 0
         this.dashDirection = new Vector3(0,0,0)
+
+        this.xpValue = 10
+        this.coinValue = 5
     }
 
     _createMesh() {

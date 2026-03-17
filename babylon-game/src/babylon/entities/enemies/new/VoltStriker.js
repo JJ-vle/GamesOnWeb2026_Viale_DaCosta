@@ -19,6 +19,9 @@ export class VoltStriker extends Enemy {
         this.material = this.enemy.material
         this.speed = 1.0 // Base speed reference
         this.damage = 1
+
+        this.xpValue = 10
+        this.coinValue = 5
     }
 
     _createMesh() {

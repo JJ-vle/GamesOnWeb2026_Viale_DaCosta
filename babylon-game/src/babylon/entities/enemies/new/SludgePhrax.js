@@ -21,6 +21,9 @@ export class SludgePhrax extends Enemy {
         this.damage = 1
         
         this._sludgeTimer = 0
+
+        this.xpValue = 10
+        this.coinValue = 5
     }
 
     _createMesh() {

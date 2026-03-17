@@ -19,6 +19,9 @@ export class BastionRed extends Enemy {
         this.material = this.enemy.material
         this.speed = 0.6 // TRES Lent
         this.damage = 1
+
+        this.xpValue = 10
+        this.coinValue = 5
     }
 
     _createMesh() {

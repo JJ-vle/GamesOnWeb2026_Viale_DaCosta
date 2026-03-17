@@ -13,6 +13,8 @@ export class SimpleEnemy extends Enemy {
         super(scene, contact, 10) //maxlife = 10
         this.enemy = this._createMesh();
         this.material = this.enemy.material
+        this.xpValue = 10
+        this.coinValue = 5
     }
 
     _createMesh() {

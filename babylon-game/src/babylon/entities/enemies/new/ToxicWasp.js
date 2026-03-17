@@ -22,6 +22,9 @@ export class ToxicWasp extends Enemy {
         this.damage = 1
         
         this.hasPoison = true // Tag checked by collisions
+
+        this.xpValue = 10
+        this.coinValue = 5
     }
 
     _createMesh() {

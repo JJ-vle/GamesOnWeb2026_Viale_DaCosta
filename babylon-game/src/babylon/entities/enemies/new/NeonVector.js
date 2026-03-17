@@ -23,6 +23,9 @@ export class NeonVector extends Enemy {
         // Timer for slight erratic movement
         this._erraticTimer = 0
         this._strafingDir = (Math.random() < 0.5) ? 1 : -1
+
+        this.xpValue = 10
+        this.coinValue = 5
     }
 
     _createMesh() {

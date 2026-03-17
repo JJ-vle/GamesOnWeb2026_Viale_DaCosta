@@ -21,6 +21,8 @@ export class HeavyEnemy extends Enemy {
         this.material = this.enemy.material
         this.speed = 0.028
         this.damage = 2
+        this.xpValue = 25
+        this.coinValue = 15
     }
 
     _createMesh() {

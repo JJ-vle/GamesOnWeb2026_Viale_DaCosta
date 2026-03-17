@@ -25,6 +25,9 @@ export class BlastZone extends Enemy {
         this.stateTimer = 0
         this.aoeRadius = 8
         this._warningMesh = null
+
+        this.xpValue = 10
+        this.coinValue = 5
     }
 
     _createMesh() {

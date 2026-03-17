@@ -23,6 +23,9 @@ export class PyroCaster extends Enemy {
         this._fireTimer = 2.5 // Tirs plus lents
         this._preferredDistance = 12
         this.hasFireProjectiles = true // checked by main loop
+
+        this.xpValue = 10
+        this.coinValue = 5
     }
 
     _createMesh() {

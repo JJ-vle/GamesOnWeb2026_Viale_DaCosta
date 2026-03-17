@@ -16,6 +16,10 @@ export class Enemy {
         this.maxLife = maxLife
         this.life = this.maxLife
 
+        // Valeurs par défaut — chaque classe fille peut les surcharger
+        this.xpValue = 10
+        this.coinValue = 5
+
         this._hitTimer = 0
         this.onDeath = null // callback() quand l'ennemi meurt
     }

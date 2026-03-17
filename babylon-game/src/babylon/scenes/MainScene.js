@@ -106,9 +106,11 @@ export class MainScene extends BaseScene {
       // Callback mort ennemi → notifier le round
       enemy.onDeath = () => {
         this.kills++
-        this.score += enemy.scoreValue || 1
-        // Gagner de l'XP selon le type d'ennemi
-        const xpGained = this.xpSystem.addXPForEnemy(enemy.constructor.name)
+        // XP et pièces : utilisation obligatoire des propriétés de l'ennemi
+        const xpGained = enemy.xpValue
+        this.xpSystem.addXP(xpGained)
+        const coinsGained = enemy.coinValue
+        this.score += coinsGained
         this.uiSystem?.updateKills(this.kills)
         this.uiSystem?.updateGears(this.score)
         this.uiSystem?.updateXP(this.xpSystem.progressToNext, this.xpSystem.level)

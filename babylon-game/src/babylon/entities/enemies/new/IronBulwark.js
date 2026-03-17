@@ -21,6 +21,9 @@ export class IronBulwark extends Enemy {
         this.damage = 1
 
         this.isShieldedFront = true
+
+        this.xpValue = 10
+        this.coinValue = 5
     }
 
     _createMesh() {

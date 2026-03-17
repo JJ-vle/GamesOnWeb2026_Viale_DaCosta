@@ -17,12 +17,9 @@
  */
 export class XPSystem {
 
-    /** XP gagnée selon le type d'ennemi */
-    static XP_TABLE = {
-        SimpleEnemy:  10,
-        HeavyEnemy:   25,
-        MetroidEnemy: 20,
-    };
+    // NOTE: Les valeurs d'XP et de pièces sont maintenant définies sur chaque
+    // instance d'ennemi (`xpValue`, `coinValue`). Les tables globales ont été
+    // supprimées pour forcer l'utilisation des propriétés par-enemy.
 
     constructor() {
         this.totalXP = 0;
@@ -55,9 +52,18 @@ export class XPSystem {
      * @param {string} enemyClassName  ex: 'SimpleEnemy'
      */
     addXPForEnemy(enemyClassName) {
-        const xp = XPSystem.XP_TABLE[enemyClassName] ?? 10;
-        this.addXP(xp);
-        return xp;
+        // Deprecated: conserver pour compatibilité silencieuse mais ne doit
+        // plus être utilisé. Retourne 0 et n'ajoute rien.
+        return 0;
+    }
+
+    /**
+     * Retourne le nombre de pièces à donner pour un type d'ennemi.
+     * @param {string} enemyClassName
+     */
+    coinsForEnemy(enemyClassName) {
+        // Deprecated: ne doit plus être utilisé.
+        return 0;
     }
 
     /**

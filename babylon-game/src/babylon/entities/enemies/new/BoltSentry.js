@@ -22,6 +22,9 @@ export class BoltSentry extends Enemy {
 
         this._fireTimer = 2.0 // Tirs toutes les 2s
         this._preferredDistance = 15
+
+        this.xpValue = 10
+        this.coinValue = 5
     }
 
     _createMesh() {

@@ -22,6 +22,9 @@ export class LinkCommander extends Enemy {
         
         this.auraRadius = 15
         this._auraScale = 0
+
+        this.xpValue = 10
+        this.coinValue = 5
     }
 
     _createMesh() {

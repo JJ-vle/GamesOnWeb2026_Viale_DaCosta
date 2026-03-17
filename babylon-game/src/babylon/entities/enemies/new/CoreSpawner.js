@@ -24,6 +24,9 @@ export class CoreSpawner extends Enemy {
         this._spawnTimer = 5.0 // Spawn un VoltStriker toutes les 5s
         this._maxSpawned = 6 // Limite de mobs engendrés si on ne tue pas le spawner
         this._spawnedCount = 0
+
+        this.xpValue = 10
+        this.coinValue = 5
     }
 
     _createMesh() {

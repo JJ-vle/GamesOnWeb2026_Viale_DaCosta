@@ -21,6 +21,9 @@ export class EchoWraith extends Enemy {
         this.damage = 1
         
         this._blinkTimer = 0
+
+        this.xpValue = 10
+        this.coinValue = 5
     }
 
     _createMesh() {

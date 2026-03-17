@@ -23,6 +23,9 @@ export class TitanRam extends Enemy {
         this.state = 'IDLE' // IDLE, LOCKING, RAMMING, STUNNED
         this.stateTimer = 0
         this.ramDirection = new Vector3()
+
+        this.xpValue = 10
+        this.coinValue = 5
     }
 
     _createMesh() {
