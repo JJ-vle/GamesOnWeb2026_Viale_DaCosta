@@ -190,41 +190,39 @@ export class VoltStriker extends Enemy {
         }
 
         // ──── DÉTECTION D'OBSTACLE DIRECTE (avant de calculer le mouvement) ────
-        // SEULEMENT si on n'a pas déjà un point de contournement en cours
-        if (!this._avoidanceTarget) {
-            const dirToTarget = movementTarget.subtract(this.enemy.position);
-            if (dirToTarget.length() > 0.1) {
-                dirToTarget.normalize();
+        // Vérifier si `getLocalAvoidanceVector` détecte un obstacle dans notre direction
+        const dirToTarget = movementTarget.subtract(this.enemy.position);
+        if (dirToTarget.length() > 0.1) {
+            dirToTarget.normalize();
+            
+            // Appeler getLocalAvoidanceVector pour détecter l'obstacle
+            const avoidanceVec = this.pathfinding.getLocalAvoidanceVector(
+                this.enemy.position,
+                dirToTarget,
+                8.0,    // Distance de vérification
+                120     // Angle de scan
+            );
+            
+            // Si getLocalAvoidanceVector retourne non-zero, c'est qu'il y a un obstacle!
+            if (avoidanceVec.length() > 0.5 && !this._avoidanceTarget) {
+                // Créer un point de contournement latéral intelligent
+                const perpRight = new Vector3(-dirToTarget.z, 0, dirToTarget.x);
+                const perpLeft = new Vector3(dirToTarget.z, 0, -dirToTarget.x);
+                perpRight.normalize();
+                perpLeft.normalize();
                 
-                // Appeler getLocalAvoidanceVector pour détecter l'obstacle
-                const avoidanceVec = this.pathfinding.getLocalAvoidanceVector(
-                    this.enemy.position,
-                    dirToTarget,
-                    8.0,    // Distance de vérification
-                    120     // Angle de scan
-                );
+                const avoidDist = 8;
+                const rightPos = this.enemy.position.add(perpRight.scale(avoidDist));
+                const leftPos = this.enemy.position.add(perpLeft.scale(avoidDist));
                 
-                // Si getLocalAvoidanceVector retourne non-zero, c'est qu'il y a un obstacle!
-                if (avoidanceVec.length() > 0.5) {
-                    // Créer un point de contournement latéral intelligent
-                    const perpRight = new Vector3(-dirToTarget.z, 0, dirToTarget.x);
-                    const perpLeft = new Vector3(dirToTarget.z, 0, -dirToTarget.x);
-                    perpRight.normalize();
-                    perpLeft.normalize();
-                    
-                    const avoidDist = 8;
-                    const rightPos = this.enemy.position.add(perpRight.scale(avoidDist));
-                    const leftPos = this.enemy.position.add(perpLeft.scale(avoidDist));
-                    
-                    const distRight = Vector3.Distance(rightPos, targetPos);
-                    const distLeft = Vector3.Distance(leftPos, targetPos);
-                    
-                    const chosen = distRight < distLeft ? rightPos : leftPos;
-                    const side = distRight < distLeft ? "DROITE" : "GAUCHE";
-                    
-                    this._avoidanceTarget = chosen;
-                    console.log(`[VS] 🚧 OBSTACLE DÉTECTÉ! Contournement ${side} vers (${chosen.x.toFixed(1)}, ${chosen.z.toFixed(1)})`);
-                }
+                const distRight = Vector3.Distance(rightPos, targetPos);
+                const distLeft = Vector3.Distance(leftPos, targetPos);
+                
+                const chosen = distRight < distLeft ? rightPos : leftPos;
+                const side = distRight < distLeft ? "DROITE" : "GAUCHE";
+                
+                this._avoidanceTarget = chosen;
+                console.log(`[VS] 🚧 OBSTACLE DÉTECTÉ! Contournement ${side} vers (${chosen.x.toFixed(1)}, ${chosen.z.toFixed(1)})`);
             }
         }
 
