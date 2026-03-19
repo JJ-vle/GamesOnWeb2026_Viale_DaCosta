@@ -10,7 +10,9 @@ import { Enemy } from './Enemy'
 export class SimpleEnemy extends Enemy {
 
     constructor(scene, contact) {
-        super(scene, contact, 10) //maxlife = 10
+        // Passer false pour désactiver l'IA par défaut (compatibilité comportement ancien)
+        // ou pass a config pour l'activer avec params custom
+        super(scene, contact, 10, false)
         this.enemy = this._createMesh();
         this.material = this.enemy.material
         this.xpValue = 10

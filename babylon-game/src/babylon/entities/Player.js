@@ -103,7 +103,10 @@ export class Player {
             }
 
         } catch (e) {
-            console.error("Erreur chargement modèle:", e);
+            // Erreur chargement modèle 3D — fallback sur le mesh par défaut
+            console.warn("⚠️ Chargement modèle échoué (assets manquants?). Continuant avec mesh par défaut.", e.message);
+            // Le mesh par défaut (box) reste visible pour que le jeu continue
+            this.mesh.isVisible = true;
         }
     }
 

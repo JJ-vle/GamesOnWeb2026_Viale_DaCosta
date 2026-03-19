@@ -215,6 +215,41 @@ export class MainScene extends BaseScene {
     })
   }
 
+  _createObstacles() {
+    const wallHeight = 10
+    const thickness = 1
+
+    // Coin caché en bas à droite de la map - entouré de murs
+    const hideSpotX = 60  // Décalé vers la droite
+    const hideSpotY = -50 // Décalé vers le bas
+    const hideSpotSize = 20 // Taille du coin
+
+    const obstacles = [
+      // Mur Sud (bas du coin caché)
+      { name: "obstacle_hidespot_south", w: hideSpotSize, h: wallHeight, d: thickness, pos: new Vector3(hideSpotX, wallHeight / 2, hideSpotY - hideSpotSize / 2) },
+      // Mur Est (droite du coin caché)
+      { name: "obstacle_hidespot_east", w: thickness, h: wallHeight, d: hideSpotSize, pos: new Vector3(hideSpotX + hideSpotSize / 2, wallHeight / 2, hideSpotY) },
+      // Mur Nord (haut du coin caché) - partiellement ouvert pour accès
+      { name: "obstacle_hidespot_north", w: hideSpotSize * 0.7, h: wallHeight, d: thickness, pos: new Vector3(hideSpotX - 3, wallHeight / 2, hideSpotY + hideSpotSize / 2) },
+      
+      // Obstacle supplémentaire au centre pour tester - petite boîte
+      { name: "obstacle_center", w: 8, h: wallHeight, d: 8, pos: new Vector3(0, wallHeight / 2, 0) },
+    ]
+
+    obstacles.forEach(o => {
+      const wall = MeshBuilder.CreateBox(o.name, { width: o.w, height: o.h, depth: o.d }, this.scene)
+      wall.position = o.pos
+      wall.checkCollisions = true
+      wall.isPickable = true  // Important pour raycast
+      
+      // Matériau visible pour debug
+      const obstacleMat = new StandardMaterial(`mat_${o.name}`, this.scene)
+      obstacleMat.diffuseColor = new Color3(1, 0.2, 0.2) // Rouge
+      obstacleMat.alpha = 0.3 // Semi-transparent
+      wall.material = obstacleMat
+    })
+  }
+
   _createLights() {
     const ambient = new HemisphericLight('ambientLight', new Vector3(0, 1, 0), this.scene)
     ambient.intensity = 0.6
@@ -233,6 +268,7 @@ export class MainScene extends BaseScene {
     ground.material = groundMat
 
     this._createBorders(130, 110)
+    this._createObstacles()
 
     this.playerEntry = new Player(this.scene)
     // Pas de Coin pour l'instant (sera remplacé par le système d'engrenages)
