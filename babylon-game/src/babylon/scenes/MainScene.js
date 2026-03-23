@@ -162,6 +162,8 @@ export class MainScene extends BaseScene {
       this.collisionSystem
     );
 
+    this._isGameOver = false
+
     this.collisionSystem.registerPlayer(this.playerEntry)
     // Injecter le buildSystem dans le collisionSystem pour les procs
     this.collisionSystem.buildSystem = this.buildSystem
@@ -484,6 +486,15 @@ export class MainScene extends BaseScene {
       ? this.currentRound.remainingBefore
       : this.currentRound.remainingTime
     this.uiSystem.updateRound(currentIndex, rounds.length, this.currentRound.state, remaining)
+    
+    // Vérifier la mort du joueur → écran Game Over
+    if (!this._isGameOver && this.playerEntry && this.playerEntry.life <= 0) {
+      this._isGameOver = true
+      this._isGamePausedForLoot = true
+      console.log('[MainScene] Joueur mort — Game Over')
+      if (this.uiSystem && this.uiSystem.showGameOver) this.uiSystem.showGameOver()
+      return
+    }
   }
 
   // ─────────────────────────────────────────────

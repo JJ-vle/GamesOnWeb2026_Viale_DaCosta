@@ -1,8 +1,15 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import BabylonScene from './components/BabylonScene.vue'
 
 const gameStarted = ref(false)
+
+onMounted(() => {
+  const handler = () => { gameStarted.value = false }
+  window.addEventListener('returnToMenu', handler)
+  // remove on unmount
+  onUnmounted(() => window.removeEventListener('returnToMenu', handler))
+})
 </script>
 
 <template>

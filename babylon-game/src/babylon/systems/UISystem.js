@@ -4,6 +4,7 @@ import {
     Control,
     Rectangle,
     StackPanel,
+    Button,
 } from "@babylonjs/gui";
 
 /**
@@ -501,5 +502,74 @@ export class UISystem {
                 this.scene.onBeforeRenderObservable.remove(obs);
             }
         });
+    }
+
+    /** Affiche l'écran Game Over avec bouton de retour au menu */
+    showGameOver() {
+        if (this._gameOverPanel) return // déjà affiché
+
+        const overlay = new Rectangle("gameOverOverlay");
+        overlay.width = "100%";
+        overlay.height = "100%";
+        overlay.background = "#000000cc";
+        overlay.thickness = 0;
+        overlay.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
+        overlay.verticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
+        this.ui.addControl(overlay);
+
+        const panel = new Rectangle("gameOverPanel");
+        panel.width = "480px";
+        panel.height = "260px";
+        panel.background = "#0b0b12";
+        panel.color = "#ffffff22";
+        panel.thickness = 2;
+        panel.cornerRadius = 8;
+        panel.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
+        panel.verticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
+        overlay.addControl(panel);
+
+        const title = new TextBlock("gameOverTitle");
+        title.text = "GAME OVER";
+        title.color = "#ff4444";
+        title.fontSize = 44;
+        title.fontFamily = "monospace";
+        title.fontStyle = "bold";
+        title.top = "-40px";
+        panel.addControl(title);
+
+        const subtitle = new TextBlock("gameOverSub");
+        subtitle.text = "Vous êtes mort.";
+        subtitle.color = "#ffffffaa";
+        subtitle.fontSize = 18;
+        subtitle.top = "-5px";
+        panel.addControl(subtitle);
+
+        const btn = Button.CreateSimpleButton("returnButton", "Retour au menu");
+        btn.width = "220px";
+        btn.height = "44px";
+        btn.color = "#ffffff";
+        btn.background = "#3344aa";
+        btn.top = "60px";
+        btn.verticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
+        btn.cornerRadius = 10;
+        btn.thickness = 0;
+        btn.onPointerDownObservable.add(() => {
+            // Dispatch event global que App.vue peut écouter
+            try {
+                window.dispatchEvent(new CustomEvent('returnToMenu'))
+            } catch (e) {
+                // fallback: reload page
+                window.location.reload()
+            }
+        });
+        panel.addControl(btn);
+
+        this._gameOverPanel = overlay;
+    }
+
+    hideGameOver() {
+        if (!this._gameOverPanel) return;
+        try { this._gameOverPanel.dispose(); } catch (e) { /* ignore */ }
+        this._gameOverPanel = null;
     }
 }
