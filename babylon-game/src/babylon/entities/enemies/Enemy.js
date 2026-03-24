@@ -62,7 +62,19 @@ export class Enemy {
             ...(aiConfig || {}),
         })
 
-        this.pathfinding = new PathfindingHelper(this.scene)
+        // NavGrid partagée (sera injectée depuis MainScene)
+        const navGrid = (aiConfig && aiConfig.navGrid) || null
+        this.pathfinding = new PathfindingHelper(this.scene, navGrid)
+    }
+
+    /**
+     * Injecte la NavGrid partagée dans le pathfinding de cet ennemi 
+     * (appelé par MainScene après spawn)
+     */
+    setNavGrid(navGrid) {
+        if (this.pathfinding) {
+            this.pathfinding.navGrid = navGrid
+        }
     }
 
     _createMesh() {
@@ -151,6 +163,12 @@ export class Enemy {
 
         this.material.diffuseColor = new Color3(1, 0, 0)
         this._hitTimer = 0.1 
+
+        // AGGRO IMMÉDIAT: être touché → forcer la poursuite du joueur
+        this._hasSeenPlayer = true
+        if (this.fsm) {
+            this.fsm.send({ type: 'PLAYER_SPOTTED' })
+        }
         
         if (this.life <= 0) {
             this.life = 0

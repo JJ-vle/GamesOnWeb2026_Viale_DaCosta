@@ -44,8 +44,8 @@ export class Player {
 
             if (result.meshes.length > 0) {
                 const root = result.meshes[0];
-                root.scaling = new Vector3(1.5, 1.5, 1.5);
-                root.position = new Vector3(0, -1, 0); // Ajustez si besoin (offsetX, offsetZ)
+                root.scaling = new Vector3(1.0, 1.0, 1.0); // Réduit de 33%
+                root.position = new Vector3(0, -0.67, 0); // Ajustez si besoin (offsetX, offsetZ)
                 root.parent = this.mesh;
 
                 // Correction Matériaux
@@ -136,7 +136,7 @@ export class Player {
     }
 
     _createMesh() {
-        const box = MeshBuilder.CreateBox("player", { size: 2 }, this.scene);
+        const box = MeshBuilder.CreateBox("player", { size: 1.34 }, this.scene); // Réduit de 33%
         box.position = new Vector3(4, 1, 0);
 
         const mat = new StandardMaterial("playerMat", this.scene);
@@ -145,7 +145,7 @@ export class Player {
 
         // Configuration des collisions
         box.checkCollisions = true;
-        box.ellipsoid = new Vector3(1, 1, 1); // Taille de la "bulle" de collision
+        box.ellipsoid = new Vector3(0.67, 0.67, 0.67); // Taille de la "bulle" de collision
 
         return box;
     }

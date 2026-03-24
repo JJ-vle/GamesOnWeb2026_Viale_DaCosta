@@ -27,8 +27,9 @@ import { LinkCommander } from '../entities/enemies/new/LinkCommander.js'
 import { CoreSpawner } from '../entities/enemies/new/CoreSpawner.js'
 import {
   Vector3, HemisphericLight, MeshBuilder,
-  Color3, StandardMaterial
+  Color3, StandardMaterial, SceneLoader
 } from '@babylonjs/core'
+import "@babylonjs/loaders"
 import { PistolWeapon } from "../entities/weapons/PistolWeapon"
 import { WeaponSystem } from "../systems/WeaponSystem"
 import { CollisionSystem } from "../systems/CollisionSystem"
@@ -38,6 +39,7 @@ import { BuildSystem } from "../systems/BuildSystem"
 import { LootSystem } from "../systems/LootSystem"
 import { XPSystem } from "../systems/XPSystem"
 import { LootUI } from "../ui/LootUI"
+import { NavGrid } from "../systems/NavGrid"
 
 
 export class MainScene extends BaseScene {
@@ -95,6 +97,19 @@ export class MainScene extends BaseScene {
 
     // Callback ennemi spawné
     this.spawnerSystem.onEnemySpawned = (enemy) => {
+      // Injecter la NavGrid A* pour le pathfinding intelligent
+      if (enemy.setNavGrid) {
+        enemy.setNavGrid(this.navGrid)
+      }
+
+      // Appliquer une réduction de taille de 33%
+      if (enemy.enemy) {
+        enemy.enemy.scaling = new Vector3(0.67, 0.67, 0.67);
+        if (enemy.enemy.ellipsoid) {
+          enemy.enemy.ellipsoid = enemy.enemy.ellipsoid.scale(0.67);
+        }
+      }
+
       // Dégâts au contact selon le type
       const dmg = enemy.contactDamage || 1
       enemy.contact = () => {
@@ -234,8 +249,8 @@ export class MainScene extends BaseScene {
       // Mur Nord (haut du coin caché) - partiellement ouvert pour accès
       { name: "obstacle_hidespot_north", w: hideSpotSize * 0.7, h: wallHeight, d: thickness, pos: new Vector3(hideSpotX - 3, wallHeight / 2, hideSpotY + hideSpotSize / 2) },
       
-      // Obstacle supplémentaire au centre pour tester - petite boîte
-      { name: "obstacle_center", w: 8, h: wallHeight, d: 8, pos: new Vector3(0, wallHeight / 2, 0) },
+      // Obstacle supplémentaire devant le joueur pour tester - petite boîte
+      { name: "obstacle_center", w: 8, h: wallHeight, d: 8, pos: new Vector3(0, wallHeight / 2, 15) },
     ]
 
     obstacles.forEach(o => {
@@ -269,8 +284,30 @@ export class MainScene extends BaseScene {
     groundMat.specularColor = new Color3(0, 0, 0)
     ground.material = groundMat
 
+    // --- Chargement de la map ---
+    SceneLoader.ImportMeshAsync("", "/assets/models/", "map_1.glb", this.scene).then((result) => {
+        result.meshes.forEach(m => {
+            // Activer le mode alpha sur les matériaux
+            if (m.material) {
+                m.material.transparencyMode = 1;
+                if (m.material.albedoTexture) m.material.useAlphaFromAlbedoTexture = true;
+                if (m.material.diffuseTexture) m.material.useAlphaFromDiffuseTexture = true;
+                m.material.backFaceCulling = false;
+            }
+            // Mettre en place les collisions si nécessaire
+            m.checkCollisions = true;
+        });
+        console.log("Map map_1.glb chargée avec succès !");
+    }).catch(err => {
+        console.error("Erreur de chargement de map_1.glb", err);
+    });
+
     this._createBorders(130, 110)
     this._createObstacles()
+
+    // ── NavGrid A* ── Construire la grille de navigation APRÈS les obstacles
+    this.navGrid = new NavGrid(130, 110, 2)
+    this.navGrid.buildFromScene(this.scene)
 
     this.playerEntry = new Player(this.scene)
     // Pas de Coin pour l'instant (sera remplacé par le système d'engrenages)
@@ -293,7 +330,15 @@ export class MainScene extends BaseScene {
         // Créer l'ennemi en question
         console.log("Spawn mob", type, pos)
         const v = new VoltStriker(this.scene)
-        if (v.enemy) v.enemy.position = pos
+        if (v.setNavGrid) v.setNavGrid(this.navGrid)
+        if (v.enemy) {
+            v.enemy.position = pos
+            // Appliquer une réduction de taille de 33%
+            v.enemy.scaling = new Vector3(0.67, 0.67, 0.67);
+            if (v.enemy.ellipsoid) {
+              v.enemy.ellipsoid = v.enemy.ellipsoid.scale(0.67);
+            }
+        }
         this.enemies.push(v)
         v.onDeath = () => this.kills++
       },
@@ -389,6 +434,9 @@ export class MainScene extends BaseScene {
   // ─────────────────────────────────────────────
   update() {
     const deltaTime = this.scene.getEngine().getDeltaTime() / 1000
+
+    // Tick la NavGrid (cache management)
+    if (this.navGrid) this.navGrid.tick()
 
     // Pause globale pendant le menu de loot: on fige le gameplay.
     if (this._isGamePausedForLoot) {

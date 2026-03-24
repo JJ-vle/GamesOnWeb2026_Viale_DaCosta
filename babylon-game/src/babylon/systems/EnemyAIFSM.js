@@ -49,6 +49,7 @@ export class EnemyAIFSM {
         },
         alert: {
           on: {
+            PLAYER_SPOTTED: { target: 'chase' },
             LOST_PLAYER: { target: 'investigate' },
             CHASE: { target: 'chase' },
           },
@@ -68,6 +69,7 @@ export class EnemyAIFSM {
         },
         attack: {
           on: {
+            PLAYER_SPOTTED: { target: 'chase' },
             OUT_OF_RANGE: { target: 'chase' },
             LOST_PLAYER: { target: 'investigate' },
             LOW_HEALTH: { target: 'retreat' },
@@ -120,8 +122,17 @@ export class EnemyAIFSM {
 
     // Déterminer transition basée sur perception
     if (playerPos) {
-      // Joueur visible -> CHASE!
-      this.send({ type: 'PLAYER_SPOTTED' });
+      const state = this.getState();
+      // Si en alerte ou investigation → forcer chase
+      if (state === 'alert' || state === 'investigate') {
+        this.send({ type: 'PLAYER_SPOTTED' });
+      } else if (state === 'idle' || state === 'patrol') {
+        this.send({ type: 'PLAYER_SPOTTED' });
+        // Depuis alert, envoyer CHASE immédiatement
+        this.send({ type: 'PLAYER_SPOTTED' });
+      } else {
+        this.send({ type: 'PLAYER_SPOTTED' });
+      }
     } else if (targetPos && targetPos.length && targetPos.length() > 0.1) {
       // Joueur pas visible mais dernière position connue -> INVESTIGATE
       this.send({ type: 'INVESTIGATE' });
