@@ -42,7 +42,7 @@ export class XPSystem {
         const newLevel = this._computeLevel(this.totalXP);
         if (newLevel > this.level) {
             this.level = newLevel;
-            console.log(`[XPSystem] ⬆ Niveau ${this.level} ! (${this.totalXP} XP total)`);
+            // console.log(`[XPSystem] ⬆ Niveau ${this.level} ! (${this.totalXP} XP total)`);
             if (this.onLevelUp) this.onLevelUp(this.level);
         }
     }

@@ -19,7 +19,7 @@ export class Player {
         this.life = this.maxLife;
         this._loadCharacter();
 
-        
+
         // STATS
         this.strength = 1;  // multiplicateur de dégâts
         this.speed = 1;     // multiplicateur de vitesse de déplacement
@@ -44,7 +44,7 @@ export class Player {
 
             if (result.meshes.length > 0) {
                 const root = result.meshes[0];
-                root.scaling = new Vector3(1.0, 1.0, 1.0); // Réduit de 33%
+                root.scaling = new Vector3(0.6, 0.6, 0.6); // Réduit à 60%
                 root.position = new Vector3(0, -0.67, 0); // Ajustez si besoin (offsetX, offsetZ)
                 root.parent = this.mesh;
 
@@ -67,7 +67,7 @@ export class Player {
                     this.runAnim = runContainer.animationGroups[0];
                     if (this.runAnim) {
                         this.runAnim.name = "Run";
-                        console.log(`[Animation RUN] chargée. Frames: ${this.runAnim.from} -> ${this.runAnim.to}`);
+                        // console.log(`[Animation RUN] chargée. Frames: ${this.runAnim.from} -> ${this.runAnim.to}`);
                     }
 
                     // --- CHARGEMENT ANIMATION BACK ---
@@ -116,7 +116,7 @@ export class Player {
             targetMap[node.name] = node;
         });
 
-        console.log(`[Retargeting] Cibles dispos dans le mesh:`, Object.keys(targetMap));
+        // console.log(`[Retargeting] Cibles dispos dans le mesh:`, Object.keys(targetMap));
 
 
         animGroup.targetedAnimations.forEach(ta => {
@@ -136,7 +136,7 @@ export class Player {
     }
 
     _createMesh() {
-        const box = MeshBuilder.CreateBox("player", { size: 1.34 }, this.scene); // Réduit de 33%
+        const box = MeshBuilder.CreateBox("player", { size: 1.2 }, this.scene); // Réduit à 60%
         box.position = new Vector3(4, 1, 0);
 
         const mat = new StandardMaterial("playerMat", this.scene);
@@ -145,7 +145,7 @@ export class Player {
 
         // Configuration des collisions
         box.checkCollisions = true;
-        box.ellipsoid = new Vector3(0.67, 0.67, 0.67); // Taille de la "bulle" de collision
+        box.ellipsoid = new Vector3(0.6, 0.6, 0.6); // Taille de la "bulle" de collision (55%)
 
         return box;
     }
@@ -218,7 +218,7 @@ export class Player {
 
             // Si on doit changer d'animation ou si aucune n'est jouée
             if (this.currentAnim !== targetAnimName && targetAnimGroup) {
-                console.log(`State change: ${this.currentAnim} -> ${targetAnimName}`);
+                // console.log(`State change: ${this.currentAnim} -> ${targetAnimName}`);
                 this.scene.stopAllAnimations();
                 targetAnimGroup.start(true, 1.0, targetAnimGroup.from, targetAnimGroup.to, false);
                 this.currentAnim = targetAnimName;
@@ -226,7 +226,7 @@ export class Player {
         } else {
             // Si on ne bouge pas -> Idle
             if (this.currentAnim !== "idle" && this.idleAnim) {
-                console.log("State change: MOVEMENT -> IDLE");
+                // console.log("State change: MOVEMENT -> IDLE");
                 this.scene.stopAllAnimations();
                 this.idleAnim.start(true, 1.0, this.idleAnim.from, this.idleAnim.to, false);
                 this.currentAnim = "idle";

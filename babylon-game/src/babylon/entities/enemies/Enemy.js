@@ -55,7 +55,7 @@ export class Enemy {
         this.perceptionSystem = perceptionSystem
 
         this.fsm = new EnemyAIFSM({
-            fovDistance: 30,
+            fovDistance: 50,
             fovAngle: 90,
             attackRange: 5,
             retreatThreshold: 0.3,
@@ -121,9 +121,14 @@ export class Enemy {
         const playerDistance = Vector3.Distance(this.enemy.position, playerMesh.position)
         const playerVisible = playerDistance < (this.fsm.config.fovDistance || 30)
         
-        // Mettre à jour perception
+        // Mettre à jour perception de manière permanente
         perception.canSee = playerVisible
         if (playerVisible) {
+            perception.lastSeenPos = playerMesh.position.clone()
+            perception.lastSeenTime = 0
+            this._hasSeenPlayer = true // L'ennemi se souviendra toujours
+        } else if (this._hasSeenPlayer) {
+            // Toujours continuer à pister le joueur s'il a été vu
             perception.lastSeenPos = playerMesh.position.clone()
             perception.lastSeenTime = 0
         } else {

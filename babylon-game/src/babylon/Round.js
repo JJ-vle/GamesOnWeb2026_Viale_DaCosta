@@ -151,7 +151,7 @@ export class Round {
 
             // Condition 1 : timer écoulé → victoire par survie
             if (this.remainingTime <= 0) {
-                console.log('[Round] Victoire par survie (timer écoulé)');
+                // console.log('[Round] Victoire par survie (timer écoulé)');
                 this.stopRound();
                 return;
             }
@@ -175,7 +175,7 @@ export class Round {
 
         const spawnerDone = this._isSpawnerDone();
         if (spawnerDone && this._totalKilled >= this._totalSpawned) {
-            console.log(`[Round] Victoire ! Tous les mobs éliminés (${this._totalKilled}/${this._totalSpawned})`);
+            // console.log(`[Round] Victoire ! Tous les mobs éliminés (${this._totalKilled}/${this._totalSpawned})`);
             this.stopRound();
         }
     }

@@ -50,7 +50,7 @@ export class IsoCamera {
     const engine = this.scene.getEngine()
     const ratio = engine.getRenderWidth() / engine.getRenderHeight()
 
-    const size = 15
+    const size = 10
     const yOffset = 5
 
     this.camera.orthoTop = size + yOffset

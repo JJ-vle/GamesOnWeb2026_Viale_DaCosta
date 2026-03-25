@@ -1,4 +1,6 @@
 // src/babylon/systems/CollisionSystem.js
+import { Ray } from '@babylonjs/core'
+
 export class CollisionSystem {
     constructor() {
       this.player = null
@@ -29,10 +31,46 @@ export class CollisionSystem {
 
       this.currentTime = (this.currentTime || 0) + deltaTime
   
-      // ── Projectiles (mise à jour) ──
+      // Prépare un set des IDs d'ennemis pour les ignorer dans le raycast des murs
+      const enemyMeshIds = new Set()
+      for (const enemy of this.enemies) {
+        if (enemy.enemy) {
+          enemyMeshIds.add(enemy.enemy.uniqueId)
+          enemy.enemy.getChildMeshes(false).forEach(m => enemyMeshIds.add(m.uniqueId))
+        }
+      }
+
+      // ── Projectiles (mise à jour + collisions murs) ──
       for (let i = this.projectiles.length - 1; i >= 0; i--) {
         const proj = this.projectiles[i]
         if (!proj.mesh) { this.projectiles.splice(i, 1); continue }
+
+        // Raycast pour vérifier le mur
+        const dist = proj.speed * deltaTime
+        const ray = new Ray(proj.mesh.position, proj.direction, dist)
+        const scene = proj.mesh.getScene()
+        
+        const hit = scene.pickWithRay(ray, (mesh) => {
+          // CheckCollisions doit être true pour un mur
+          if (!mesh.checkCollisions) return false
+          
+          // Ignorer sol, joueur, autres projectiles
+          if (mesh.name === 'ground' || mesh.name.startsWith('player')) return false
+          if (mesh.name.includes('projectile') || mesh.name.includes('bullet') || mesh.name.includes('grenade')) return false
+          
+          // Ignorer les ennemis (le système normal s'en occupe en dessous)
+          if (enemyMeshIds.has(mesh.uniqueId)) return false
+          
+          return true
+        })
+
+        if (hit && hit.hit) {
+          // A touché un mur !
+          proj.dispose()
+          this.projectiles.splice(i, 1)
+          continue
+        }
+
         const isAlive = proj.update(deltaTime)
         if (!isAlive) { proj.dispose(); this.projectiles.splice(i, 1); continue }
       }
