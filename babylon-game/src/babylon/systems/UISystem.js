@@ -4,6 +4,7 @@ import {
     Control,
     Rectangle,
     StackPanel,
+    Image,
     Button,
 } from "@babylonjs/gui";
 
@@ -172,13 +173,28 @@ export class UISystem {
         bg.cornerRadius = 4;
         this.ui.addControl(bg);
 
-        this.gearText = new TextBlock("gearText");
-        this.gearText.text = "⚙ 0";
-        this.gearText.color = "#ffcc00";
-        this.gearText.fontSize = 16;
-        this.gearText.fontFamily = "monospace";
-        this.gearText.fontStyle = "bold";
-        bg.addControl(this.gearText);
+        // Icône image + compteur (alignés horizontalement)
+        const row = new StackPanel("gearRow");
+        row.isVertical = false;
+        row.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
+        row.verticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
+        row.height = "100%";
+        bg.addControl(row);
+
+        this.gearIcon = new Image("gearIcon", "assets/gear_coin.png");
+        this.gearIcon.width = "20px";
+        this.gearIcon.height = "20px";
+        this.gearIcon.verticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
+        row.addControl(this.gearIcon);
+
+        this.gearCount = new TextBlock("gearCount");
+        this.gearCount.text = "0";
+        this.gearCount.color = "#ffcc00";
+        this.gearCount.fontSize = 16;
+        this.gearCount.fontFamily = "monospace";
+        this.gearCount.fontStyle = "bold";
+        this.gearCount.paddingLeft = "8px";
+        row.addControl(this.gearCount);
     }
 
     // ─────────────────────────────────────────────────────
@@ -367,7 +383,7 @@ export class UISystem {
     }
 
     updateGears(count) {
-        this.gearText.text = `⚙ ${count}`;
+        if (this.gearCount) this.gearCount.text = `${count}`;
     }
 
     updateKills(kills) {
