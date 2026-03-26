@@ -65,7 +65,7 @@ export class NavGrid {
             const minRow = Math.max(0, this._worldToRow(min.z - margin));
             const maxRow = Math.min(this.rows - 1, this._worldToRow(max.z + margin));
 
-            console.log(`[NavGrid] Obstacle '${obstacle.name}': world(${min.x.toFixed(1)},${min.z.toFixed(1)})-(${max.x.toFixed(1)},${max.z.toFixed(1)}) -> cells(${minCol},${minRow})-(${maxCol},${maxRow})`);
+            // console.log(`[NavGrid] Obstacle '${obstacle.name}': world(${min.x.toFixed(1)},${min.z.toFixed(1)})-(${max.x.toFixed(1)},${max.z.toFixed(1)}) -> cells(${minCol},${minRow})-(${maxCol},${maxRow})`);
 
             for (let r = minRow; r <= maxRow; r++) {
                 for (let c = minCol; c <= maxCol; c++) {
@@ -79,7 +79,7 @@ export class NavGrid {
         for (let i = 0; i < this.grid.length; i++) {
             if (this.grid[i] === 1) blockedCount++;
         }
-        console.log(`[NavGrid] Grille construite: ${this.cols}x${this.rows} cells (cellSize=${this.cellSize}), ${obstacles.length} obstacles, ${blockedCount} cellules bloquées`);
+        // console.log(`[NavGrid] Grille construite: ${this.cols}x${this.rows} cells (cellSize=${this.cellSize}), ${obstacles.length} obstacles, ${blockedCount} cellules bloquées`);
     }
 
     /**

@@ -26,6 +26,41 @@ export class SpawnerSystem {
     this.minSpawnDistance = 15;
     this.maxSpawns = null;
     this.spawnedCount = 0;
+    
+    // Zones d'exclusion (safe zones rectangulaires) où aucun ennemi ne peut apparaître
+    this.exclusionZones = []; // [{ minX, maxX, minZ, maxZ }]
+
+    // Zones d'inclusion (spawn zones restrictives) où les ennemis DOIVENT apparaître
+    this.inclusionZones = []; // [{ minX, maxX, minZ, maxZ }]
+  }
+
+  /**
+   * Ajoute une zone rectangulaire où les ennemis ne peuvent pas apparaître
+   * @param {Vector3} pointA - Premier coin de la zone (ex: coin en bas à gauche)
+   * @param {Vector3} pointB - Coin opposé de la zone (ex: coin en haut à droite)
+   */
+  addExclusionZone(pointA, pointB) {
+    this.exclusionZones.push({
+      minX: Math.min(pointA.x, pointB.x),
+      maxX: Math.max(pointA.x, pointB.x),
+      minZ: Math.min(pointA.z, pointB.z),
+      maxZ: Math.max(pointA.z, pointB.z)
+    });
+  }
+
+  /**
+   * Restreint l'apparition des ennemis à cette zone rectangulaire spécifique.
+   * On peut ajouter plusieurs zones d'inclusion.
+   * @param {Vector3} pointA - Premier coin de la zone
+   * @param {Vector3} pointB - Coin opposé de la zone
+   */
+  addInclusionZone(pointA, pointB) {
+    this.inclusionZones.push({
+      minX: Math.min(pointA.x, pointB.x),
+      maxX: Math.max(pointA.x, pointB.x),
+      minZ: Math.min(pointA.z, pointB.z),
+      maxZ: Math.max(pointA.z, pointB.z)
+    });
   }
 
   /**
@@ -61,18 +96,31 @@ export class SpawnerSystem {
     const maxAttempts = 10;
 
     do {
-      // Générer une position aléatoire dans les limites
-      x = (Math.random() - 0.5) * (this.groundWidth - margin * 2);
-      z = (Math.random() - 0.5) * (this.groundHeight - margin * 2);
+      if (this.inclusionZones && this.inclusionZones.length > 0) {
+        // Option A : Apparition restreinte à nos zones spécifiques
+        const zone = this.inclusionZones[Math.floor(Math.random() * this.inclusionZones.length)];
+        x = zone.minX + Math.random() * (zone.maxX - zone.minX);
+        z = zone.minZ + Math.random() * (zone.maxZ - zone.minZ);
+      } else {
+        // Option B : Apparition par défaut n'importe où sur la carte
+        x = (Math.random() - 0.5) * (this.groundWidth - margin * 2);
+        z = (Math.random() - 0.5) * (this.groundHeight - margin * 2);
+      }
       attempts++;
-    } while (this._isPositionTooCloseToWalls(x, z) && attempts < maxAttempts);
+    } while (!this._isValidSpawnPosition(x, z) && attempts < maxAttempts);
 
     // Si on a trouvé une position valide
     if (attempts < maxAttempts) {
       return new Vector3(x, 1, z);
     }
 
-    // Fallback: retourner une position aléatoire même si proche des murs
+    // Fallback: retourner une position au centre d'une zone d'inclusion si possible
+    if (this.inclusionZones && this.inclusionZones.length > 0) {
+      const zone = this.inclusionZones[0];
+      return new Vector3(zone.minX + (zone.maxX - zone.minX) / 2, 1, zone.minZ + (zone.maxZ - zone.minZ) / 2);
+    }
+
+    // Fallback normal
     return new Vector3(
       (Math.random() - 0.5) * (this.groundWidth - margin * 2),
       1,
@@ -81,22 +129,26 @@ export class SpawnerSystem {
   }
 
   /**
-   * Vérifie si la position est trop proche des murs
-   * @param {number} x
-   * @param {number} z
-   * @returns {boolean}
+   * Vérifie si la position de spawn est autorisée (loin des murs et hors zones d'exclusion)
    */
-  _isPositionTooCloseToWalls(x, z) {
+  _isValidSpawnPosition(x, z) {
+    // 1. Vérifier la bordure des murs
     const margin = this.borderThickness;
     const halfW = this.groundWidth / 2;
     const halfH = this.groundHeight / 2;
 
-    // Vérifier distance aux 4 murs
     if (Math.abs(x) > halfW - margin || Math.abs(z) > halfH - margin) {
-      return true;
+      return false; // Trop proche des murs
     }
 
-    return false;
+    // 2. Vérifier les zones d'exclusion personnalisées (rectangles 2D)
+    for (const zone of this.exclusionZones) {
+      if (x >= zone.minX && x <= zone.maxX && z >= zone.minZ && z <= zone.maxZ) {
+        return false; // À l'intérieur d'une zone d'exclusion !
+      }
+    }
+
+    return true; // Position autorisée
   }
 
   /**

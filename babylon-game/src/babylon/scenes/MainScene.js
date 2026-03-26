@@ -41,6 +41,7 @@ import { LootSystem } from "../systems/LootSystem"
 import { XPSystem } from "../systems/XPSystem"
 import { LootUI } from "../ui/LootUI"
 import { NavGrid } from "../systems/NavGrid"
+import { XRaySystem } from "../systems/XRaySystem"
 
 
 export class MainScene extends BaseScene {
@@ -108,6 +109,18 @@ export class MainScene extends BaseScene {
     // Créer le système de spawn aléatoire
     this.spawnerSystem = new SpawnerSystem(this.scene, 130, 110, 5);
 
+    // Le joueur spawn en 0, 0, 0. On veut protéger un carré autour de lui (ex: de -20 à +20)
+    // (Vector3 point_1, Vector3 point_2)
+    this.spawnerSystem.addExclusionZone(new Vector3(-6.3, 0, 8.1), new Vector3(-16.1, 0, 22.0));
+
+    this.spawnerSystem.addExclusionZone(new Vector3(8.1, 0, 6.6), new Vector3(31.2, 0, 30.4));
+    this.spawnerSystem.addExclusionZone(new Vector3(-20.9, 0, 7.0), new Vector3(-31.7, 0, 31.0));
+    this.spawnerSystem.addExclusionZone(new Vector3(8.3, 0, -16.6), new Vector3(16.6, 0, -32.2));
+    this.spawnerSystem.addExclusionZone(new Vector3(20.9, 0, -23.6), new Vector3(31.4, 0, -31.9));
+
+    this.spawnerSystem.addInclusionZone(new Vector3(-45.1, 0, 41.3), new Vector3(44.5, 0, -46.6)
+    )
+
     this.zone.addSpawner(this.spawnerSystem);
 
     // Callback ennemi spawné
@@ -117,11 +130,11 @@ export class MainScene extends BaseScene {
         enemy.setNavGrid(this.navGrid)
       }
 
-      // Appliquer une réduction de taille de 33%
+      // Appliquer une réduction de taille de 50%
       if (enemy.enemy) {
-        enemy.enemy.scaling = new Vector3(0.67, 0.67, 0.67);
+        enemy.enemy.scaling = new Vector3(0.5, 0.5, 0.5);
         if (enemy.enemy.ellipsoid) {
-          enemy.enemy.ellipsoid = enemy.enemy.ellipsoid.scale(0.67);
+          enemy.enemy.ellipsoid = enemy.enemy.ellipsoid.scale(0.5);
         }
       }
 
@@ -175,7 +188,7 @@ export class MainScene extends BaseScene {
         try { this.collisionSystem.removeEnemy(enemy) } catch (e) { /* ignore */ }
         this.enemies.splice(i, 1)
       }
-      console.log(`[MainScene] Fin du round — ${purged} ennemis purgés`)
+      // console.log(`[MainScene] Fin du round — ${purged} ennemis purgés`)
       // Afficher le loot de fin de round (garanti) après un court délai.
       setTimeout(() => {
         this._showLootScreen(this.xpSystem.level, { startNextRoundAfterPick: true })
@@ -222,7 +235,26 @@ export class MainScene extends BaseScene {
       }
     })
 
+    // DEBUG MAP: Clic Gauche pour afficher les coordonnées X,Z dans la console (F12)
+    this.scene.onPointerDown = (evt, pickResult) => {
+      if (pickResult.hit && evt.button === 0) {
+        // console.log(`[DEBUG MAP] Clic aux coordonnées : new Vector3(${pickResult.pickedPoint.x.toFixed(1)}, 0, ${pickResult.pickedPoint.z.toFixed(1)})`);
+      }
+    };
+
     this.scene.collisionsEnabled = true
+
+    // ── X-Ray System (voir le joueur derrière les obstacles) ──
+    this.xraySystem = new XRaySystem(this.scene, this.playerEntry)
+    // Ignorer le sol
+    const groundMesh = this.scene.getMeshByName('ground')
+    if (groundMesh) this.xraySystem.ignoreMesh(groundMesh)
+    // Ignorer les murs invisibles (bordures)
+    this.scene.meshes.forEach(m => {
+      if (m.name && m.name.startsWith('wall_') && !m.isVisible) {
+        this.xraySystem.ignoreMesh(m)
+      }
+    })
 
     this._setupDebugCommands()
   }
@@ -256,24 +288,14 @@ export class MainScene extends BaseScene {
     const hideSpotY = -50 // Décalé vers le bas
     const hideSpotSize = 20 // Taille du coin
 
-    const obstacles = [
-      // Mur Sud (bas du coin caché)
-      { name: "obstacle_hidespot_south", w: hideSpotSize, h: wallHeight, d: thickness, pos: new Vector3(hideSpotX, wallHeight / 2, hideSpotY - hideSpotSize / 2) },
-      // Mur Est (droite du coin caché)
-      { name: "obstacle_hidespot_east", w: thickness, h: wallHeight, d: hideSpotSize, pos: new Vector3(hideSpotX + hideSpotSize / 2, wallHeight / 2, hideSpotY) },
-      // Mur Nord (haut du coin caché) - partiellement ouvert pour accès
-      { name: "obstacle_hidespot_north", w: hideSpotSize * 0.7, h: wallHeight, d: thickness, pos: new Vector3(hideSpotX - 3, wallHeight / 2, hideSpotY + hideSpotSize / 2) },
-      
-      // Obstacle supplémentaire devant le joueur pour tester - petite boîte
-      { name: "obstacle_center", w: 8, h: wallHeight, d: 8, pos: new Vector3(0, wallHeight / 2, 15) },
-    ]
+    const obstacles = []
 
     obstacles.forEach(o => {
       const wall = MeshBuilder.CreateBox(o.name, { width: o.w, height: o.h, depth: o.d }, this.scene)
       wall.position = o.pos
       wall.checkCollisions = true
       wall.isPickable = true  // Important pour raycast
-      
+
       // Matériau visible pour debug
       const obstacleMat = new StandardMaterial(`mat_${o.name}`, this.scene)
       obstacleMat.diffuseColor = new Color3(1, 0.2, 0.2) // Rouge
@@ -301,20 +323,20 @@ export class MainScene extends BaseScene {
 
     // --- Chargement de la map ---
     SceneLoader.ImportMeshAsync("", "/assets/models/", "map_1.glb", this.scene).then((result) => {
-        result.meshes.forEach(m => {
-            // Activer le mode alpha sur les matériaux
-            if (m.material) {
-                m.material.transparencyMode = 1;
-                if (m.material.albedoTexture) m.material.useAlphaFromAlbedoTexture = true;
-                if (m.material.diffuseTexture) m.material.useAlphaFromDiffuseTexture = true;
-                m.material.backFaceCulling = false;
-            }
-            // Mettre en place les collisions si nécessaire
-            m.checkCollisions = true;
-        });
-        console.log("Map map_1.glb chargée avec succès !");
+      result.meshes.forEach(m => {
+        // Activer le mode alpha sur les matériaux
+        if (m.material) {
+          m.material.transparencyMode = 1;
+          if (m.material.albedoTexture) m.material.useAlphaFromAlbedoTexture = true;
+          if (m.material.diffuseTexture) m.material.useAlphaFromDiffuseTexture = true;
+          m.material.backFaceCulling = false;
+        }
+        // Mettre en place les collisions si nécessaire
+        m.checkCollisions = true;
+      });
+      // console.log("Map map_1.glb chargée avec succès !");
     }).catch(err => {
-        console.error("Erreur de chargement de map_1.glb", err);
+      console.error("Erreur de chargement de map_1.glb", err);
     });
 
     this._createBorders(130, 110)
@@ -335,24 +357,24 @@ export class MainScene extends BaseScene {
       onShoot: (pos, dir, type) => {
         // Crée un projectile rouge qui voyage vite
         // type: FIRE ou normal
-        console.log("Enemy shoots!", pos, dir, type)
+        // console.log("Enemy shoots!", pos, dir, type)
       },
       onExplode: (pos, radius) => {
         // Applique les dégats en zone au joueur
-        console.log("BOOM", pos, radius)
+        // console.log("BOOM", pos, radius)
       },
       onSpawn: (type, pos) => {
         // Créer l'ennemi en question
-        console.log("Spawn mob", type, pos)
+        // console.log("Spawn mob", type, pos)
         const v = new VoltStriker(this.scene)
         if (v.setNavGrid) v.setNavGrid(this.navGrid)
         if (v.enemy) {
-            v.enemy.position = pos
-            // Appliquer une réduction de taille de 33%
-            v.enemy.scaling = new Vector3(0.67, 0.67, 0.67);
-            if (v.enemy.ellipsoid) {
-              v.enemy.ellipsoid = v.enemy.ellipsoid.scale(0.67);
-            }
+          v.enemy.position = pos
+          // Appliquer une réduction de taille de 50%
+          v.enemy.scaling = new Vector3(0.5, 0.5, 0.5);
+          if (v.enemy.ellipsoid) {
+            v.enemy.ellipsoid = v.enemy.ellipsoid.scale(0.5);
+          }
         }
         this.enemies.push(v)
         v.onDeath = () => this.kills++
@@ -562,7 +584,7 @@ export class MainScene extends BaseScene {
     window.setStat = (statName, value) => {
       if (this.playerEntry && this.playerEntry[statName] !== undefined) {
         this.playerEntry[statName] = value
-        console.log(`[Cheat] Statistique du joueur '${statName}' modifiée à ${value} !`)
+        // console.log(`[Cheat] Statistique du joueur '${statName}' modifiée à ${value} !`)
       } else {
         console.warn(`[Cheat] Impossible de trouver la statistique '${statName}' sur le joueur. Les stats standards sont: life, maxLife, speed, strength, speedshot, luck, armor, regen`)
       }
@@ -573,7 +595,7 @@ export class MainScene extends BaseScene {
       if (this.activeAbilitySystem && this.activeAbilitySystem.activeAbility) {
         this.activeAbilitySystem.activeAbility.baseCooldown = 0
         this.activeAbilitySystem.activeAbility.cooldown = 0
-        console.log("[Cheat] Cooldown de la capacité actif supprimé ! SPAMME !")
+        // console.log("[Cheat] Cooldown de la capacité actif supprimé ! SPAMME !")
       } else {
         console.warn("[Cheat] Aucune capacité active trouvée.")
       }
@@ -581,7 +603,7 @@ export class MainScene extends BaseScene {
 
     // 3. clearEnemies() pour tuer instantanément tout le monde (déclenche la victoire par kill de fin de manche, gagne l'XP, etc)
     window.clearEnemies = () => {
-      console.log(`[Cheat] Frappe Orbitale ! Éradication de ${this.enemies.length} ennemis...`)
+      // console.log(`[Cheat] Frappe Orbitale ! Éradication de ${this.enemies.length} ennemis...`)
       // On boucle à l'envers car la liste se vide au fur et à mesure
       for (let i = this.enemies.length - 1; i >= 0; i--) {
         const enemy = this.enemies[i]
@@ -705,6 +727,9 @@ export class MainScene extends BaseScene {
       return alive
     })
 
+    // X-Ray (voir le joueur derrière les obstacles)
+    if (this.xraySystem) this.xraySystem.update()
+
     // Collisions
     this.collisionSystem.update(deltaTime)
 
@@ -733,12 +758,12 @@ export class MainScene extends BaseScene {
       ? this.currentRound.remainingBefore
       : this.currentRound.remainingTime
     this.uiSystem.updateRound(currentIndex, rounds.length, this.currentRound.state, remaining)
-    
+
     // Vérifier la mort du joueur → écran Game Over
     if (!this._isGameOver && this.playerEntry && this.playerEntry.life <= 0) {
       this._isGameOver = true
       this._isGamePausedForLoot = true
-      console.log('[MainScene] Joueur mort — Game Over')
+      // console.log('[MainScene] Joueur mort — Game Over')
       if (this.uiSystem && this.uiSystem.showGameOver) this.uiSystem.showGameOver()
       return
     }
@@ -756,7 +781,7 @@ export class MainScene extends BaseScene {
     this._isGamePausedForLoot = true
     const pool = this.lootSystem.generatePool(3, this.playerEntry.luck)
     this.lootUI.show(pool, this.buildSystem, (item) => {
-      console.log(`[MainScene] Item choisi: ${item.name}`)
+      // console.log(`[MainScene] Item choisi: ${item.name}`)
       this._isGamePausedForLoot = false
       if (startNextRoundAfterPick) {
         this._startNextRound()
@@ -834,6 +859,6 @@ export class MainScene extends BaseScene {
 
     this.uiSystem.showNotification(`⚡ ROUND ${n} — EN AVANT !`, '#ffcc00', 2500)
     const catVisibles = n >= 4 ? 3 : (n >= 2 ? 2 : 1)
-    console.log(`[MainScene] Round ${n} démarré avec ${totalMobs} ennemis (Mix de Cat 1 à ${catVisibles})`)
+    // console.log(`[MainScene] Round ${n} démarré avec ${totalMobs} ennemis (Mix de Cat 1 à ${catVisibles})`)
   }
 }

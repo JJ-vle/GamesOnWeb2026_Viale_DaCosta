@@ -1,4 +1,5 @@
 // src/babylon/weapons/PistolWeapon.js
+import { Vector3 } from "@babylonjs/core"
 import { Weapon } from "./Weapon"
 import { PistolProjectile } from "./PistolProjectile"
 
@@ -30,7 +31,15 @@ export class PistolWeapon extends Weapon {
   _shoot(direction) {
     if (!direction) return
 
-    const start = this.player.mesh.position.add(direction.scale(2))
+    // Croix vectorielle pour trouver la "droite" du personnage
+    const rightVec = Vector3.Cross(Vector3.Up(), direction).normalize()
+    
+    // Position du point de tir : 0.8 en face et 0.4 vers la droite (l'arme)
+    const offset = direction.scale(0.8).addInPlace(rightVec.scale(0.4))
+    const start = this.player.mesh.position.add(offset)
+    
+    // On lève un tout petit peu le tir pour être au niveau de l'arme (torse = y+0.1)
+    start.y += 0.1
 
     // Dégâts effectifs = base × player.strength
     const effectiveDamage = this.baseDamage * (this.player.strength || 1)
@@ -41,7 +50,7 @@ export class PistolWeapon extends Weapon {
       direction,
       {
         speed: 40,
-        size: 0.8, // hitbox augmentée pour un meilleur feeling
+        size: 0.3, // taille réduite pour correspondre au nouveau scale du joueur
         damage: effectiveDamage,
         player: this.player,  // référence pour les procs d'items
       }

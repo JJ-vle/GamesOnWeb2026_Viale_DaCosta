@@ -44,7 +44,7 @@ export class BuildSystem {
     addSlot(part) {
         if (!this.slots[part]) return;
         this.slots[part].push(null);
-        console.log(`[BuildSystem] +1 slot ${part} → ${this.slots[part].length} slots`);
+        // console.log(`[BuildSystem] +1 slot ${part} → ${this.slots[part].length} slots`);
     }
 
     /**
@@ -86,14 +86,14 @@ export class BuildSystem {
         } else {
             // Pas de slot libre → on étend la taille des slots et on l'ajoute !
             this.slots[part].push(item);
-            console.log(`[BuildSystem] Accumulation: Nouveau module ajouté (${this.slots[part].length} dans ${part})`);
+            // console.log(`[BuildSystem] Accumulation: Nouveau module ajouté (${this.slots[part].length} dans ${part})`);
         }
 
         // Appliquer l'effet (passer buildSystem pour les Master Cores qui ajoutent des slots)
         item.equip(this.player, this);
         this.equippedHistory.push(item);
 
-        console.log(`[BuildSystem] Équipé: ${item.rarityStars} ${item.name} (${part})`);
+        // console.log(`[BuildSystem] Équipé: ${item.rarityStars} ${item.name} (${part})`);
         if (this.onItemEquipped) this.onItemEquipped(item);
         return true;
     }

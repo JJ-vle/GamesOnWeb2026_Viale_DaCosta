@@ -23,7 +23,7 @@ export class VoltStriker extends Enemy {
     constructor(scene, contact) {
         // Config agressif: FOV modéré, wide angle, little retreat
         super(scene, contact, 6, {
-            fovDistance: 40,        // Détection large (40 units max)
+            fovDistance: 50,        // Détection large (50 units max)
             fovAngle: 120,          // Angle vision large (120°)
             attackRange: 3,         // Attaque rapprochée au corps-à-corps
             retreatThreshold: 0.15, // Ne fuit que <15% HP (très rarement)
@@ -79,7 +79,7 @@ export class VoltStriker extends Enemy {
         // Log une fois pour confirmer initialisation
         if (!this._debugLogged) {
             const hasNavGrid = !!this.pathfinding.navGrid;
-            console.log(`[VoltStriker] ✅ Init OK — NavGrid A*: ${hasNavGrid ? 'OUI' : 'NON'}`);
+            // console.log(`[VoltStriker] ✅ Init OK — NavGrid A*: ${hasNavGrid ? 'OUI' : 'NON'}`);
             this._debugLogged = true;
         }
 
@@ -124,7 +124,7 @@ export class VoltStriker extends Enemy {
             const distToPlayer = Vector3.Distance(this.enemy.position, playerMesh.position);
             const hasPath = this.pathfinding._currentPath?.length > 0;
             const wpIdx = this.pathfinding._currentWaypointIndex || 0;
-            console.log(`[VS] dist=${distToPlayer.toFixed(1)} state=${action.state} path=${hasPath ? this.pathfinding._currentPath.length + 'wp' : 'none'} wp#${wpIdx}`);
+            // console.log(`[VS] dist=${distToPlayer.toFixed(1)} state=${action.state} path=${hasPath ? this.pathfinding._currentPath.length + 'wp' : 'none'} wp#${wpIdx}`);
         }
 
         // 3) MOUVEMENT via A* pathfinding

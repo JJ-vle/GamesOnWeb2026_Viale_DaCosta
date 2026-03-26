@@ -40,7 +40,7 @@ export class ActiveAbilitySystem {
         this.onAbilityUsed = null    // () => void
         this.onItemChanged = null    // (itemType) => void
 
-        console.log('[ActiveAbilitySystem] Initialisé. Item équipé:', this.equippedItem)
+        // console.log('[ActiveAbilitySystem] Initialisé. Item équipé:', this.equippedItem)
     }
 
     /**
@@ -51,7 +51,7 @@ export class ActiveAbilitySystem {
         this.equippedItem = itemType
         this.cooldownRemaining = 0 // Reset cooldown au changement
         if (this.onItemChanged) this.onItemChanged(itemType)
-        console.log('[ActiveAbilitySystem] Item équipé:', itemType)
+        // console.log('[ActiveAbilitySystem] Item équipé:', itemType)
     }
 
     /**
@@ -88,11 +88,11 @@ export class ActiveAbilitySystem {
      */
     _tryActivate() {
         if (!this.equippedItem) {
-            console.log('[ActiveAbilitySystem] Pas d\'item équipé.')
+            // console.log('[ActiveAbilitySystem] Pas d\'item équipé.')
             return
         }
         if (this.cooldownRemaining > 0) {
-            console.log(`[ActiveAbilitySystem] Cooldown: ${this.cooldownRemaining.toFixed(1)}s restant`)
+            // console.log(`[ActiveAbilitySystem] Cooldown: ${this.cooldownRemaining.toFixed(1)}s restant`)
             return
         }
 
@@ -115,7 +115,7 @@ export class ActiveAbilitySystem {
     _useHeal() {
         const healAmount = 5
         this.player.heal(healAmount)
-        console.log(`[ActiveAbilitySystem] Heal +${healAmount} HP. Vie: ${this.player.life}/${this.player.maxLife}`)
+        // console.log(`[ActiveAbilitySystem] Heal +${healAmount} HP. Vie: ${this.player.life}/${this.player.maxLife}`)
         this._spawnHealVFX()
     }
 
@@ -138,7 +138,7 @@ export class ActiveAbilitySystem {
             }
         }
 
-        console.log(`[ActiveAbilitySystem] Grenade ! ${hits} ennemis touchés.`)
+        // console.log(`[ActiveAbilitySystem] Grenade ! ${hits} ennemis touchés.`)
         this._spawnExplosionVFX(grenadePos)
     }
 
