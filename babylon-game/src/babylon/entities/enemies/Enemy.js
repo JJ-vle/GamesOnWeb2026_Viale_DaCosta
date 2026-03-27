@@ -150,11 +150,19 @@ export class Enemy {
         const targetPos = action.targetPos || this.enemy.position
 
         if (action.action !== 'idle' && action.action !== 'dead') {
+            // ── OPTIMISATION: Filter ennemis proches pour séparation (éviter O(N²)) ──
+            // Ne passer que les ennemis à moins de 10 units (séparation + margin)
+            const nearbyEnemies = enemies.filter(e => {
+                if (!e || !e.enemy) return false
+                const dist = Vector3.Distance(this.enemy.position, e.enemy.position)
+                return dist < 10
+            })
+
             const moveVec = this.pathfinding.getMovementVector(
                 this.enemy.position,
                 targetPos,
                 speed,
-                enemies,
+                nearbyEnemies,
                 3.5,
                 1.5
             )

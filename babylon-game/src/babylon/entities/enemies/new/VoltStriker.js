@@ -138,7 +138,11 @@ export class VoltStriker extends Enemy {
             this.enemy.position,
             targetPos,
             action.speed * this.speed,
-            enemies,
+            enemies.filter(e => {
+                if (!e || !e.enemy) return false
+                const dist = Vector3.Distance(this.enemy.position, e.enemy.position)
+                return dist < 10
+            }),
             2.5,    // separationDistance
             1.2     // separationForce
         )

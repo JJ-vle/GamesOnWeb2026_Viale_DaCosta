@@ -14,7 +14,7 @@ onMounted(() => {
 
 <template>
   <div v-if="!gameStarted" class="home-page">
-    <h1>Le titre là mais je m'en souviens plus trop</h1>
+    <h1>Universe Need</h1>
     <button @click="gameStarted = true" class="play-button">jouer</button>
   </div>
   <BabylonScene v-if="gameStarted" />

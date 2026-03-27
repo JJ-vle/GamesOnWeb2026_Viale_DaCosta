@@ -26,6 +26,7 @@ export class LootUI {
         this._overlay = null;
         this._visible = false;
         this._isClosing = false;
+        this._listeners = []; // ── MEMORY FIX: Store observable references for cleanup
     }
 
     get isVisible() { return this._visible; }
@@ -221,8 +222,11 @@ export class LootUI {
             this.hide(() => onPick(item));
         };
 
-        btn.onPointerClickObservable.add(pickItem);
-        card.onPointerClickObservable.add(pickItem);
+        // ── MEMORY FIX: Store observer references for cleanup ──
+        const btnClickObserver = btn.onPointerClickObservable.add(pickItem);
+        const cardClickObserver = card.onPointerClickObservable.add(pickItem);
+        this._listeners.push({ observable: btn.onPointerClickObservable, observer: btnClickObserver });
+        this._listeners.push({ observable: card.onPointerClickObservable, observer: cardClickObserver });
     }
 
     // ─────────────────────────────────────────────────────
@@ -248,6 +252,14 @@ export class LootUI {
     }
 
     _clearUI() {
+        // ── MEMORY FIX: Remove all observable listeners before disposing controls ──
+        for (const listener of this._listeners) {
+            try {
+                listener.observable.remove(listener.observer);
+            } catch (e) { /* ignore */ }
+        }
+        this._listeners = [];
+
         this.ui.getControlsByType('Rectangle').forEach(c => {
             try { c.dispose(); } catch (e) { /* ignore */ }
         });

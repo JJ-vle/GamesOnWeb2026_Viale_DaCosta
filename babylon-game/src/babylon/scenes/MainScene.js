@@ -40,8 +40,11 @@ import { BuildSystem } from "../systems/BuildSystem"
 import { LootSystem } from "../systems/LootSystem"
 import { XPSystem } from "../systems/XPSystem"
 import { LootUI } from "../ui/LootUI"
+import { PauseUI } from "../ui/PauseUI"
 import { NavGrid } from "../systems/NavGrid"
 import { XRaySystem } from "../systems/XRaySystem"
+import { PerformanceMonitor } from "../systems/PerformanceMonitor"
+import { LoadingScreen } from "../systems/LoadingScreen"
 
 
 export class MainScene extends BaseScene {
@@ -66,7 +69,10 @@ export class MainScene extends BaseScene {
     this.lootSystem = new LootSystem()
     this.xpSystem = new XPSystem()
     this.lootUI = new LootUI(this.scene)
+    this.pauseUI = new PauseUI(this.scene)
     this._isGamePausedForLoot = false
+    this._isGamePaused = false  // ── PAUSE: Game pause flag ──
+    this._pauseSwitchLock = false  // ── PAUSE: Prevent spamming ──
     this._pendingLevelUpLootLevel = null
 
     this.buildSystem.onItemEquipped = (item) => {
@@ -161,12 +167,18 @@ export class MainScene extends BaseScene {
         const idx = this.enemies.indexOf(enemy)
         if (idx !== -1) this.enemies.splice(idx, 1)
         this.collisionSystem.removeEnemy(enemy)
+        
+        // ── OPTIMISATION: Recycler l'ennemi au pool ──
+        if (this.spawnerSystem) this.spawnerSystem.recycleEnemy(enemy)
       }
 
       this.enemies.push(enemy)
       this.collisionSystem.registerEnemy(enemy)
       if (this.currentRound) this.currentRound.notifyEnemySpawned()
     }
+
+    // ── OPTIMISATION: Initialiser le Performance Monitor ──
+    this.performanceMonitor = new PerformanceMonitor(this.scene, this.spawnerSystem)
 
     // Créer un round et l'ajouter à la zone
     this._roundNumber = 1
@@ -312,6 +324,10 @@ export class MainScene extends BaseScene {
   }
 
   _createWorld() {
+    // ── LOADING SCREEN ──
+    this.loadingScreen = new LoadingScreen();
+    this.loadingScreen.setProgress(5, 'Loading assets...');
+
     // Sol avec matériau sombre style cyberpunk
     const ground = MeshBuilder.CreateGround('ground', { width: 130, height: 110, subdivisions: 1 }, this.scene)
     ground.checkCollisions = true
@@ -321,7 +337,10 @@ export class MainScene extends BaseScene {
     groundMat.specularColor = new Color3(0, 0, 0)
     ground.material = groundMat
 
+    this.loadingScreen.setProgress(15, 'Creating ground...');
+
     // --- Chargement de la map ---
+    const mapLoadStart = performance.now();
     SceneLoader.ImportMeshAsync("", "/assets/models/", "map_1.glb", this.scene).then((result) => {
       result.meshes.forEach(m => {
         // Activer le mode alpha sur les matériaux
@@ -334,18 +353,39 @@ export class MainScene extends BaseScene {
         // Mettre en place les collisions si nécessaire
         m.checkCollisions = true;
       });
-      // console.log("Map map_1.glb chargée avec succès !");
+      const mapLoadTime = Math.round(performance.now() - mapLoadStart);
+      console.log(`[Loading] Map loaded in ${mapLoadTime}ms`);
+      this.loadingScreen.setProgress(55, `Map assets loaded (${mapLoadTime}ms)`);
+      
+      // ── Cacher le loading screen une fois que tout est prêt ──
+      setTimeout(() => {
+        this.loadingScreen.setProgress(100, 'Ready!');
+        this.loadingScreen.hide(500);
+      }, 800);
     }).catch(err => {
       console.error("Erreur de chargement de map_1.glb", err);
+      this.loadingScreen.setProgress(55, 'Map load skipped (error)');
+      
+      // ── Cacher le loading screen même en cas d'erreur ──
+      setTimeout(() => {
+        this.loadingScreen.setProgress(100, 'Ready!');
+        this.loadingScreen.hide(500);
+      }, 800);
     });
 
+    this.loadingScreen.setProgress(25, 'Creating borders...');
     this._createBorders(130, 110)
+    
+    this.loadingScreen.setProgress(40, 'Creating obstacles...');
     this._createObstacles()
 
     // ── NavGrid A* ── Construire la grille de navigation APRÈS les obstacles
+    this.loadingScreen.setProgress(60, 'Building NavGrid...');
     this.navGrid = new NavGrid(130, 110, 2)
     this.navGrid.buildFromScene(this.scene)
+    this.loadingScreen.setProgress(75, 'NavGrid complete...');
 
+    this.loadingScreen.setProgress(80, 'Initializing player...');
     this.playerEntry = new Player(this.scene)
     // Pas de Coin pour l'instant (sera remplacé par le système d'engrenages)
     // this.coinEntry = new Coin(...)
@@ -353,6 +393,7 @@ export class MainScene extends BaseScene {
     this.scene.clearColor = new Color3(0.1, 0.1, 0.2)
 
     // Configuration des Callbacks globaux pour les comportements des Boss/Ennemis
+    this.loadingScreen.setProgress(85, 'Setting up callbacks...');
     this.enemyCallbacks = {
       onShoot: (pos, dir, type) => {
         // Crée un projectile rouge qui voyage vite
@@ -402,10 +443,50 @@ export class MainScene extends BaseScene {
 
       if (type === 1) {
         this.inputMap[key] = true
+        
+        // ── PAUSE: Check for Escape key ──
+        if (key === 'Escape' && !this._pauseSwitchLock) {
+          this._pauseSwitchLock = true
+          if (this._isGamePaused) {
+            // Resume
+            this._isGamePaused = false
+            this.pauseUI.hide()
+          } else if (!this._isGamePausedForLoot) {
+            // Pause (but not if already in loot menu)
+            this._isGamePaused = true
+            this.pauseUI.show(() => {
+              // Resume callback
+              this._isGamePaused = false
+            })
+          }
+        }
       } else if (type === 2) {
         this.inputMap[key] = false
+        
+        // ── PAUSE: Release lock ──
+        if (key === 'Escape') {
+          this._pauseSwitchLock = false
+        }
       }
     })
+  }
+
+  // ── MEMORY FIX: Dispose method to clean up observers ──
+  dispose() {
+    // Clean up camera observers
+    if (this.cameraManager && this.cameraManager.dispose) {
+      this.cameraManager.dispose()
+    }
+    // Clean up loot UI observers
+    if (this.lootUI && this.lootUI.dispose) {
+      this.lootUI.dispose()
+    }
+    // Clean up pause UI observers
+    if (this.pauseUI && this.pauseUI.dispose) {
+      this.pauseUI.dispose()
+    }
+    // Call parent dispose
+    super.dispose()
   }
 
   // Crée l'overlay DOM pour afficher la carte du graphe (préparée mais cachée)
@@ -655,6 +736,11 @@ export class MainScene extends BaseScene {
       return
     }
 
+    // ── PAUSE: Si le jeu est en pause, skip tous les updates ──
+    if (this._isGamePaused) {
+      return
+    }
+
     // Ouvre le loot de level-up uniquement si le round courant est encore actif.
     // Si le round est déjà fini, on garde en attente et on affichera plus tard.
     if (
@@ -706,14 +792,46 @@ export class MainScene extends BaseScene {
       this.currentRound.update(deltaTime)
     }
 
-    // Ennemis
+    // ── OPTIMISATION: Distance-based & Culling Updates ──
+    // Ennemis: met à jour seulement ceux suffisamment proches
+    // ⚠️ AGRESSIF: Beaucoup d'ennemis culled = beaucoup meilleure performance
+    const ACTIVE_DISTANCE = 50;   // Units - distance max pour update complète (pathfinding + FSM)
+    const PASSIVE_DISTANCE = 80;  // Units - distance max pour update cosmétique seule
+    
+    let activatedEnemies = 0;
+    let culledEnemies = 0;
+
     for (let i = this.enemies.length - 1; i >= 0; i--) {
       const enemy = this.enemies[i]
       if (!enemy || !enemy.enemy) {
         this.enemies.splice(i, 1)
         continue
       }
-      enemy.update(this.player.mesh, this.projectiles, this.enemies, this.enemyCallbacks)
+      
+      // Calculer distance du joueur
+      const distToPlayer = this.player.mesh.position.subtract(enemy.enemy.position).length();
+      
+      if (distToPlayer > PASSIVE_DISTANCE) {
+        // Très loin: COMPLÈTEMENT invisible et skip update
+        if (enemy.enemy.isVisible) {
+          enemy.enemy.isVisible = false;
+        }
+        culledEnemies++;
+      } else if (distToPlayer > ACTIVE_DISTANCE) {
+        // Loin: visible MAIS figé (aucun update = performance max)
+        if (!enemy.enemy.isVisible) {
+          enemy.enemy.isVisible = true;
+        }
+        // ⚠️ AGRESSIF: Skip complètement l'update pour ennemis loin
+        // Ils restent figés mais visibles
+      } else {
+        // Proche: update COMPLET (FSM + pathfinding + collision)
+        if (!enemy.enemy.isVisible) {
+          enemy.enemy.isVisible = true;
+        }
+        enemy.update(this.player.mesh, this.projectiles, this.enemies, this.enemyCallbacks)
+        activatedEnemies++;
+      }
     }
 
     // Arme
@@ -746,6 +864,11 @@ export class MainScene extends BaseScene {
         this.activeAbilitySystem.equippedItem,
         this.activeAbilitySystem.cooldownRemaining
       )
+    }
+
+    // ── OPTIMISATION: Mettre à jour le monitoring de performance ──
+    if (this.performanceMonitor) {
+      this.performanceMonitor.update(activatedEnemies, culledEnemies)
     }
 
     // UI XP

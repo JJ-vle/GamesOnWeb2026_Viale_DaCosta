@@ -30,4 +30,10 @@ export class CameraManager {
   get camera() {
     return this.active.camera
   }
+
+  dispose() {
+    // ── MEMORY FIX: Clean up observers ──
+    if (this.iso.dispose) this.iso.dispose()
+    if (this.tps.dispose) this.tps.dispose()
+  }
 }

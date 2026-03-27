@@ -17,6 +17,11 @@ export class PathfindingHelper {
     this._pathTarget = null; // dernière destination pour laquelle on a calculé le path
     this._pathRecalcTimer = 0;
     this._pathRecalcInterval = 0.5; // recalculer le chemin toutes les 0.5s maximum
+    
+    // ── STUCK DETECTION: Forcer recalc si ennemi bloqué ──
+    this._lastPos = null;
+    this._stuckFrameCount = 0;
+    this._stuckThreshold = 3; // frames avant de forcer recalc (détecte si bloqué contre mur)
   }
 
   /**
@@ -73,6 +78,24 @@ export class PathfindingHelper {
       movement.normalize();
     }
 
+    // ── STUCK DETECTION: Forcer recalc si ennemi bloqué contre mur ──
+    if (this._lastPos) {
+      const movedDistance = Vector3.Distance(this._lastPos, currentPos);
+      if (movedDistance < 0.01) {
+        // N'a pratiquement pas bougé
+        this._stuckFrameCount++;
+        if (this._stuckFrameCount >= this._stuckThreshold) {
+          // Stuck trop longtemps, forcer recalc immédiat
+          this._currentPath = [];
+          this._stuckFrameCount = 0;
+        }
+      } else {
+        // A bougé, réinitialiser le compteur
+        this._stuckFrameCount = 0;
+      }
+    }
+    this._lastPos = currentPos.clone();
+
     return movement.scale(speed);
   }
 
@@ -92,6 +115,8 @@ export class PathfindingHelper {
         this._currentPath = path;
         this._currentWaypointIndex = 0;
         this._pathTarget = targetPos.clone();
+        // ── STUCK DETECTION: Reset counter on successful recalc ──
+        this._stuckFrameCount = 0;
       } else {
         // Pas de chemin → direction directe
         this._currentPath = [];
@@ -140,10 +165,12 @@ export class PathfindingHelper {
     // Si pas de chemin existant
     if (this._currentPath.length === 0) return true;
 
-    // Si la cible a bougé significativement (>3 units)
+    // ── RÉACTIVITÉ: Si la cible a bougé significativement (>1 unit) ──
+    // Ancien: 3 units (réactifs trop lent quand joueur tourne autour)
+    // Nouveau: 1 unit (ennemis s'adaptent rapidement aux mouvements)
     if (!this._pathTarget) return true;
     const targetMoved = Vector3.Distance(this._pathTarget, targetPos);
-    if (targetMoved > 3) return true;
+    if (targetMoved > 1) return true;
 
     // Si on a atteint la fin du chemin
     if (this._currentWaypointIndex >= this._currentPath.length) return true;

@@ -10,12 +10,24 @@ export class XRaySystem {
     this._addIgnored(this.player.mesh)
 
     this.xrayAlpha = 0.2
-    this._raycastInterval = 2
+    // ── OPTIMISATION: Augmenter intervalle raycast (réduire fréquence) ──
+    // Par défaut 2 frames = chaque 2 frames raycast
+    // ⚠️ AGRESSIF: 8 frames = chaque 8 frames (~133ms à 60fps) - beaucoup moins fréquent
+    this._raycastInterval = 8
     this._frameCounter = 0
     this._lastBlockingIds = new Set()
     this._hideGracePeriod = 10
 
     this._setupPlayerRenderOnTop()
+  }
+
+  /**
+   * Ajuste la fréquence du raycast (nombre de frames entre chaque raycast)
+   * Valeurs plus élevées = moins de raycasts = meilleure performance (mais Xray moins réactif)
+   * @param {number} interval - nombre de frames entre raycasts
+   */
+  setRaycastInterval(interval) {
+    this._raycastInterval = Math.max(1, interval);
   }
 
   _setupPlayerRenderOnTop() {

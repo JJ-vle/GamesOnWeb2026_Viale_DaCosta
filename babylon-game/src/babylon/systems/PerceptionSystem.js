@@ -11,6 +11,13 @@ export class PerceptionSystem {
     this.scene = scene;
     this.detectionCheckInterval = 0.1; // Check toutes les 100ms
     this._checkTimer = 0;
+    
+    // ── OPTIMISATION: Cache FOV/Distance checks ──
+    // Évite les raycasts répétés toutes les frames
+    // Format: Map<enemyId> -> { lastResult, lastTime, lastPlayerPos }
+    // ⚠️ AGRESSIF: Augmenter cache duration de 50ms à 150ms
+    this._perceptionCache = new Map();
+    this._cacheValidityDuration = 0.15; // 150ms cache (valid for ~9 frames à 60fps)
   }
 
   /**
@@ -21,6 +28,7 @@ export class PerceptionSystem {
    * @param {number} fovAngle - angle du champ de vision en degrés (ex: 90)
    * @param {Vector3} enemyForward - vecteur direction de l'ennemi (défaut: Z)
    * @param {boolean} useLineOfSight - vérifier obstacle (raycast)
+   * @param {number} enemyId - ID unique pour l'ennemi (pour caching)
    * @returns {boolean} true si visible et à portée
    */
   canSeePlayer(
@@ -29,11 +37,23 @@ export class PerceptionSystem {
     fovDistance = 30,
     fovAngle = 90,
     enemyForward = Vector3.Forward(),
-    useLineOfSight = true
+    useLineOfSight = true,
+    enemyId = null
   ) {
+    // ── OPTIMISATION: Vérifier le cache ──
+    const now = performance.now();
+    if (enemyId !== null && this._perceptionCache.has(enemyId)) {
+      const cached = this._perceptionCache.get(enemyId);
+      if (now - cached.lastTime < this._cacheValidityDuration * 1000) {
+        // Cache valide, retourner le résultat caché
+        return cached.lastResult;
+      }
+    }
+
     // 1. Distance - critère principal
     const distance = Vector3.Distance(enemyPos, playerPos);
     if (distance > fovDistance) {
+      this._cacheResult(enemyId, false, now);
       return false;
     }
 
@@ -41,12 +61,33 @@ export class PerceptionSystem {
     // TODO: Implémenter l'angle correctement une fois que la direction ennemie sera disponible
     
     // 3. Ligne de vue (raycast pour obstacles)
+    let result = true;
     if (useLineOfSight) {
-      return this._hasLineOfSight(enemyPos, playerPos);
+      result = this._hasLineOfSight(enemyPos, playerPos);
     }
 
-    // Joueur visible si à portée (distance)
-    return true;
+    this._cacheResult(enemyId, result, now);
+    return result;
+  }
+
+  /**
+   * Sauvegarde le résultat en cache
+   * @private
+   */
+  _cacheResult(enemyId, result, timestamp) {
+    if (enemyId !== null) {
+      this._perceptionCache.set(enemyId, {
+        lastResult: result,
+        lastTime: timestamp
+      });
+    }
+  }
+
+  /**
+   * Vide le cache (appeler en fin de round ou si joueur se téléporte)
+   */
+  clearCache() {
+    this._perceptionCache.clear();
   }
 
   /**

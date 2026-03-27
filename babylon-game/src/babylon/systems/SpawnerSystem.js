@@ -1,4 +1,5 @@
 import { Vector3 } from '@babylonjs/core';
+import { EnemyPool } from './EnemyPool.js';
 
 /**
  * SpawnerSystem: gère le spawn aléatoire d'ennemis sur la surface disponible
@@ -32,6 +33,20 @@ export class SpawnerSystem {
 
     // Zones d'inclusion (spawn zones restrictives) où les ennemis DOIVENT apparaître
     this.inclusionZones = []; // [{ minX, maxX, minZ, maxZ }]
+
+    // ── OPTIMISATION: Mesh Instancing ──
+    // Stocke les templates de mesh par type d'ennemi
+    // Clé: EnemyClass.name, Valeur: première instance (template pour createInstance)
+    this.enemyTemplates = new Map();
+    this.enemyInstances = new Map(); // Map de EnemyClass.name -> Array<mesh instances>
+
+    // ── OPTIMISATION: Object Pooling ──
+    this.enemyPool = new EnemyPool();
+
+    // ── OPTIMISATION: Lazy Loading ──
+    // Trace quels types d'ennemis ont été chargés
+    this.loadedEnemyTypes = new Set();
+    this.onEnemyTypeFirstLoaded = null; // Callback pour le premier load d'un type
   }
 
   /**
@@ -204,8 +219,25 @@ export class SpawnerSystem {
     }
     if (!EnemyClass) return;
 
-    // Créer l'ennemi
-    const enemy = new EnemyClass(this.scene);
+    // ── OPTIMISATION: Lazy Loading ──
+    // Charger le pool seulement la première fois qu'un type d'ennemi est spawné
+    const enemyClassName = EnemyClass.name;
+    if (!this.loadedEnemyTypes.has(enemyClassName)) {
+      this.loadedEnemyTypes.add(enemyClassName);
+      // Initialiser le pool avec pré-allocation (5 instances)
+      this.enemyPool.registerPool(EnemyClass, 5, this.scene);
+      
+      // Callback optionnel pour tracking du UI/monitoring
+      if (this.onEnemyTypeFirstLoaded) {
+        this.onEnemyTypeFirstLoaded(enemyClassName);
+      }
+    }
+
+    // ── OPTIMISATION: Object Pooling ──
+    // Récupérer un ennemi du pool (réutilisé ou nouvellement créé)
+    const enemy = this.enemyPool.get(EnemyClass, this.scene);
+    
+    // Positionner l'ennemi spawn
     if (enemy.enemy && enemy.enemy.position) {
       enemy.enemy.position = spawnPos;
     } else if (enemy.position) {
@@ -214,6 +246,39 @@ export class SpawnerSystem {
 
     this.spawnedCount++;
     if (this.onEnemySpawned) this.onEnemySpawned(enemy);
+  }
+
+  /**
+   * Prépare un type d'ennemi en arrière-plan (pré-allocate des instances)
+   * Optionnel: appeler avant le round si besoin de réduire lag au premier spawn
+   * @param {Function} EnemyClass - La classe d'ennemi
+   * @param {number} count - Nombre d'instances à pré-allouer
+   */
+  preWarmPool(EnemyClass, count = 5) {
+    const enemyClassName = EnemyClass.name;
+    if (!this.loadedEnemyTypes.has(enemyClassName)) {
+      this.loadedEnemyTypes.add(enemyClassName);
+      this.enemyPool.registerPool(EnemyClass, count, this.scene);
+    }
+  }
+
+  /**
+   * Retourne un ennemi au pool pour réutilisation
+   * Appelé lors de la mort d'un ennemi
+   * @param {Object} enemy - L'instance d'ennemi à recycler
+   */
+  recycleEnemy(enemy) {
+    if (enemy) {
+      this.enemyPool.return(enemy);
+    }
+  }
+
+  /**
+   * Récupère les stats du pool (debug/monitoring)
+   * @returns {Object} Stats du pool
+   */
+  getPoolStats() {
+    return this.enemyPool.getStats();
   }
 
   /**
