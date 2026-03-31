@@ -1,14 +1,32 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import BabylonScene from './components/BabylonScene.vue'
+import ZoneMapView from './components/ZoneMapView.vue'
 
 const gameStarted = ref(false)
+const showZoneMap = ref(false)
+
+function returnToMenu() {
+  gameStarted.value = false
+  showZoneMap.value = false
+}
 
 onMounted(() => {
-  const handler = () => { gameStarted.value = false }
+  const handler = () => { returnToMenu() }
   window.addEventListener('returnToMenu', handler)
-  // remove on unmount
-  onUnmounted(() => window.removeEventListener('returnToMenu', handler))
+
+  const keyHandler = (e) => {
+    if (!gameStarted.value) return
+    if (e.key && e.key.toLowerCase() === 'm') {
+      showZoneMap.value = !showZoneMap.value
+    }
+  }
+  window.addEventListener('keydown', keyHandler)
+
+  onUnmounted(() => {
+    window.removeEventListener('returnToMenu', handler)
+    window.removeEventListener('keydown', keyHandler)
+  })
 })
 </script>
 
@@ -17,7 +35,11 @@ onMounted(() => {
     <h1>Universe Need</h1>
     <button @click="gameStarted = true" class="play-button">jouer</button>
   </div>
-  <BabylonScene v-if="gameStarted" />
+
+  <template v-else>
+    <ZoneMapView v-if="showZoneMap" />
+    <BabylonScene v-else />
+  </template>
 </template>
 
 <style>
