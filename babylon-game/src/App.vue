@@ -2,15 +2,17 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import BabylonScene from './components/BabylonScene.vue'
 import ZoneMapView from './components/ZoneMapView.vue'
+import { useGameMode } from './stores/useGameMode'
 
 const gameStarted = ref(false)
-const showZoneMap = ref(false)
 // current player node id to pass to ZoneMapView
 const playerNodeId = ref(null)
 
+const { mode, setMode, toggleMap } = useGameMode()
+
 function returnToMenu() {
   gameStarted.value = false
-  showZoneMap.value = false
+  setMode('combat')
 }
 
 onMounted(() => {
@@ -19,16 +21,15 @@ onMounted(() => {
 
   const keyHandler = (e) => {
     if (!gameStarted.value) return
-      if (e.key && e.key.toLowerCase() === 'm') {
-        // Open the zone map on 'm' — avoid toggling off here to prevent conflict
-        // with ZoneMapView's own key handling. When opening, set a player id
-        // so the map receives it as a prop immediately.
-        if (!showZoneMap.value) {
-          // prefer id 5 for quick testing; can be set from game state later
-          playerNodeId.value = 5
-          showZoneMap.value = true
-        }
+    if (e.key && e.key.toLowerCase() === 'm') {
+      // Open the zone map on 'm' — avoid toggling off here to prevent conflict
+      // with ZoneMapView's own key handling. When opening, set a player id
+      // so the map receives it as a prop immediately.
+      if (mode.value !== 'map') {
+        playerNodeId.value = 5
+        setMode('map')
       }
+    }
   }
   window.addEventListener('keydown', keyHandler)
 
@@ -46,8 +47,11 @@ onMounted(() => {
   </div>
 
   <template v-else>
-    <ZoneMapView v-if="showZoneMap" :playerNodeId="playerNodeId" />
-    <BabylonScene v-else />
+    <!-- Keep Babylon canvas mounted persistently. Show the map as an overlay when mode === 'map'. -->
+    <div class="game-root">
+      <BabylonScene />
+      <ZoneMapView v-if="mode === 'map'" :playerNodeId="playerNodeId" />
+    </div>
   </template>
 </template>
 

@@ -106,8 +106,7 @@ export class MainScene extends BaseScene {
       console.log('[ZoneTree] Nodes:', JSON.stringify(tree.nodes, null, 2))
       // Afficher la représentation DOT pour usage externe (Graphviz, mermaid, etc.)
       console.log('[ZoneTree] DOT:\n' + tree.dot)
-      // Préparer l'overlay carte (sera rendu à la demande)
-      this._createMapOverlay()
+      // Zone tree generated; UI map handled by ZoneMapView component
     } catch (e) {
       console.error('[ZoneTree] Error generating tree', e)
     }
@@ -489,175 +488,7 @@ export class MainScene extends BaseScene {
     super.dispose()
   }
 
-  // Crée l'overlay DOM pour afficher la carte du graphe (préparée mais cachée)
-  _createMapOverlay() {
-    if (typeof document === 'undefined') return
-    // wrapper
-    const overlay = document.createElement('div')
-    overlay.id = 'zone-map-overlay'
-    Object.assign(overlay.style, {
-      position: 'fixed', left: '0', top: '0', right: '0', bottom: '0',
-      background: 'rgba(0,0,0,0.6)', display: 'none', zIndex: 9999,
-      justifyContent: 'center', alignItems: 'center'
-    })
-    overlay.style.display = 'none'
-    overlay.style.display = 'none'
-    overlay.style.pointerEvents = 'auto'
 
-    // container centered
-    const container = document.createElement('div')
-    container.id = 'zone-map-container'
-    Object.assign(container.style, {
-      width: '820px', height: '640px', background: 'rgba(10,10,20,0.95)', borderRadius: '8px', padding: '12px',
-      boxSizing: 'border-box', position: 'relative', overflow: 'hidden'
-    })
-
-    // svg for lines
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
-    svg.setAttribute('width', '100%')
-    svg.setAttribute('height', '100%')
-    svg.style.position = 'absolute'
-    svg.style.left = '0'
-    svg.style.top = '0'
-
-    // nodes layer
-    const nodesLayer = document.createElement('div')
-    nodesLayer.style.position = 'absolute'
-    nodesLayer.style.left = '0'
-    nodesLayer.style.top = '0'
-    nodesLayer.style.width = '100%'
-    nodesLayer.style.height = '100%'
-
-    // close hint
-    const hint = document.createElement('div')
-    hint.innerText = 'Appuyez sur M pour fermer la carte'
-    Object.assign(hint.style, { position: 'absolute', right: '12px', top: '8px', color: '#ddd', fontSize: '12px' })
-
-    container.appendChild(svg)
-    container.appendChild(nodesLayer)
-    container.appendChild(hint)
-    overlay.appendChild(container)
-    document.body.appendChild(overlay)
-
-    this._mapOverlay = overlay
-    this._mapContainer = container
-    this._mapSvg = svg
-    this._mapNodesLayer = nodesLayer
-    this._mapVisible = false
-    this._mapLock = false
-  }
-
-  _showMap() {
-    if (!this._mapOverlay) this._createMapOverlay()
-    if (!this.zone || !this.zone.tree) return
-    this._renderMap()
-    this._mapOverlay.style.display = 'flex'
-    this._mapVisible = true
-  }
-
-  _hideMap() {
-    if (!this._mapOverlay) return
-    this._mapOverlay.style.display = 'none'
-    this._mapVisible = false
-  }
-
-  _toggleMap() {
-    if (this._mapVisible) this._hideMap()
-    else this._showMap()
-  }
-
-  _renderMap() {
-    const tree = this.zone?.tree
-    if (!tree) return
-    const nodes = tree.nodes || []
-    const depth = tree.depth || 7
-
-    // clear layers
-    while (this._mapSvg.firstChild) this._mapSvg.removeChild(this._mapSvg.firstChild)
-    while (this._mapNodesLayer.firstChild) this._mapNodesLayer.removeChild(this._mapNodesLayer.firstChild)
-
-    const W = 800, H = 600, M = 40 // map inner dims
-    // build map area inside container
-    const mapArea = { width: W, height: H, margin: M }
-
-    // group nodes by depth
-    const byDepth = {}
-    nodes.forEach(n => { byDepth[n.depth] = byDepth[n.depth] || []; byDepth[n.depth].push(n) })
-
-    const positions = {}
-
-    // Layout left-to-right: depth increases from left (start) to right (boss)
-    for (let d = 1; d <= depth; d++) {
-      const list = byDepth[d] || []
-      const x = mapArea.margin + (d - 1) / Math.max(1, depth - 1) * (mapArea.width - 2 * mapArea.margin)
-      const count = list.length || 1
-      for (let i = 0; i < list.length; i++) {
-        const y = mapArea.margin + (i + 1) * (mapArea.height - 2 * mapArea.margin) / (count + 1)
-        positions[list[i].id] = { x, y }
-      }
-    }
-
-    // draw lines
-    nodes.forEach(n => {
-      const from = positions[n.id]
-      if (!from) return
-      n.next.forEach(tid => {
-        const to = positions[tid]
-        if (!to) return
-        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line')
-        line.setAttribute('x1', from.x)
-        line.setAttribute('y1', from.y)
-        line.setAttribute('x2', to.x)
-        line.setAttribute('y2', to.y)
-        line.setAttribute('stroke', '#ffffff')
-        line.setAttribute('stroke-width', '2')
-        this._mapSvg.appendChild(line)
-      })
-    })
-
-    // node images
-    const imgSize = 48
-    const typeToFile = t => {
-      const key = (t || '').toLowerCase()
-      if (key.includes('mini')) return '/assets/zones/zone_miniboss.png'
-      if (key.includes('boss')) return '/assets/zones/zone_boss.png'
-      if (key.includes('shop')) return '/assets/zones/zone_shop.png'
-      if (key.includes('rest')) return '/assets/zones/zone_heal.png'
-      if (key.includes('random')) return '/assets/zones/zone_random.png'
-      return '/assets/zones/zone_battle.png'
-    }
-
-    nodes.forEach(n => {
-      const p = positions[n.id]
-      if (!p) return
-      const el = document.createElement('div')
-      el.style.position = 'absolute'
-      el.style.left = `${p.x - imgSize / 2}px`
-      el.style.top = `${p.y - imgSize / 2}px`
-      el.style.width = `${imgSize}px`
-      el.style.height = `${imgSize}px`
-      el.style.textAlign = 'center'
-      el.title = `${n.type} (#${n.id}) ${n.corrupted ? '[CORRUPTED]' : ''}`
-
-      const img = document.createElement('img')
-      // show player icon for root node
-      if (n.id === tree.root) img.src = '/assets/zones/zone_player.png'
-      else img.src = typeToFile(n.type)
-      img.style.width = '100%'
-      img.style.height = '100%'
-      img.style.filter = n.corrupted ? 'hue-rotate(-20deg) saturate(1.2)' : 'none'
-
-      el.appendChild(img)
-      // effect label under node if corrupted
-      if (n.effect && n.effect !== 'none') {
-        const label = document.createElement('div')
-        label.innerText = n.effect
-        Object.assign(label.style, { color: '#ff6666', fontSize: '11px', textAlign: 'center', marginTop: '2px', width: '160px', position: 'absolute', left: '-56px' })
-        el.appendChild(label)
-      }
-      this._mapNodesLayer.appendChild(el)
-    })
-  }
 
   // 📝 Outils de triche pour F12
   _setupDebugCommands() {
@@ -772,14 +603,7 @@ export class MainScene extends BaseScene {
       this._cameraSwitchLock = false
     }
 
-    // Toggle map (M)
-    if (this.inputMap['m'] && !this._mapLock) {
-      this._mapLock = true
-      this._toggleMap()
-    }
-    if (!this.inputMap['m']) {
-      this._mapLock = false
-    }
+    // Map display is handled by the Vue ZoneMapView component
 
 
     // Spawner

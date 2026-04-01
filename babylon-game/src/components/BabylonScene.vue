@@ -1,20 +1,19 @@
 <!--BabylonScene.vue-->
 <script setup>
 import { onMounted, onUnmounted, ref } from 'vue'
-import { Game } from '@/babylon/Game'
+import { initBabylon, getGame } from '@/babylon/BabylonService'
 
+// The canvas will be created and passed once to the singleton Babylon service.
+// We intentionally do NOT dispose the Game on unmount so the engine/scene
+// remain persistent across UI view switches.
 const canvasRef = ref(null)
-let game = null
 
 onMounted(() => {
-  game = new Game(canvasRef.value)
-  game.start()
-  window.addEventListener('resize', game.resize.bind(game))
+  initBabylon(canvasRef.value)
 })
 
 onUnmounted(() => {
-  window.removeEventListener('resize', game.resize)
-  game.dispose()
+  // NOTE: no dispose here. Keep the singleton alive.
 })
 </script>
 
@@ -27,5 +26,6 @@ onUnmounted(() => {
   width: 100vw;
   height: 100vh;
   display: block;
+  z-index: 0;
 }
 </style>
