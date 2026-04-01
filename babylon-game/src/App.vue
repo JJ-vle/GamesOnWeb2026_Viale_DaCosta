@@ -5,6 +5,8 @@ import ZoneMapView from './components/ZoneMapView.vue'
 
 const gameStarted = ref(false)
 const showZoneMap = ref(false)
+// current player node id to pass to ZoneMapView
+const playerNodeId = ref(null)
 
 function returnToMenu() {
   gameStarted.value = false
@@ -17,9 +19,16 @@ onMounted(() => {
 
   const keyHandler = (e) => {
     if (!gameStarted.value) return
-    if (e.key && e.key.toLowerCase() === 'm') {
-      showZoneMap.value = !showZoneMap.value
-    }
+      if (e.key && e.key.toLowerCase() === 'm') {
+        // Open the zone map on 'm' — avoid toggling off here to prevent conflict
+        // with ZoneMapView's own key handling. When opening, set a player id
+        // so the map receives it as a prop immediately.
+        if (!showZoneMap.value) {
+          // prefer id 5 for quick testing; can be set from game state later
+          playerNodeId.value = 5
+          showZoneMap.value = true
+        }
+      }
   }
   window.addEventListener('keydown', keyHandler)
 
@@ -37,7 +46,7 @@ onMounted(() => {
   </div>
 
   <template v-else>
-    <ZoneMapView v-if="showZoneMap" />
+    <ZoneMapView v-if="showZoneMap" :playerNodeId="playerNodeId" />
     <BabylonScene v-else />
   </template>
 </template>

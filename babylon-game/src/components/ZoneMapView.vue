@@ -2,7 +2,15 @@
 import { ref, onMounted, onUnmounted, computed, nextTick, watch } from 'vue'
 import { generateZoneTree } from '../babylon/ZoneTree'
 
+const props = defineProps({ playerNodeId: { type: Number, default: null } })
+const emit = defineEmits(['selectZone'])
+
 const tree = ref(null)
+// allow overriding the player id from this component (keyboard testing)
+const activePlayerId = ref(props.playerNodeId)
+const currentPlayerId = computed(() => activePlayerId.value ?? props.playerNodeId)
+const reachableSet = ref(new Set())
+const successorsSet = ref(new Set())
 const container = ref(null)
 const content = ref(null)
 const depthStack = ref(null)
@@ -21,6 +29,26 @@ function buildGroupedNodes(nodes, depth) {
   nodes.forEach(n => groups[n.depth].push(n))
   return groups
 }
+
+// keyboard shortcut for testing: press 'M' to focus node id=5
+const keyHandler = (e) => {
+  if (e.code === 'KeyM' || e.key === 'm' || e.key === 'M') {
+    // prefer id=5 for testing, fallback to an existing node id if not present
+    const nodes = (tree.value && tree.value.nodes) ? tree.value.nodes : []
+    const exists5 = nodes.some(n => n.id === 5)
+    if (exists5) activePlayerId.value = 5
+    else if (nodes.length > 0) activePlayerId.value = nodes[Math.floor(nodes.length/2)].id
+    else activePlayerId.value = 5
+    // re-run layout update+centering
+      nextTick(() => {
+        updateLinks()
+      })
+      // debug
+      console.debug('ZoneMapView: activePlayerId set', activePlayerId.value)
+  }
+}
+
+const resizeHandler = () => updateLinks()
 
 onMounted(async () => {
   try {
@@ -43,13 +71,14 @@ onMounted(async () => {
     })
   })
 
-  const resizeHandler = () => updateLinks()
-  const scrollHandler = () => {} // links are in content space, no need to recompute on scroll
+  // register listeners
+  window.addEventListener('keydown', keyHandler)
   window.addEventListener('resize', resizeHandler)
+})
 
-  onUnmounted(() => {
-    window.removeEventListener('resize', resizeHandler)
-  })
+onUnmounted(() => {
+  window.removeEventListener('resize', resizeHandler)
+  window.removeEventListener('keydown', keyHandler)
 })
 
 const grouped = computed(() => {
@@ -79,6 +108,36 @@ function updateLinks() {
   const nodesById = {}
   tree.value.nodes.forEach(n => nodesById[n.id] = n)
 
+  // compute reachable nodes from player position (if provided)
+  const reachable = new Set()
+  if (currentPlayerId.value != null && nodesById[currentPlayerId.value]) {
+    const q = [currentPlayerId.value]
+    reachable.add(currentPlayerId.value)
+    while (q.length) {
+      const cur = q.shift()
+      const node = nodesById[cur]
+      if (!node || !node.next) continue
+      for (const nid of node.next) {
+        if (!reachable.has(nid) && nodesById[nid]) {
+          reachable.add(nid)
+          q.push(nid)
+        }
+      }
+    }
+  } else {
+    // if no player pos, consider all reachable
+    Object.keys(nodesById).forEach(k => reachable.add(Number(k)))
+  }
+
+  // successors of player (clickable)
+  const successorsOfPlayer = new Set()
+  if (currentPlayerId.value != null && nodesById[currentPlayerId.value] && nodesById[currentPlayerId.value].next) {
+    nodesById[currentPlayerId.value].next.forEach(id => successorsOfPlayer.add(id))
+  }
+  // expose to template
+  reachableSet.value = reachable
+  successorsSet.value = successorsOfPlayer
+
   tree.value.nodes.forEach(parent => {
     const pEl = nodeRefs[parent.id]
     if (!pEl) return
@@ -97,16 +156,41 @@ function updateLinks() {
       const x2 = cRect.left - contentRect.left + cRect.width / 2
       const y2 = cRect.top  - contentRect.top  + cRect.height / 2
 
+      const bothReachable = reachable.has(parent.id) && reachable.has(childId)
       out.push({
         x1, y1, x2, y2,
-        corrupted: !!parent.corrupted || !!nodesById[childId].corrupted
+        corrupted: !!parent.corrupted || !!nodesById[childId].corrupted,
+        disabled: !bothReachable
       })
     })
   })
 
   contentSize.value = { w: contentEl.scrollWidth, h: contentEl.scrollHeight }
   links.value = out
+
+  // center on player node on first render if provided
+  if (currentPlayerId.value != null && nodeRefs[currentPlayerId.value]) {
+    // center vertically in container where possible
+    const c = container.value
+    const nodeEl = nodeRefs[currentPlayerId.value]
+    const cRect = c.getBoundingClientRect()
+    const nRect = nodeEl.getBoundingClientRect()
+    // compute scrollTop to center node
+    const rel = nRect.top - cRect.top
+    const target = c.scrollTop + rel - (c.clientHeight / 2) + (nRect.height / 2)
+    // clamp
+    const clamped = Math.max(0, Math.min(target, contentEl.scrollHeight - c.clientHeight))
+    // set with small timeout to let rendering settle
+    setTimeout(() => { c.scrollTop = clamped }, 0)
+  }
 }
+
+function selectNode(id) {
+  emit('selectZone', id)
+}
+
+function reachableHas(id) { return reachableSet.value && reachableSet.value.has && reachableSet.value.has(id) }
+function successorsOfPlayerHas(id) { return successorsSet.value && successorsSet.value.has && successorsSet.value.has(id) }
 
 watch(grouped, async () => {
   await nextTick()
@@ -131,10 +215,10 @@ watch(grouped, async () => {
             :key="i"
             :x1="l.x1" :y1="l.y1"
             :x2="l.x2" :y2="l.y2"
-            :stroke="l.corrupted ? '#ff5a5a' : '#7eb8ff'"
+            :stroke="l.disabled ? '#6b7280' : (l.corrupted ? '#ff5a5a' : '#7eb8ff')"
             stroke-width="3"
             stroke-linecap="round"
-            stroke-opacity="0.75"
+            :stroke-opacity="l.disabled ? 0.35 : 0.75"
           />
         </svg>
 
@@ -150,11 +234,12 @@ watch(grouped, async () => {
                   v-for="node in grouped[d] || []"
                   :key="node.id"
                   class="node-card"
-                  :class="[node.type.replace(/\s+/g, '-'), node.aura ? 'aura-' + node.aura : '']"
+                  :class="[node.type.replace(/\s+/g, '-'), node.aura ? 'aura-' + node.aura : '', (currentPlayerId === node.id) ? 'player' : '', (!reachableHas(node.id) ? 'disabled' : ''), (successorsOfPlayerHas(node.id) ? 'clickable' : '')]"
                   :ref="el => setNodeRef(node.id, el)"
+                  @click="successorsOfPlayerHas(node.id) ? selectNode(node.id) : null"
                 >
                   <div class="zone-img-container">
-                    <img :src="getImageFor(node)" class="zone-img" :alt="node.type" />
+                    <img :src="currentPlayerId === node.id ? '/assets/zones/zone_player.png' : getImageFor(node)" class="zone-img" :alt="node.type" />
                     <div class="node-effect" v-if="node.effect && node.effect !== 'none'">{{ node.effect }}</div>
                   </div>
                 </div>
@@ -266,6 +351,20 @@ watch(grouped, async () => {
 .node-card:hover {
   transform: translateY(-6px) scale(1.06);
   z-index: 10;
+}
+
+.node-card.disabled { pointer-events: none; opacity: 0.5; }
+.node-card.clickable { cursor: pointer; }
+
+.player .zone-img-container::before {
+  box-shadow: 0 0 18px 6px rgba(255,255,255,0.95);
+  border: 2px solid rgba(255,255,255,0.95);
+  z-index: 0; /* bring aura above background */
+}
+
+.player .zone-img {
+  box-shadow: 0 0 22px 8px rgba(255,255,255,0.95), 0 6px 22px rgba(255,255,255,0.12);
+  z-index: 2;
 }
 
 .node-card:hover .zone-img-container::before {
