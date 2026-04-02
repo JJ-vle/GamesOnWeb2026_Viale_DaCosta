@@ -26,6 +26,7 @@ export class Enemy {
 
         this._hitTimer = 0
         this.onDeath = null // callback() quand l'ennemi meurt
+        this._hasSeenPlayer = false
 
         // ──── SYSTÈMES IA ────
         this.perception = null
@@ -41,18 +42,15 @@ export class Enemy {
      */
     _initializeAI(aiConfig = null) {
         // État de perception simple
-        const perceptionState = {
+        this.perception = {
             canSee: false,
             lastSeenPos: null,
             lastSeenTime: Infinity,
         }
 
-        // Système de perception réel pour raycast/LOS
-        const perceptionSystem = new PerceptionSystem(this.scene)
-        
-        // Wrapper pour garder compatibilité avec l'ancien code
-        this.perception = perceptionState
-        this.perceptionSystem = perceptionSystem
+        // ── OPTIMISATION: PerceptionSystem partagé (injecté par MainScene) ──
+        // N'instancie plus un PerceptionSystem par ennemi
+        this.perceptionSystem = null
 
         this.fsm = new EnemyAIFSM({
             fovDistance: 50,
@@ -65,6 +63,13 @@ export class Enemy {
         // NavGrid partagée (sera injectée depuis MainScene)
         const navGrid = (aiConfig && aiConfig.navGrid) || null
         this.pathfinding = new PathfindingHelper(this.scene, navGrid)
+    }
+
+    /**
+     * Injecte un PerceptionSystem partagé (1 seule instance pour tous les ennemis)
+     */
+    setPerceptionSystem(perceptionSystem) {
+        this.perceptionSystem = perceptionSystem
     }
 
     /**
@@ -174,7 +179,7 @@ export class Enemy {
     takeDamage(amount) {
         this.life -= amount
 
-        this.material.diffuseColor = new Color3(1, 0, 0)
+        if (this.material) this.material.diffuseColor = new Color3(1, 0, 0)
         this._hitTimer = 0.1 
 
         // AGGRO IMMÉDIAT: être touché → forcer la poursuite du joueur
@@ -189,8 +194,13 @@ export class Enemy {
         }
     }
     
+    // ── OPTIMISATION: Vecteur réutilisable de séparation ──
+    static _sepVec = new Vector3(0, 0, 0)
+    static _awayVec = new Vector3(0, 0, 0)
+    
     _getFlockingVector(enemiesArray, separationDistance = 3, separationForce = 0.5) {
-        let sep = new Vector3(0, 0, 0)
+        const sep = Enemy._sepVec
+        sep.set(0, 0, 0)
         if (!this.enemy || !enemiesArray) return sep
         
         let count = 0
@@ -198,7 +208,8 @@ export class Enemy {
             if (other === this || !other.enemy) continue
             const dist = Vector3.Distance(this.enemy.position, other.enemy.position)
             if (dist < separationDistance && dist > 0.001) {
-                const away = this.enemy.position.subtract(other.enemy.position)
+                const away = Enemy._awayVec
+                this.enemy.position.subtractToRef(other.enemy.position, away)
                 away.y = 0
                 away.normalize()
                 sep.addInPlace(away.scale(separationDistance - dist))
@@ -211,8 +222,49 @@ export class Enemy {
         sep.y = 0
         return sep
     }
+
+    /**
+     * ── POOL: Réinitialise complètement l'ennemi pour réutilisation ──
+     * Appelé par EnemyPool au lieu de destroy() quand on veut recycler.
+     */
+    reset() {
+        this.life = this.maxLife
+        this._hitTimer = 0
+        this._hasSeenPlayer = false
+        this.onDeath = null
+        this.contact = null
+
+        // Reset AI state
+        if (this.perception) {
+            this.perception.canSee = false
+            this.perception.lastSeenPos = null
+            this.perception.lastSeenTime = Infinity
+        }
+        if (this.fsm) {
+            // Arrêter le service xstate actuel et en recréer un propre
+            this.fsm.dispose()
+            this.fsm = new EnemyAIFSM(this.fsm.config)
+        }
+        if (this.pathfinding) {
+            this.pathfinding._currentPath = []
+            this.pathfinding._currentWaypointIndex = 0
+            this.pathfinding._pathTarget = null
+            this.pathfinding._stuckFrameCount = 0
+            this.pathfinding._lastPos = null
+        }
+
+        // Reset mesh visual
+        if (this.enemy) {
+            this.enemy.position.set(0, -1000, 0)
+            this.enemy.setEnabled(false)
+        }
+    }
     
     destroy() {
+        // Appeler onDeath AVANT de disposer quoi que ce soit
+        const deathCallback = this.onDeath
+        this.onDeath = null // Empêcher double-call
+
         // Nettoyer systèmes IA
         if (this.fsm) {
             this.fsm.dispose()
@@ -221,12 +273,34 @@ export class Enemy {
         this.perception = null
         this.pathfinding = null
 
-        // Nettoyer mesh
+        // NE PAS disposer le mesh si l'ennemi sera recyclé par le pool
+        // Le mesh sera caché par reset() et réutilisé
+        // destroy() est maintenant réservé au nettoyage final (quand on quitte la scène)
+        if (this.enemy) {
+            this.enemy.setEnabled(false)
+            this.enemy.position.set(0, -1000, 0)
+        }
+
+        if (deathCallback) deathCallback()
+    }
+
+    /**
+     * Dispose DÉFINITIVEMENT l'ennemi (mesh inclus).
+     * Utilisé uniquement quand on veut vraiment libérer la mémoire GPU.
+     */
+    disposeFull() {
+        if (this.fsm) {
+            this.fsm.dispose()
+            this.fsm = null
+        }
+        this.perception = null
+        this.pathfinding = null
+        this.perceptionSystem = null
+
         if (this.enemy) {
             this.enemy.dispose()
             this.enemy = null
         }
-        if (this.onDeath) this.onDeath()
     }
 
 }

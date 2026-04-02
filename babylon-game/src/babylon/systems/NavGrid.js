@@ -42,11 +42,56 @@ export class NavGrid {
         // Reset grid
         this.grid.fill(0);
 
-        // Trouver tous les meshes obstacles
+        // Noms à exclure (sol, joueur, ennemis, projectiles, décorations)
+        const EXCLUDED_NAMES = [
+            'ground', 'player', 'enemy', 'projectile', 'bullet',
+            'grenade', 'coin', 'loot', 'particle', 'light',
+            'camera', '__root__', 'skybox', 'BackgroundHelper',
+            'BackgroundPlane', 'BackgroundSkybox',
+        ];
+
+        // Trouver tous les meshes qui sont des obstacles solides
+        // Stratégie: tout mesh avec checkCollisions=true est un obstacle potentiel,
+        // sauf les types exclus (sol, joueur, ennemis, projectiles...)
         const obstacles = scene.meshes.filter(mesh => {
+            // Pas de nom → skip
             if (!mesh.name) return false;
-            return mesh.name.includes('obstacle') || mesh.name.includes('wall_');
+
+            // Pas visible ET pas de collision → skip (pure deco)
+            // Mais si checkCollisions est true même invisible → c'est un mur invisible (garder)
+            if (!mesh.checkCollisions) return false;
+
+            // Vérifier exclusions par nom
+            const nameLower = mesh.name.toLowerCase();
+            for (const excl of EXCLUDED_NAMES) {
+                if (nameLower.includes(excl.toLowerCase())) return false;
+            }
+
+            // Exclure les meshes trop petits (< 0.1 dans toutes les dimensions)
+            // Ce sont probablement des pivots ou des points vides
+            try {
+                mesh.computeWorldMatrix(true);
+                const bb = mesh.getBoundingInfo().boundingBox;
+                const size = bb.maximumWorld.subtract(bb.minimumWorld);
+                if (Math.abs(size.x) < 0.1 && Math.abs(size.z) < 0.1) return false;
+            } catch (e) {
+                return false;
+            }
+
+            // Exclure les meshes plats au sol (hauteur < 0.3) = probablement le sol
+            try {
+                const bb = mesh.getBoundingInfo().boundingBox;
+                const height = bb.maximumWorld.y - bb.minimumWorld.y;
+                if (height < 0.3 && bb.maximumWorld.y < 0.5) return false;
+            } catch (e) {
+                return false;
+            }
+
+            return true;
         });
+
+        console.log(`[NavGrid] Detected ${obstacles.length} obstacle meshes:`,
+            obstacles.map(m => m.name).slice(0, 20));
 
         // Pour chaque obstacle, marquer les cellules occupées
         for (const obstacle of obstacles) {
@@ -57,15 +102,14 @@ export class NavGrid {
             const min = bb.minimumWorld;
             const max = bb.maximumWorld;
 
-            // Marge de sécurité large pour que les chemins passent bien autour
-            const margin = 2.5;
+            // Pas de marge de sécurité: les ennemis doivent pouvoir passer dans les allées étroites
+            // moveWithCollisions sert de filet de sécurité physique pour éviter la traversée de murs
+            const margin = 0;
 
             const minCol = Math.max(0, this._worldToCol(min.x - margin));
             const maxCol = Math.min(this.cols - 1, this._worldToCol(max.x + margin));
             const minRow = Math.max(0, this._worldToRow(min.z - margin));
             const maxRow = Math.min(this.rows - 1, this._worldToRow(max.z + margin));
-
-            // console.log(`[NavGrid] Obstacle '${obstacle.name}': world(${min.x.toFixed(1)},${min.z.toFixed(1)})-(${max.x.toFixed(1)},${max.z.toFixed(1)}) -> cells(${minCol},${minRow})-(${maxCol},${maxRow})`);
 
             for (let r = minRow; r <= maxRow; r++) {
                 for (let c = minCol; c <= maxCol; c++) {
@@ -79,7 +123,12 @@ export class NavGrid {
         for (let i = 0; i < this.grid.length; i++) {
             if (this.grid[i] === 1) blockedCount++;
         }
-        // console.log(`[NavGrid] Grille construite: ${this.cols}x${this.rows} cells (cellSize=${this.cellSize}), ${obstacles.length} obstacles, ${blockedCount} cellules bloquées`);
+        const totalCells = this.cols * this.rows;
+        const pct = ((blockedCount / totalCells) * 100).toFixed(1);
+        console.log(`[NavGrid] Grille construite: ${this.cols}x${this.rows} cells, ${obstacles.length} obstacles, ${blockedCount}/${totalCells} bloquées (${pct}%)`);
+
+        // Invalider le cache de chemins (les anciens chemins peuvent traverser les nouveaux obstacles)
+        this._pathCache.clear();
     }
 
     /**
@@ -236,7 +285,7 @@ export class NavGrid {
         ];
 
         let iterations = 0;
-        const MAX_ITERATIONS = 2000; // Anti-boucle infinie
+        const MAX_ITERATIONS = 5000; // Anti-boucle infinie (augmenté pour maps complexes)
 
         while (openSet.size > 0 && iterations < MAX_ITERATIONS) {
             iterations++;

@@ -103,31 +103,19 @@ export class EnemyPool {
 
   /**
    * Réinitialise complètement un ennemi pour réutilisation
+   * Utilise la méthode reset() de Enemy qui gère proprement xstate, perception, etc.
    * @private
    */
   _resetEnemy(enemy) {
-    // Désactiver visuellement
-    if (enemy.enemy) {
-      enemy.enemy.setEnabled(false);
-      enemy.enemy.position.set(0, -1000, 0); // Cacher loin sous la carte
-    }
-
-    // Réinitialiser les états
-    if (enemy.fsm) {
-      enemy.fsm.state = 'idle';
-    }
-    if (enemy.hp !== undefined) {
-      enemy.hp = enemy.maxHP || 1;
-    }
-    if (enemy.health !== undefined) {
-      enemy.health = enemy.maxHealth || 1;
-    }
-    if (enemy.perception) {
-      enemy.perception = {
-        canSee: false,
-        lastSeenPos: null,
-        lastSeenTime: -Infinity
-      };
+    // ── OPTIMISATION: Déléguer au Enemy.reset() qui gère tout ──
+    if (enemy.reset) {
+      enemy.reset();
+    } else {
+      // Fallback pour les ennemis sans reset()
+      if (enemy.enemy) {
+        enemy.enemy.setEnabled(false);
+        enemy.enemy.position.set(0, -1000, 0);
+      }
     }
     
     // Arrêter les animations
@@ -137,15 +125,20 @@ export class EnemyPool {
   }
 
   /**
-   * Dispose un ennemi complètement (appelé rarementquand le pool est trop grand)
+   * Dispose un ennemi complètement (libère la mémoire GPU)
    * @private
    */
   _disposeEnemy(enemy) {
-    if (enemy.enemy && enemy.enemy.dispose) {
-      enemy.enemy.dispose();
-    }
-    if (enemy.animationGroup && enemy.animationGroup.dispose) {
-      enemy.animationGroup.dispose();
+    // ── OPTIMISATION: Utiliser disposeFull() qui nettoie mesh + matériau + AI ──
+    if (enemy.disposeFull) {
+      enemy.disposeFull();
+    } else {
+      if (enemy.enemy && enemy.enemy.dispose) {
+        enemy.enemy.dispose();
+      }
+      if (enemy.animationGroup && enemy.animationGroup.dispose) {
+        enemy.animationGroup.dispose();
+      }
     }
   }
 

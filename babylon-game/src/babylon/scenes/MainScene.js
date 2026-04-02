@@ -45,6 +45,7 @@ import { NavGrid } from "../systems/NavGrid"
 import { XRaySystem } from "../systems/XRaySystem"
 import { PerformanceMonitor } from "../systems/PerformanceMonitor"
 import { LoadingScreen } from "../systems/LoadingScreen"
+import { PerceptionSystem } from "../systems/PerceptionSystem"
 
 
 export class MainScene extends BaseScene {
@@ -95,6 +96,9 @@ export class MainScene extends BaseScene {
 
     this.enemies = []
 
+    // ── OPTIMISATION: PerceptionSystem partagé (1 seul pour tous les ennemis) ──
+    this.sharedPerceptionSystem = new PerceptionSystem(this.scene)
+
     // --- Initialiser le système de Zone et Round ---
     this.zone = new Zone(this.scene);
 
@@ -134,6 +138,11 @@ export class MainScene extends BaseScene {
       // Injecter la NavGrid A* pour le pathfinding intelligent
       if (enemy.setNavGrid) {
         enemy.setNavGrid(this.navGrid)
+      }
+
+      // ── OPTIMISATION: Injecter le PerceptionSystem partagé ──
+      if (enemy.setPerceptionSystem) {
+        enemy.setPerceptionSystem(this.sharedPerceptionSystem)
       }
 
       // Appliquer une réduction de taille de 50%
@@ -339,7 +348,18 @@ export class MainScene extends BaseScene {
 
     this.loadingScreen.setProgress(15, 'Creating ground...');
 
-    // --- Chargement de la map ---
+    this.loadingScreen.setProgress(25, 'Creating borders...');
+    this._createBorders(130, 110)
+    
+    this.loadingScreen.setProgress(40, 'Creating obstacles...');
+    this._createObstacles()
+
+    // ── NavGrid A* ── Créer la grille (vide pour l'instant, sera peuplée après chargement de la map)
+    this.navGrid = new NavGrid(130, 110, 1)
+    // Build initial avec les obstacles synchrones (murs invisibles, etc.)
+    this.navGrid.buildFromScene(this.scene)
+
+    // --- Chargement de la map GLB (ASYNC) ---
     const mapLoadStart = performance.now();
     SceneLoader.ImportMeshAsync("", "/assets/models/", "map_1.glb", this.scene).then((result) => {
       result.meshes.forEach(m => {
@@ -356,6 +376,22 @@ export class MainScene extends BaseScene {
       const mapLoadTime = Math.round(performance.now() - mapLoadStart);
       console.log(`[Loading] Map loaded in ${mapLoadTime}ms`);
       this.loadingScreen.setProgress(55, `Map assets loaded (${mapLoadTime}ms)`);
+
+      // ══════════════════════════════════════════════════════════════
+      // ⚡ REBUILD NAVGRID APRÈS LE CHARGEMENT DE LA MAP GLB
+      // Maintenant que les meshes de la map existent, on reconstruit
+      // la grille A* pour que les ennemis contournent les vrais murs
+      // ══════════════════════════════════════════════════════════════
+      console.log('[NavGrid] Rebuilding NavGrid after map loaded...');
+      this.navGrid.buildFromScene(this.scene);
+
+      // Réinjecter la NavGrid mise à jour dans tous les ennemis déjà spawnés
+      for (const enemy of this.enemies) {
+        if (enemy.setNavGrid) {
+          enemy.setNavGrid(this.navGrid);
+        }
+      }
+      console.log(`[NavGrid] NavGrid rebuilt and injected into ${this.enemies.length} existing enemies`);
       
       // ── Cacher le loading screen une fois que tout est prêt ──
       setTimeout(() => {
@@ -372,18 +408,7 @@ export class MainScene extends BaseScene {
         this.loadingScreen.hide(500);
       }, 800);
     });
-
-    this.loadingScreen.setProgress(25, 'Creating borders...');
-    this._createBorders(130, 110)
-    
-    this.loadingScreen.setProgress(40, 'Creating obstacles...');
-    this._createObstacles()
-
-    // ── NavGrid A* ── Construire la grille de navigation APRÈS les obstacles
-    this.loadingScreen.setProgress(60, 'Building NavGrid...');
-    this.navGrid = new NavGrid(130, 110, 2)
-    this.navGrid.buildFromScene(this.scene)
-    this.loadingScreen.setProgress(75, 'NavGrid complete...');
+    this.loadingScreen.setProgress(60, 'Loading map...');
 
     this.loadingScreen.setProgress(80, 'Initializing player...');
     this.playerEntry = new Player(this.scene)
@@ -801,6 +826,10 @@ export class MainScene extends BaseScene {
     let activatedEnemies = 0;
     let culledEnemies = 0;
 
+    const playerPos = this.player.mesh.position;
+    const ACTIVE_DIST_SQ = ACTIVE_DISTANCE * ACTIVE_DISTANCE;
+    const PASSIVE_DIST_SQ = PASSIVE_DISTANCE * PASSIVE_DISTANCE;
+
     for (let i = this.enemies.length - 1; i >= 0; i--) {
       const enemy = this.enemies[i]
       if (!enemy || !enemy.enemy) {
@@ -808,22 +837,22 @@ export class MainScene extends BaseScene {
         continue
       }
       
-      // Calculer distance du joueur
-      const distToPlayer = this.player.mesh.position.subtract(enemy.enemy.position).length();
+      // ── OPTIMISATION: Utiliser distanceSquared (pas de sqrt) ──
+      const dx = playerPos.x - enemy.enemy.position.x;
+      const dz = playerPos.z - enemy.enemy.position.z;
+      const distSq = dx * dx + dz * dz;
       
-      if (distToPlayer > PASSIVE_DISTANCE) {
+      if (distSq > PASSIVE_DIST_SQ) {
         // Très loin: COMPLÈTEMENT invisible et skip update
         if (enemy.enemy.isVisible) {
           enemy.enemy.isVisible = false;
         }
         culledEnemies++;
-      } else if (distToPlayer > ACTIVE_DISTANCE) {
+      } else if (distSq > ACTIVE_DIST_SQ) {
         // Loin: visible MAIS figé (aucun update = performance max)
         if (!enemy.enemy.isVisible) {
           enemy.enemy.isVisible = true;
         }
-        // ⚠️ AGRESSIF: Skip complètement l'update pour ennemis loin
-        // Ils restent figés mais visibles
       } else {
         // Proche: update COMPLET (FSM + pathfinding + collision)
         if (!enemy.enemy.isVisible) {
@@ -838,12 +867,19 @@ export class MainScene extends BaseScene {
     this.weaponSystem.update(deltaTime)
 
 
-    // Projectiles
-    this.projectiles = this.projectiles.filter(p => {
+    // Projectiles — mise à jour des positions (collision gérée par CollisionSystem)
+    for (let i = this.projectiles.length - 1; i >= 0; i--) {
+      const p = this.projectiles[i]
+      if (!p.mesh) {
+        this.projectiles.splice(i, 1)
+        continue
+      }
       const alive = p.update(deltaTime)
-      if (!alive) p.dispose()
-      return alive
-    })
+      if (!alive) {
+        p.dispose()
+        this.projectiles.splice(i, 1)
+      }
+    }
 
     // X-Ray (voir le joueur derrière les obstacles)
     if (this.xraySystem) this.xraySystem.update()

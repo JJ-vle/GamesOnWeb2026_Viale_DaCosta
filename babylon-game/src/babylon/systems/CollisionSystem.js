@@ -13,13 +13,15 @@ export class CollisionSystem {
       this.buildSystem = null
 
       // ── OPTIMISATION: Spatial partitioning simple ──
-      // Grille 2D pour accélérer collision checks
-      this._spatialGrid = new Map(); // Map: cellKey -> [{ entity, mesh }]
-      // ⚠️ AGRESSIF: Cellules plus grandes (15 au lieu de 10)
-      this._gridCellSize = 15; // Taille des cellules (units)
+      this._spatialGrid = new Map();
+      this._gridCellSize = 15;
       
       // ── MEMORY OPTIMIZATION: Track previous grid positions ──
-      this._gridCellCache = new Map(); // entity -> lastCell (avoid rebuilding if not moved)
+      this._gridCellCache = new Map();
+
+      // ── OPTIMISATION: Cache des enemy mesh IDs pour raycasts ──
+      this._cachedEnemyMeshIds = new Set()
+      this._lastEnemyCount = -1  // Détecter changement
     }
   
     registerPlayer(player) { this.player = player }
@@ -27,10 +29,12 @@ export class CollisionSystem {
     registerProjectile(projectile) { this.projectiles.push(projectile) }
   
     removeEnemy(enemy) {
-      this.enemies = this.enemies.filter(e => e !== enemy)
-      // ── MEMORY FIX: Clean up cooldown and grid cache ──
+      // ── OPTIMISATION: splice au lieu de filter (pas de nouvel array) ──
+      const idx = this.enemies.indexOf(enemy)
+      if (idx !== -1) this.enemies.splice(idx, 1)
       this.enemyDamageCooldown.delete(enemy)
       this._gridCellCache.delete(enemy)
+      this._lastEnemyCount = -1 // Forcer rebuild du cache meshIds
     }
   
     removeProjectile(projectile) {
@@ -123,16 +127,23 @@ export class CollisionSystem {
 
       this.currentTime = (this.currentTime || 0) + deltaTime
   
-      // Prépare un set des IDs d'ennemis pour les ignorer dans le raycast des murs
-      const enemyMeshIds = new Set()
-      for (const enemy of this.enemies) {
-        if (enemy.enemy) {
-          enemyMeshIds.add(enemy.enemy.uniqueId)
-          enemy.enemy.getChildMeshes(false).forEach(m => enemyMeshIds.add(m.uniqueId))
+      // ── OPTIMISATION: Cacher les enemyMeshIds et les reconstruire seulement si le nombre d'ennemis change ──
+      if (this.enemies.length !== this._lastEnemyCount) {
+        this._cachedEnemyMeshIds.clear()
+        for (const enemy of this.enemies) {
+          if (enemy.enemy) {
+            this._cachedEnemyMeshIds.add(enemy.enemy.uniqueId)
+            const children = enemy.enemy.getChildMeshes(false)
+            for (let j = 0; j < children.length; j++) {
+              this._cachedEnemyMeshIds.add(children[j].uniqueId)
+            }
+          }
         }
+        this._lastEnemyCount = this.enemies.length
       }
+      const enemyMeshIds = this._cachedEnemyMeshIds
 
-      // ── Projectiles (mise à jour + collisions murs) ──
+      // ── Projectiles vs murs (raycasts) ──
       for (let i = this.projectiles.length - 1; i >= 0; i--) {
         const proj = this.projectiles[i]
         if (!proj.mesh) { this.projectiles.splice(i, 1); continue }
@@ -143,28 +154,18 @@ export class CollisionSystem {
         const scene = proj.mesh.getScene()
         
         const hit = scene.pickWithRay(ray, (mesh) => {
-          // CheckCollisions doit être true pour un mur
           if (!mesh.checkCollisions) return false
-          
-          // Ignorer sol, joueur, autres projectiles
           if (mesh.name === 'ground' || mesh.name.startsWith('player')) return false
           if (mesh.name.includes('projectile') || mesh.name.includes('bullet') || mesh.name.includes('grenade')) return false
-          
-          // Ignorer les ennemis (le système normal s'en occupe en dessous)
           if (enemyMeshIds.has(mesh.uniqueId)) return false
-          
           return true
         })
 
         if (hit && hit.hit) {
-          // A touché un mur !
           proj.dispose()
           this.projectiles.splice(i, 1)
           continue
         }
-
-        const isAlive = proj.update(deltaTime)
-        if (!isAlive) { proj.dispose(); this.projectiles.splice(i, 1); continue }
       }
   
       // ── OPTIMISATION: Projectiles vs Enemies avec spatial partitioning ──
@@ -193,10 +194,11 @@ export class CollisionSystem {
         for (let enemy of nearbyEnemies) {
           if (!enemy.enemy) continue
           
-          // Distance check avant intersection (optimisation supplémentaire)
-          // ⚠️ AGRESSIF: Augmenté de 5 à 8 pour skip plus d'ennemis loin
-          const dist = proj.mesh.position.subtract(enemy.enemy.position).length();
-          if (dist > 8) continue; // Trop loin, skip
+          // ── OPTIMISATION: Distance-squared check (pas de sqrt) ──
+          const dx = proj.mesh.position.x - enemy.enemy.position.x;
+          const dz = proj.mesh.position.z - enemy.enemy.position.z;
+          const distSq = dx * dx + dz * dz;
+          if (distSq > 64) continue; // 8² = 64
           
           if (proj.mesh.intersectsMesh(enemy.enemy, false)) {
             enemy.takeDamage(proj.damage || 1)
