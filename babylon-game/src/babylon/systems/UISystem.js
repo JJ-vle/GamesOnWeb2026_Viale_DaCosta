@@ -10,13 +10,8 @@ import {
 
 /**
  * UISystem — Interface cyberpunk pour le Roguelike Robotique
- *
- * Zones :
- *   [Haut-Gauche]  Round label
- *   [Haut-Centre]  Timer compte à rebours
- *   [Haut-Droite]  Score / Engrenages
- *   [Bas-Gauche]   Barre de vie stylisée + compteur kills
- *   [Bas-Centre]   Capacité active (icône + overlay cooldown)
+ * Contient les éléments HUD : barre de vie, round/timer, compteurs,
+ * capacité active, liste d'items et notifications.
  */
 export class UISystem {
     constructor(scene) {

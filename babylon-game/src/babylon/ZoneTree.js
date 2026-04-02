@@ -15,8 +15,9 @@ export function generateZoneTree(options = {}) {
   let idCounter = 1
   const nodesByDepth = {}
   const nodes = {}
-  const MAX_PER_DEPTH = options.maxPerDepth || 5
-  const MAX_CHILDREN = options.maxChildren || 3
+  const MAX_PER_DEPTH = options.maxPerDepth || 4
+  const MAX_CHILDREN = options.maxChildren || 2
+  const MAX_PREV_ZONES = options.maxPrevZones || 3
   const corruptionEffects = options.effects || [
     'Ennemies infligent +3 de dégâts',
     'Ennemies gagnent +10 PV',
@@ -37,12 +38,23 @@ export function generateZoneTree(options = {}) {
       nbrounds: Math.max(1, Math.floor(Math.random() * 3)),
       next: [],
       corrupted: false,
-      parent: parentId
+      parent: parentId,
+      aura: null
     }
     nodes[id] = node
     if (!nodesByDepth[depthLevel]) nodesByDepth[depthLevel] = []
     nodesByDepth[depthLevel].push(node)
     return node
+  }
+
+  function shuffleArray(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      const tmp = arr[i]
+      arr[i] = arr[j]
+      arr[j] = tmp
+    }
+    return arr
   }
 
   // Root (depth 1)
@@ -60,7 +72,14 @@ export function generateZoneTree(options = {}) {
       if (d === depth - 1) break // will link to boss later
       if (slots <= 0) break
 
-      let childrenCount = Math.random() < 0.4 ? 1 : (Math.random() < 0.6 ? 2 : 3)
+      // If we're creating nodes for depth-1, cap total slots to MAX_PREV_ZONES
+      if (d + 1 === depth - 1) {
+        const allowed = MAX_PREV_ZONES - nodesByDepth[d + 1].length
+        slots = Math.min(slots, Math.max(0, allowed))
+      }
+
+      // bias toward 1 or 2 children to reduce link clutter
+      let childrenCount = Math.random() < 0.6 ? 1 : 2
       childrenCount = Math.min(childrenCount, MAX_CHILDREN, slots)
 
       for (let i = 0; i < childrenCount; i++) {
@@ -78,11 +97,77 @@ export function generateZoneTree(options = {}) {
     }
   }
 
+  // Enforce depth 2: exactly 2 choices from root
+  if (depth >= 2) {
+    if (!nodesByDepth[2]) nodesByDepth[2] = []
+    // create missing nodes to reach 2
+    while (nodesByDepth[2].length < 2) {
+      const child = makeNode(2, root.id)
+      root.next.push(child.id)
+    }
+    // if more than 2, keep two and remove extras
+    if (nodesByDepth[2].length > 2) {
+      const shuffled = nodesByDepth[2].slice().sort(() => 0.5 - Math.random())
+      const survivors = shuffled.slice(0, 2)
+      const removed = shuffled.slice(2)
+      // remove removed nodes from parents and nodes
+      removed.forEach(r => {
+        Object.values(nodes).forEach(p => {
+          for (let i = p.next.length - 1; i >= 0; i--) {
+            if (p.next[i] === r.id) p.next.splice(i, 1)
+          }
+        })
+        delete nodes[r.id]
+      })
+      nodesByDepth[2] = survivors
+    }
+    // ensure root.next points to exactly those two depth-2 nodes
+    root.next = nodesByDepth[2].map(n => n.id)
+    nodesByDepth[2].forEach(n => { n.parent = root.id })
+  }
+
+  // Ensure depth 4 has at least 3 nodes (if overall depth allows)
+  if (depth >= 4) {
+    if (!nodesByDepth[4]) nodesByDepth[4] = []
+    // create intermediate parents if needed (depth 3)
+    if (!nodesByDepth[3]) nodesByDepth[3] = []
+    while (nodesByDepth[4].length < 3 && nodesByDepth[4].length < MAX_PER_DEPTH) {
+      // pick or create a parent in depth 3
+      let parent
+      if (nodesByDepth[3].length === 0) {
+        // ensure at least one node at depth 3 by attaching to a depth-2 node
+        if (!nodesByDepth[2] || nodesByDepth[2].length === 0) {
+          const p2 = makeNode(2, root.id)
+          root.next.push(p2.id)
+        }
+        const chosen2 = nodesByDepth[2][Math.floor(Math.random() * nodesByDepth[2].length)]
+        parent = makeNode(3, chosen2.id)
+        chosen2.next.push(parent.id)
+      } else {
+        parent = nodesByDepth[3][Math.floor(Math.random() * nodesByDepth[3].length)]
+      }
+      // create child at depth 4 if parent can accept one
+      if (!parent.next || parent.next.length < MAX_CHILDREN) {
+        const child = makeNode(4, parent.id)
+        parent.next.push(child.id)
+      } else {
+        // try another parent; if none free, break to avoid infinite loop
+        const freeParents = nodesByDepth[3].filter(p => p.next.length < MAX_CHILDREN)
+        if (freeParents.length === 0) break
+        const parent2 = freeParents[Math.floor(Math.random() * freeParents.length)]
+        const child = makeNode(4, parent2.id)
+        parent2.next.push(child.id)
+      }
+    }
+  }
+
   // Boss final
   const boss = makeNode(depth, null)
   boss.type = 'Boss'
   boss.nbrounds = Math.max(1, Math.floor(Math.random() * 3) + 2)
-  boss.effect = 'final'
+  // do not label boss with 'final' effect; keep effect none and mark aura
+  boss.effect = 'none'
+  boss.aura = 'yellow'
   boss.corrupted = true
 
   // Link previous level nodes to boss
@@ -114,7 +199,8 @@ export function generateZoneTree(options = {}) {
   })
 
   // Choose up to 2 minibosses depth >=5, ensure they are on different branches (no ancestor relation)
-  const minibossCandidates = Object.values(nodes).filter(n => n.depth >= 5 && n.type === 'Battle')
+  // choose miniboss candidates but exclude nodes on depth-1 (must remain non-battle)
+  const minibossCandidates = Object.values(nodes).filter(n => n.depth >= 5 && n.type === 'Battle' && n.depth !== depth - 1)
   const minibosses = []
   function isAncestor(a, b) {
     let cur = b
@@ -135,13 +221,38 @@ export function generateZoneTree(options = {}) {
     }
   }
 
-  // Passive zones (Shop/Rest Area) — ensure at least one on depth-1
+  // Passive / non-battle zones on depth-1 — limit count and remove battles
   const passiveTypes = ['Shop', 'Rest Area']
   const depthPrev = nodesByDepth[depth - 1] || []
   if (depthPrev.length > 0) {
-    const pick = depthPrev[Math.floor(Math.random() * depthPrev.length)]
-    pick.type = passiveTypes[Math.floor(Math.random() * passiveTypes.length)]
-    pick.corrupted = true
+    // If too many nodes at depth-1, remove extras and rewire parents to boss
+    if (depthPrev.length > MAX_PREV_ZONES) {
+      const shuffled = depthPrev.slice().sort(() => 0.5 - Math.random())
+      const survivors = shuffled.slice(0, MAX_PREV_ZONES)
+      const survivorIds = new Set(survivors.map(n => n.id))
+      const removed = shuffled.slice(MAX_PREV_ZONES)
+      removed.forEach(r => {
+        // remove references from parents
+        Object.values(nodes).forEach(p => {
+          for (let i = p.next.length - 1; i >= 0; i--) {
+            if (p.next[i] === r.id) p.next.splice(i, 1)
+          }
+        })
+        // delete node
+        delete nodes[r.id]
+      })
+      nodesByDepth[depth - 1] = survivors
+    }
+
+    // Ensure remaining nodes at depth-1 are non-battle (Shop/Rest/Random)
+    nodesByDepth[depth - 1].forEach(n => {
+      // remove any Battle or Mini Boss on depth-1
+      if (n.type === 'Battle' || n.type === 'Mini Boss') {
+        n.type = Math.random() < 0.5 ? passiveTypes[Math.floor(Math.random() * passiveTypes.length)] : 'Random'
+      }
+      // make them slightly corrupted sometimes for variety
+      if (n.type !== 'Boss') n.corrupted = Math.random() < 0.25
+    })
   }
 
   // Ensure a node (non-boss) isn't referenced by multiple parents: clone if possible
@@ -193,6 +304,67 @@ export function generateZoneTree(options = {}) {
     }
   })
 
+  // Ensure there are no non-boss nodes at max depth; rewire parents to boss and remove them
+  Object.values(nodes).forEach(n => {
+    if (n.depth === depth && n.id !== boss.id) {
+      // rewire all parents pointing to this node to boss
+      Object.values(nodes).forEach(p => {
+        for (let i = 0; i < p.next.length; i++) {
+          if (p.next[i] === n.id) {
+            if (!p.next.includes(boss.id) && p.next.length < MAX_CHILDREN) p.next[i] = boss.id
+            else {
+              p.next.splice(i, 1)
+              i--
+            }
+          }
+        }
+      })
+      // remove from nodesByDepth and nodes
+      const arr = nodesByDepth[depth] || []
+      nodesByDepth[depth] = arr.filter(x => x.id !== n.id)
+      delete nodes[n.id]
+    }
+  })
+
+  // ensure nodesByDepth[depth] contains only the boss
+  nodesByDepth[depth] = nodesByDepth[depth] ? nodesByDepth[depth].filter(x => x.id === boss.id) : [boss]
+
+  // If a node (except depth 2) has only one ancestor, ensure it has 2 successors
+  const parentCounts = {}
+  Object.values(nodes).forEach(p => p.next.forEach(cid => parentCounts[cid] = (parentCounts[cid] || 0) + 1))
+  // iterate nodes in random order so the extra-successor rule is distributed
+  const nodeListRandom = shuffleArray(Object.values(nodes).slice())
+  nodeListRandom.forEach(n => {
+    if (n.depth === 2) return
+    if (n.type === 'Boss') return
+    const parents = parentCounts[n.id] || 0
+    if (parents === 1) {
+      // ensure exactly 2 successors where possible
+      const needed = Math.max(0, 2 - n.next.length)
+      for (let k = 0; k < needed; k++) {
+        if (n.depth + 1 === depth) {
+          // next depth is boss depth: link to boss
+          if (!n.next.includes(boss.id)) n.next.push(boss.id)
+        } else {
+          const nextDepthList = nodesByDepth[n.depth + 1] || []
+          // try to find an existing candidate not already linked
+          const candidates = nextDepthList.map(x => x.id).filter(id => !n.next.includes(id))
+          if (candidates.length > 0) {
+            n.next.push(candidates[Math.floor(Math.random() * candidates.length)])
+          } else if ((nodesByDepth[n.depth + 1] || []).length < MAX_PER_DEPTH) {
+            const child = makeNode(n.depth + 1, n.id)
+            n.next.push(child.id)
+          } else {
+            // fallback to boss
+            if (!n.next.includes(boss.id)) n.next.push(boss.id)
+          }
+        }
+        if (n.next.length >= MAX_CHILDREN) break
+      }
+      if (n.next.length > MAX_CHILDREN) n.next = n.next.slice(0, MAX_CHILDREN)
+    }
+  })
+
   // Finalize types/effects
   Object.values(nodes).forEach(n => {
     if (n.type === 'Battle' && n.depth === depth) return
@@ -202,6 +374,24 @@ export function generateZoneTree(options = {}) {
       n.effect = corruptionEffects[Math.floor(Math.random() * corruptionEffects.length)]
     }
   })
+
+  // Final pass: ensure ONLY the Boss can have an empty `next` array.
+  // Any non-boss without successors will be linked forward or to the boss as a fallback.
+  Object.values(nodes).forEach(n => {
+    if (n.type === 'Boss') return
+    if (!n.next || n.next.length === 0) {
+      const nextDepthList = nodesByDepth[n.depth + 1] || []
+      if (nextDepthList.length > 0) {
+        n.next = [nextDepthList[Math.floor(Math.random() * nextDepthList.length)].id]
+      } else {
+        n.next = [boss.id]
+      }
+    }
+    if (n.next.length > MAX_CHILDREN) n.next = n.next.slice(0, MAX_CHILDREN)
+  })
+
+  // Ensure boss has no successors
+  boss.next = []
 
   // DOT output for visualization
   let dot = 'digraph ZoneTree {\n  node [shape=box];\n'
@@ -216,7 +406,7 @@ export function generateZoneTree(options = {}) {
   const tree = {
     root: root.id,
     depth,
-    nodes: Object.values(nodes).map(n => ({ id: n.id, depth: n.depth, type: n.type, effect: n.effect, infos: n.infos, nbrounds: n.nbrounds, next: n.next, corrupted: n.corrupted })),
+    nodes: Object.values(nodes).map(n => ({ id: n.id, depth: n.depth, type: n.type, effect: n.effect, infos: n.infos, nbrounds: n.nbrounds, next: n.next, corrupted: n.corrupted, aura: n.aura || null })),
     dot
   }
 
