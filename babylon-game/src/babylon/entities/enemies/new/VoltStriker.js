@@ -67,19 +67,17 @@ export class VoltStriker extends Enemy {
             }
         }
 
-        // Vérifications de sécurité
+        // Vérifications de sécurité: si les systèmes ne sont pas prêts, ne rien faire
+        // Ne pas marquer _debugLogged en erreur : on veut pouvoir logger l'init quand
+        // tout sera prêt (évite de masquer le log OK si l'ennemi est créé tôt).
         if (!this.fsm || !this.perception || !this.pathfinding || !this.perceptionSystem) {
-            if (!this._debugLogged) {
-                console.error('[VoltStriker] ❌ FSM/Perception/Pathfinding NON initialisé!');
-                this._debugLogged = true;
-            }
             return;
         }
 
         // Log une fois pour confirmer initialisation
         if (!this._debugLogged) {
             const hasNavGrid = !!this.pathfinding.navGrid;
-            // console.log(`[VoltStriker] ✅ Init OK — NavGrid A*: ${hasNavGrid ? 'OUI' : 'NON'}`);
+            console.log('[VoltStriker] ✅ Init OK — systèmes prêts. NavGrid A*:', hasNavGrid ? 'OUI' : 'NON');
             this._debugLogged = true;
         }
 

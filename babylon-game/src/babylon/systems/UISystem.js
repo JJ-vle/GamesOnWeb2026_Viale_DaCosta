@@ -184,11 +184,17 @@ export class UISystem {
 
         this.gearCount = new TextBlock("gearCount");
         this.gearCount.text = "0";
+        // Assurer visibilité : couleur contrastée et alignements explicites
         this.gearCount.color = "#ffcc00";
         this.gearCount.fontSize = 16;
         this.gearCount.fontFamily = "monospace";
         this.gearCount.fontStyle = "bold";
         this.gearCount.paddingLeft = "8px";
+        // leave room for large numbers — fixed pixel width to avoid layout shifts
+        this.gearCount.width = "96px";
+        this.gearCount.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+        this.gearCount.verticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
+        this.gearCount.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
         row.addControl(this.gearCount);
     }
 
@@ -378,7 +384,14 @@ export class UISystem {
     }
 
     updateGears(count) {
-        if (this.gearCount) this.gearCount.text = `${count}`;
+        if (!this.gearCount) return;
+        // Format large numbers to keep UI stable (e.g., 1.2k, 3.4M)
+        let display = count;
+        if (typeof count === 'number') {
+            if (count >= 1_000_000) display = (count / 1_000_000).toFixed(1).replace(/\.0$/, '') + 'M';
+            else if (count >= 1000) display = (count / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+        }
+        this.gearCount.text = `${display}`;
     }
 
     updateKills(kills) {

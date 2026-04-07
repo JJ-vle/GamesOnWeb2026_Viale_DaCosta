@@ -102,7 +102,12 @@ export class BlastZone extends Enemy {
                 this.state = 'EXPLODING'
                 this.stateTimer = 0.5
                 // Trigger explosion callback
-                if (onExplode) onExplode(this._warningMesh.position.clone(), this.aoeRadius)
+                if (onExplode) {
+                    const explodePos = (this._warningMesh && this._warningMesh.position)
+                        ? this._warningMesh.position.clone()
+                        : (this.enemy ? this.enemy.position.clone() : new Vector3(0, 0, 0))
+                    onExplode(explodePos, this.aoeRadius)
+                }
                 this._clearWarningZone()
                 this.material.emissiveColor = new Color3(0, 0, 0)
             } else {

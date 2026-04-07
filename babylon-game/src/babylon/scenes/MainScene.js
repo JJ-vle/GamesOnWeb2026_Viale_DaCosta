@@ -52,6 +52,9 @@ export class MainScene extends BaseScene {
   constructor(engine) {
     super(engine)
 
+    // ID du noeud de zone actuellement chargé (utile pour demander l'ouverture de la map)
+    this.currentZoneNodeId = null
+
     this._createLights()
     this._createWorld()
 
@@ -106,6 +109,8 @@ export class MainScene extends BaseScene {
     try {
       const tree = generateZoneTree({ minDepth: 7, maxDepth: 8 })
       this.zone.tree = tree
+      // Set current zone node to root initially so map openings know where the player is
+      this.currentZoneNodeId = tree.root
       console.log('[ZoneTree] Generated tree depth', tree.depth)
       console.log('[ZoneTree] Nodes:', JSON.stringify(tree.nodes, null, 2))
       // Afficher la représentation DOT pour usage externe (Graphviz, mermaid, etc.)
@@ -131,6 +136,42 @@ export class MainScene extends BaseScene {
     )
 
     this.zone.addSpawner(this.spawnerSystem);
+
+    // Helper: attacher le handler standard de fin de round à un objet Round
+    this._attachRoundEndHandler = (round) => {
+      round.onRoundEnd = () => {
+        // Stopper le spawner immédiatement
+        if (this.spawnerSystem) this.spawnerSystem.stop()
+
+        // Purger les survivants
+        const purged = this.enemies.length
+        for (let i = this.enemies.length - 1; i >= 0; i--) {
+          const enemy = this.enemies[i]
+          if (!enemy) continue
+          try { enemy.destroy() } catch (e) { /* ignore */ }
+          try { this.collisionSystem.removeEnemy(enemy) } catch (e) { /* ignore */ }
+          this.enemies.splice(i, 1)
+        }
+
+        // Déterminer si ce round était le dernier de la zone
+        const rounds = (this.zone && this.zone.getRounds) ? this.zone.getRounds() : []
+        const idx = rounds.indexOf(round)
+        const isLast = idx >= 0 ? (idx === rounds.length - 1) : true
+
+        // Si c'est le dernier round et que la zone n'est pas infinie, ouvrir la carte
+        if (isLast && this.zone && !this.zone.allowInfiniteRounds) {
+          try { window.dispatchEvent(new CustomEvent('openZoneMap', { detail: { nodeId: this.currentZoneNodeId } })) } catch (e) {}
+        }
+
+        // Déterminer si on devrait démarrer le round suivant après le choix du loot
+        const shouldStartNext = !isLast || (this.zone && this.zone.allowInfiniteRounds)
+
+        // Afficher le loot de fin de round (garanti) après un court délai.
+        setTimeout(() => {
+          this._showLootScreen(this.xpSystem.level, { startNextRoundAfterPick: shouldStartNext })
+        }, 800)
+      }
+    }
 
     // Callback ennemi spawné
     this.spawnerSystem.onEnemySpawned = (enemy) => {
@@ -194,26 +235,8 @@ export class MainScene extends BaseScene {
     this.currentRound.addMob({ type: VoltStriker, count: 5, spawnInterval: 2 })
     this.zone.addRound(this.currentRound)
 
-    // Purge des ennemis restants et affichage du loot en fin de round
-    this.currentRound.onRoundEnd = () => {
-      // Stopper le spawner immédiatement
-      if (this.spawnerSystem) this.spawnerSystem.stop()
-
-      // Purger les survivants
-      const purged = this.enemies.length
-      for (let i = this.enemies.length - 1; i >= 0; i--) {
-        const enemy = this.enemies[i]
-        if (!enemy) continue
-        try { enemy.destroy() } catch (e) { /* ignore */ }
-        try { this.collisionSystem.removeEnemy(enemy) } catch (e) { /* ignore */ }
-        this.enemies.splice(i, 1)
-      }
-      // console.log(`[MainScene] Fin du round — ${purged} ennemis purgés`)
-      // Afficher le loot de fin de round (garanti) après un court délai.
-      setTimeout(() => {
-        this._showLootScreen(this.xpSystem.level, { startNextRoundAfterPick: true })
-      }, 800)
-    }
+    // Attacher le handler de fin de round au round initial
+    this._attachRoundEndHandler(this.currentRound)
 
     // Démarrer le premier round
     this.currentRound.startRound()
@@ -277,6 +300,118 @@ export class MainScene extends BaseScene {
     })
 
     this._setupDebugCommands()
+  }
+
+  /**
+   * Load a zone by its tree node id: rebuild Zone, create rounds and teleport player
+   * @param {number} nodeId
+   */
+  loadZoneByNodeId(nodeId) {
+    if (!this.zone || !this.zone.tree) {
+      console.warn('[MainScene] No zone tree available to load node', nodeId)
+      return
+    }
+    const nodes = this.zone.tree.nodes || []
+    const node = nodes.find(n => n.id === nodeId)
+    if (!node) {
+      console.warn('[MainScene] Zone node not found:', nodeId)
+      return
+    }
+
+    console.log('[MainScene] Loading zone node', nodeId, node)
+
+    // Debug: log rounds/mobs and reset spawner counters to avoid stale state
+    console.log('[MainScene] Node rounds:', node.nbrounds)
+    if (this.spawnerSystem) {
+      console.log('[MainScene] SpawnerSystem before load: isSpawning=', this.spawnerSystem.isSpawning, 'spawnedCount=', this.spawnerSystem.spawnedCount, 'maxSpawns=', this.spawnerSystem.maxSpawns)
+      try { this.spawnerSystem.stop() } catch (e) {}
+      this.spawnerSystem.spawnedCount = 0
+      this.spawnerSystem.maxSpawns = null
+    }
+
+    // Mémoriser l'id du noeud chargé
+    this.currentZoneNodeId = nodeId
+
+    // Purge existing enemies and stop spawner
+    if (this.spawnerSystem) this.spawnerSystem.stop()
+    for (let i = this.enemies.length - 1; i >= 0; i--) {
+      const enemy = this.enemies[i]
+      try { enemy.destroy && enemy.destroy() } catch (e) {}
+      try { this.collisionSystem.removeEnemy(enemy) } catch (e) {}
+      this.enemies.splice(i, 1)
+    }
+
+    // Create a fresh Zone instance for gameplay, but preserve the tree reference
+    const newZone = new Zone(this.scene)
+    newZone.tree = this.zone.tree
+    // reuse existing spawner system for the zone
+    if (this.spawnerSystem) newZone.addSpawner(this.spawnerSystem)
+
+    // Generate rounds for this node
+    const nb = node.nbrounds || 1
+    for (let r = 0; r < nb; r++) {
+      const round = new Round(this.scene, newZone, { timelimit: 90 + r * 30, timebefore: 3 })
+      // Simple mob selection based on difficulty progression
+      const cat1 = [VoltStriker, NeonVector, BastionRed]
+      const cat2 = [DashTrigger, BoltSentry, SludgePhrax, BlastZone, IronBulwark, DroneSwarm, ToxicWasp, PyroCaster, JammerUnit, NitroHusk]
+      const cat3 = [EchoWraith, TitanRam, LinkCommander, CoreSpawner]
+      const totalMobs = 6 + r * 4
+      const pickRandom = (arr, count) => { const s = [...arr].sort(() => 0.5 - Math.random()); return s.slice(0, Math.min(count, s.length)) }
+
+      const types1 = pickRandom(cat1, 2)
+      const c1 = Math.ceil(totalMobs * 0.7 / Math.max(1, types1.length))
+      types1.forEach(T => round.addMob({ type: T, count: c1, spawnInterval: 1.5 }))
+
+      if (r >= 1) {
+        const types2 = pickRandom(cat2, 2)
+        const c2 = Math.ceil(totalMobs * 0.25 / Math.max(1, types2.length))
+        types2.forEach(T => round.addMob({ type: T, count: c2, spawnInterval: 3.0 }))
+      }
+      if (r >= 3) {
+        const types3 = pickRandom(cat3, 1)
+        types3.forEach(T => round.addMob({ type: T, count: 1, spawnInterval: 6.0 }))
+      }
+
+      newZone.addRound(round)
+      // Attacher handler fin de round pour chaque round créé
+      try { this._attachRoundEndHandler(round) } catch (e) {}
+      console.debug('[MainScene] created round for node', nodeId, 'r=', r, 'mobs=', round.getMobs().map(m => ({ type: m.type.name, count: m.count })))
+    }
+
+    // Replace zone and set current round to first
+    this.zone = newZone
+    this._roundNumber = 1
+    this.currentRound = this.zone.getRounds()[0]
+    console.debug('[MainScene] zone loaded — rounds=', this.zone.getRounds().length, 'currentRoundIndex=0 assigned')
+    if (this.currentRound) {
+      try {
+        this._pendingLevelUpLootLevel = null
+        this._isGamePausedForLoot = false
+        if (this.spawnerSystem) {
+          this.spawnerSystem.stop()
+          this.spawnerSystem.spawnedCount = 0
+          this.spawnerSystem.maxSpawns = null
+          this.spawnerSystem._timer = 0
+        }
+      } catch (e) { /* ignore */ }
+
+      this.currentRound.startRound()
+    }
+
+    // Teleport player to center of zone map
+    try {
+      if (this.playerEntry && this.playerEntry.mesh) {
+        this.playerEntry.mesh.position = new Vector3(0, 1, 0)
+        // reset camera follow if available
+        if (this.cameraManager && this.cameraManager.active && this.cameraManager.active.camera) {
+          try { this.scene.activeCamera = this.cameraManager.active.camera } catch (e) {}
+        }
+      }
+    } catch (e) {
+      console.warn('[MainScene] Error teleporting player', e)
+    }
+
+    this.uiSystem && this.uiSystem.showNotification(`Chargé: zone ${nodeId} (${node.type})`, '#88ccff', 2000)
   }
 
   // ─────────────────────────────────────────────
@@ -741,6 +876,7 @@ export class MainScene extends BaseScene {
       ? this.currentRound.remainingBefore
       : this.currentRound.remainingTime
     this.uiSystem.updateRound(currentIndex, rounds.length, this.currentRound.state, remaining)
+    console.debug('[MainScene] UI Round update — currentIndex=', currentIndex, 'roundsLen=', rounds.length, 'currentState=', this.currentRound.state)
 
     // Vérifier la mort du joueur → écran Game Over
     if (!this._isGameOver && this.playerEntry && this.playerEntry.life <= 0) {
@@ -777,6 +913,28 @@ export class MainScene extends BaseScene {
    * Round N : 5+N*2 SimpleEnemy, + HeavyEnemy si N≥2, + MetroidEnemy si N≥3
    */
   _startNextRound() {
+    const rounds = this.zone.getRounds()
+    const currentIndex = rounds.indexOf(this.currentRound)
+
+    // Si la zone possède des rounds prédéfinis et qu'il en reste, lancer le suivant
+    if (currentIndex >= 0 && currentIndex < rounds.length - 1) {
+      this._roundNumber = currentIndex + 2 // index -> round number
+      this.currentRound = rounds[currentIndex + 1]
+      this.currentRound.startRound()
+      this.uiSystem.showNotification(`⚡ ROUND ${this._roundNumber} — EN AVANT !`, '#ffcc00', 2500)
+      return
+    }
+
+    // Si la zone n'autorise pas la génération infinie, ne pas créer de nouveaux rounds
+    if (!this.zone.allowInfiniteRounds) {
+      this.uiSystem.showNotification('Zone terminée — appuie sur M pour ouvrir la carte', '#88ff88', 3000)
+      try {
+        window.dispatchEvent(new CustomEvent('openZoneMap', { detail: { nodeId: this.currentZoneNodeId } }))
+      } catch (e) {}
+      return
+    }
+
+    // Sinon (mode infini) : créer un nouveau round comme avant
     this._roundNumber++
     const n = this._roundNumber
 

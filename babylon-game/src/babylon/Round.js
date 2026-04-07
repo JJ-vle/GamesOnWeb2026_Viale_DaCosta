@@ -13,6 +13,7 @@ export class Round {
         this.zone = zone;
 
         this.timelimit = options.timelimit ?? 60;
+        //this.timelimit = 10; //POUR TESTS RAPIDES
         this.timebefore = options.timebefore ?? 5;
         // Un round se termine au timer (pas au dernier kill).
         this.endOnAllEnemiesDead = options.endOnAllEnemiesDead ?? false;

@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed, nextTick, watch } from 'vue'
 import { generateZoneTree } from '../babylon/ZoneTree'
+import { getGame } from '../babylon/BabylonService'
 
 const props = defineProps({ playerNodeId: { type: Number, default: null } })
 const emit = defineEmits(['selectZone'])
@@ -51,10 +52,20 @@ const keyHandler = (e) => {
 const resizeHandler = () => updateLinks()
 
 onMounted(async () => {
-  try {
-    tree.value = generateZoneTree({ minDepth: 7, maxDepth: 9 })
-  } catch (e) {
-    tree.value = { depth: 6, nodes: [{ id:1, depth:1, type:'Battle', corrupted:false, next:[2] },{ id:2, depth:2, type:'Battle', corrupted:false, next:[3] },{ id:3, depth:3, type:'Battle', corrupted:false, next:[4] },{ id:4, depth:4, type:'Battle', corrupted:true, next:[5] },{ id:5, depth:5, type:'Mini Boss', corrupted:true, next:[6] },{ id:6, depth:6, type:'Boss', corrupted:true, next:[] }] }
+  // Use game's zone tree if available to avoid re-generating every open
+  const g = getGame()
+  if (g && g.scene && g.scene.zone && g.scene.zone.tree) {
+    tree.value = g.scene.zone.tree
+  } else {
+    try {
+      tree.value = generateZoneTree({ minDepth: 7, maxDepth: 9 })
+      // store into game scene zone if possible so other views reuse it
+      if (g && g.scene && g.scene.zone) {
+        g.scene.zone.tree = tree.value
+      }
+    } catch (e) {
+      tree.value = { depth: 6, nodes: [{ id:1, depth:1, type:'Battle', corrupted:false, next:[2] },{ id:2, depth:2, type:'Battle', corrupted:false, next:[3] },{ id:3, depth:3, type:'Battle', corrupted:false, next:[4] },{ id:4, depth:4, type:'Battle', corrupted:true, next:[5] },{ id:5, depth:5, type:'Mini Boss', corrupted:true, next:[6] },{ id:6, depth:6, type:'Boss', corrupted:true, next:[] }] }
+    }
   }
 
   await nextTick()
@@ -90,7 +101,8 @@ function getImageFor(node) {
   const t = (node.type || '').toLowerCase()
   if (t.includes('boss') && !t.includes('mini')) return '/assets/zones/zone_boss.png'
   if (t.includes('mini')) return '/assets/zones/zone_miniboss.png'
-  if (t.includes('shop') || t.includes('rest')) return '/assets/zones/zone_shop.png'
+  if (t.includes('shop')) return '/assets/zones/zone_shop.png'
+  if (t.includes('rest')) return '/assets/zones/zone_heal.png'
   if (t.includes('random')) return '/assets/zones/zone_random.png'
   if (t.includes('heal')) return '/assets/zones/zone_heal.png'
   return '/assets/zones/zone_battle.png'
@@ -157,10 +169,15 @@ function updateLinks() {
       const y2 = cRect.top  - contentRect.top  + cRect.height / 2
 
       const bothReachable = reachable.has(parent.id) && reachable.has(childId)
+      // trait corrompu dépend uniquement de la zone successeur (child)
+      const isCorrupted = !!nodesById[childId].corrupted
+      const disabled = !bothReachable
+      const stroke = disabled ? '#6b7280' : (isCorrupted ? '#ff5a5a' : '#7eb8ff')
       out.push({
         x1, y1, x2, y2,
-        corrupted: !!parent.corrupted || !!nodesById[childId].corrupted,
-        disabled: !bothReachable
+        corrupted: isCorrupted,
+        disabled,
+        stroke
       })
     })
   })
@@ -215,7 +232,7 @@ watch(grouped, async () => {
             :key="i"
             :x1="l.x1" :y1="l.y1"
             :x2="l.x2" :y2="l.y2"
-            :stroke="l.disabled ? '#6b7280' : (l.corrupted ? '#ff5a5a' : '#7eb8ff')"
+            :stroke="l.stroke"
             stroke-width="3"
             stroke-linecap="round"
             :stroke-opacity="l.disabled ? 0.35 : 0.75"
@@ -240,7 +257,7 @@ watch(grouped, async () => {
                 >
                   <div class="zone-img-container">
                     <img :src="currentPlayerId === node.id ? '/assets/zones/zone_player.png' : getImageFor(node)" class="zone-img" :alt="node.type" />
-                    <div class="node-effect" v-if="node.effect && node.effect !== 'none'">{{ node.effect }}</div>
+                    <div class="node-effect" v-if="node.effect && node.effect !== 'none' && currentPlayerId !== node.id">{{ node.effect }}</div>
                   </div>
                 </div>
               </div>

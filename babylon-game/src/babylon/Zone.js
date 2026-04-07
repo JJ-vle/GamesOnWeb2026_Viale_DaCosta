@@ -3,6 +3,9 @@ export class Zone {
         this.scene = scene;
         this.rounds = []; // List of rounds in this zone
         this.spawners = []; // Stocke les EnemySpawner de la zone (points de spawn)
+        // Si true, MainScene pourra générer des rounds supplémentaires indéfiniment
+        // Par défaut : false -> on n'ajoute pas automatiquement de rounds infinis
+        this.allowInfiniteRounds = false;
     }
 
     addSpawner(spawner) {
