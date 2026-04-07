@@ -20,6 +20,16 @@ function returnToMenu() {
   const handler = () => { returnToMenu() }
   window.addEventListener('returnToMenu', handler)
 
+  // Écouter les demandes d'ouverture de la zone map depuis la scène (MainScene)
+  const openMapHandler = (e) => {
+    const id = e && e.detail && typeof e.detail.nodeId !== 'undefined' ? e.detail.nodeId : null
+    if (mode.value !== 'map') {
+      if (id != null) playerNodeId.value = id
+      setMode('map')
+    }
+  }
+  window.addEventListener('openZoneMap', openMapHandler)
+
   const keyHandler = (e) => {
     if (!gameStarted.value) return
     if (e.key && e.key.toLowerCase() === 'm') {
@@ -36,6 +46,7 @@ function returnToMenu() {
 
   onUnmounted(() => {
     window.removeEventListener('returnToMenu', handler)
+    window.removeEventListener('openZoneMap', openMapHandler)
     window.removeEventListener('keydown', keyHandler)
   })
 })

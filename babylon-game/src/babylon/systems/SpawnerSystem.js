@@ -181,6 +181,8 @@ export class SpawnerSystem {
       this._timer += deltaTime;
       if (this._timer >= this.spawnInterval) {
         this._timer = 0;
+        // debug: log spawn tick
+        console.debug('[SpawnerSystem] spawn tick — spawnedCount=', this.spawnedCount, 'maxSpawns=', this.maxSpawns)
         this.spawnEnemy(playerPosition);
       }
     }
@@ -245,6 +247,7 @@ export class SpawnerSystem {
     }
 
     this.spawnedCount++;
+    console.debug('[SpawnerSystem] spawnEnemy ->', EnemyClass.name, 'pos=', spawnPos, 'spawnedCount=', this.spawnedCount)
     if (this.onEnemySpawned) this.onEnemySpawned(enemy);
   }
 
@@ -287,6 +290,7 @@ export class SpawnerSystem {
   start() {
     this.isSpawning = true;
     this._timer = 0;
+    console.debug('[SpawnerSystem] start spawning')
     // Ne pas réinitialiser spawnedCount ici (géré par configure)
   }
 
@@ -296,5 +300,6 @@ export class SpawnerSystem {
   stop() {
     this.isSpawning = false;
     this._timer = 0;
+    console.debug('[SpawnerSystem] stop spawning')
   }
 }
