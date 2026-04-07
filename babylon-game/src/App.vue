@@ -2,6 +2,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import BabylonScene from './components/BabylonScene.vue'
 import ZoneMapView from './components/ZoneMapView.vue'
+import { getGame } from './babylon/BabylonService'
 import { useGameMode } from './stores/useGameMode'
 
 const gameStarted = ref(false)
@@ -15,7 +16,7 @@ function returnToMenu() {
   setMode('combat')
 }
 
-onMounted(() => {
+  onMounted(() => {
   const handler = () => { returnToMenu() }
   window.addEventListener('returnToMenu', handler)
 
@@ -38,6 +39,18 @@ onMounted(() => {
     window.removeEventListener('keydown', keyHandler)
   })
 })
+
+function onSelectZone(id) {
+  // ask the running Game/MainScene to load the selected zone node
+  const g = getGame()
+  if (g && g.scene && typeof g.scene.loadZoneByNodeId === 'function') {
+    g.scene.loadZoneByNodeId(id)
+  } else {
+    console.warn('Game scene not ready to load zone')
+  }
+  // close the map UI
+  toggleMap(false)
+}
 </script>
 
 <template>
@@ -50,7 +63,7 @@ onMounted(() => {
     <!-- Keep Babylon canvas mounted persistently. Show the map as an overlay when mode === 'map'. -->
     <div class="game-root">
       <BabylonScene />
-      <ZoneMapView v-if="mode === 'map'" :playerNodeId="playerNodeId" />
+      <ZoneMapView v-if="mode === 'map'" :playerNodeId="playerNodeId" @selectZone="onSelectZone" />
     </div>
   </template>
 </template>

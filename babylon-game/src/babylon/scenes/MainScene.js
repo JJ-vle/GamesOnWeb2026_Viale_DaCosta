@@ -279,6 +279,91 @@ export class MainScene extends BaseScene {
     this._setupDebugCommands()
   }
 
+  /**
+   * Load a zone by its tree node id: rebuild Zone, create rounds and teleport player
+   * @param {number} nodeId
+   */
+  loadZoneByNodeId(nodeId) {
+    if (!this.zone || !this.zone.tree) {
+      console.warn('[MainScene] No zone tree available to load node', nodeId)
+      return
+    }
+    const nodes = this.zone.tree.nodes || []
+    const node = nodes.find(n => n.id === nodeId)
+    if (!node) {
+      console.warn('[MainScene] Zone node not found:', nodeId)
+      return
+    }
+
+    console.log('[MainScene] Loading zone node', nodeId, node)
+
+    // Purge existing enemies and stop spawner
+    if (this.spawnerSystem) this.spawnerSystem.stop()
+    for (let i = this.enemies.length - 1; i >= 0; i--) {
+      const enemy = this.enemies[i]
+      try { enemy.destroy && enemy.destroy() } catch (e) {}
+      try { this.collisionSystem.removeEnemy(enemy) } catch (e) {}
+      this.enemies.splice(i, 1)
+    }
+
+    // Create a fresh Zone instance for gameplay, but preserve the tree reference
+    const newZone = new Zone(this.scene)
+    newZone.tree = this.zone.tree
+    // reuse existing spawner system for the zone
+    if (this.spawnerSystem) newZone.addSpawner(this.spawnerSystem)
+
+    // Generate rounds for this node
+    const nb = node.nbrounds || 1
+    for (let r = 0; r < nb; r++) {
+      const round = new Round(this.scene, newZone, { timelimit: 90 + r * 30, timebefore: 3 })
+      // Simple mob selection based on difficulty progression
+      const cat1 = [VoltStriker, NeonVector, BastionRed]
+      const cat2 = [DashTrigger, BoltSentry, SludgePhrax, BlastZone, IronBulwark, DroneSwarm, ToxicWasp, PyroCaster, JammerUnit, NitroHusk]
+      const cat3 = [EchoWraith, TitanRam, LinkCommander, CoreSpawner]
+      const totalMobs = 6 + r * 4
+      const pickRandom = (arr, count) => { const s = [...arr].sort(() => 0.5 - Math.random()); return s.slice(0, Math.min(count, s.length)) }
+
+      const types1 = pickRandom(cat1, 2)
+      const c1 = Math.ceil(totalMobs * 0.7 / Math.max(1, types1.length))
+      types1.forEach(T => round.addMob({ type: T, count: c1, spawnInterval: 1.5 }))
+
+      if (r >= 1) {
+        const types2 = pickRandom(cat2, 2)
+        const c2 = Math.ceil(totalMobs * 0.25 / Math.max(1, types2.length))
+        types2.forEach(T => round.addMob({ type: T, count: c2, spawnInterval: 3.0 }))
+      }
+      if (r >= 3) {
+        const types3 = pickRandom(cat3, 1)
+        types3.forEach(T => round.addMob({ type: T, count: 1, spawnInterval: 6.0 }))
+      }
+
+      newZone.addRound(round)
+    }
+
+    // Replace zone and set current round to first
+    this.zone = newZone
+    this._roundNumber = 1
+    this.currentRound = this.zone.getRounds()[0]
+    if (this.currentRound) {
+      this.currentRound.startRound()
+    }
+
+    // Teleport player to center of zone map
+    try {
+      if (this.playerEntry && this.playerEntry.mesh) {
+        this.playerEntry.mesh.position = new Vector3(0, 1, 0)
+        // reset camera follow if available
+        if (this.cameraManager && this.cameraManager.active && this.cameraManager.active.camera) {
+          try { this.scene.activeCamera = this.cameraManager.active.camera } catch (e) {}
+        }
+      }
+    } catch (e) {
+      console.warn('[MainScene] Error teleporting player', e)
+    }
+
+    this.uiSystem && this.uiSystem.showNotification(`Chargé: zone ${nodeId} (${node.type})`, '#88ccff', 2000)
+  }
+
   // ─────────────────────────────────────────────
   _createBorders(width, height) {
     const wallHeight = 10
