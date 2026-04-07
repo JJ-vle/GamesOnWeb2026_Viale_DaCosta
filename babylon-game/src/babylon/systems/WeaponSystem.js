@@ -9,9 +9,11 @@ export class WeaponSystem {
 
     this.collisionSystem = collisionSystem
 
-    // On donne au weapon un callback pour enregistrer les projectiles
+    // On sauvegarde le callback existant pour ne pas l'écraser (ex: celui de MainScene)
+    const oldCallback = this.weapon.onProjectileCreated
     this.weapon.onProjectileCreated = (projectile) => {
       this.collisionSystem.registerProjectile(projectile)
+      if (oldCallback) oldCallback(projectile)
     }
   }
 
