@@ -62,6 +62,7 @@ export class EnemyAIFSM {
         },
         chase: {
           on: {
+            PLAYER_SPOTTED: { target: 'chase' },
             LOST_PLAYER: { target: 'investigate' },
             IN_RANGE: { target: 'attack' },
             LOW_HEALTH: { target: 'retreat' },
@@ -77,6 +78,7 @@ export class EnemyAIFSM {
         },
         retreat: {
           on: {
+            PLAYER_SPOTTED: { target: 'chase' },
             HEALTH_RECOVERED: { target: 'chase' },
             DIED: { target: 'dead' },
           },
