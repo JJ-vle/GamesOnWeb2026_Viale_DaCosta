@@ -15,13 +15,20 @@ import { Enemy } from '../Enemy'
 export class ToxicWasp extends Enemy {
 
     constructor(scene, contact) {
-        super(scene, contact, 18)
+        super(scene, contact, 18, {
+            fovDistance: 45,
+            fovAngle: 120,
+            attackRange: 3,
+            retreatThreshold: 0.15,
+        })
         this.enemy = this._createMesh()
         this.material = this.enemy.material
         this.speed = 1.0
         this.damage = 1
-        
-        this.hasPoison = true // Tag checked by collisions
+
+        this.hasPoison = true
+        this._zigzagSide = (Math.random() < 0.5) ? 1 : -1
+        this._zigzagTimer = 0
 
         this.xpValue = 10
         this.coinValue = 5
@@ -44,32 +51,27 @@ export class ToxicWasp extends Enemy {
     update(playerMesh, projectiles = [], enemies = []) {
         if (!this.enemy) return
 
+        this.updateHitFlash()
+
         const dt = this.scene.getEngine().getDeltaTime() / 1000
 
-        if (this._hitTimer > 0) {
-            this._hitTimer -= dt
-            if (this._hitTimer <= 0) this.material.diffuseColor = new Color3(0.5, 1, 0)
+        // NavGrid AI
+        const result = this.updateNavGridAI(playerMesh, enemies)
+        if (!result || !result.moved) return
+
+        // Zigzag capricieux par-dessus le NavGrid
+        this._zigzagTimer += dt
+        if (this._zigzagTimer > 0.4) {
+            this._zigzagTimer = 0
+            this._zigzagSide *= -1
         }
-
+        const forward = playerMesh.position.subtract(this.enemy.position)
+        forward.y = 0
+        forward.normalize()
+        const right = new Vector3(-forward.z, 0, forward.x)
         const slow = (this._slowFactor !== undefined && this._slowFactor >= 0) ? this._slowFactor : 1
+        this.enemy.position.addInPlace(right.scale(this._zigzagSide * 0.04 * this.speed * slow))
 
-        const toPlayer = playerMesh.position.subtract(this.enemy.position)
-        toPlayer.y = 0
-        const direction = toPlayer.normalize()
-
-        // Strafe zigzag 
-        const right = new Vector3(-direction.z, 0, direction.x)
-        const lateral = Math.sin(performance.now() / 400) * 0.8
-        direction.addInPlace(right.scale(lateral)).normalize()
-
-        const separation = this._getFlockingVector(enemies, 3.0, 1.5)
-        direction.addInPlace(separation).normalize()
-
-        this.enemy.lookAt(this.enemy.position.add(direction))
-        
-        // Vitesse fluctuante pour simuler un vol capricieux
-        const speedVar = 0.8 + Math.cos(performance.now() / 300) * 0.4
-        
-        this.enemy.position.addInPlace(direction.scale(0.06 * this.speed * slow * speedVar))
+        this.applyRotation(result.scaledMove)
     }
 }

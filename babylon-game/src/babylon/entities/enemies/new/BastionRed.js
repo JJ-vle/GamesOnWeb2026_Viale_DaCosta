@@ -14,7 +14,12 @@ import { Enemy } from '../Enemy'
 export class BastionRed extends Enemy {
 
     constructor(scene, contact) {
-        super(scene, contact, 24)
+        super(scene, contact, 24, {
+            fovDistance: 40,
+            fovAngle: 120,
+            attackRange: 4,
+            retreatThreshold: 0.1,
+        })
         this.enemy = this._createMesh()
         this.material = this.enemy.material
         this.speed = 0.6 // TRES Lent
@@ -40,25 +45,10 @@ export class BastionRed extends Enemy {
     update(playerMesh, projectiles = [], enemies = []) {
         if (!this.enemy) return
 
-        const dt = this.scene.getEngine().getDeltaTime() / 1000
+        this.updateHitFlash()
 
-        if (this._hitTimer > 0) {
-            this._hitTimer -= dt
-            if (this._hitTimer <= 0) this.material.diffuseColor = new Color3(0.9, 0.1, 0.1)
-        }
-
-        const slow = (this._slowFactor !== undefined && this._slowFactor >= 0) ? this._slowFactor : 1
-
-        const toPlayer = playerMesh.position.subtract(this.enemy.position)
-        toPlayer.y = 0
-        const direction = toPlayer.normalize()
-
-        const separation = this._getFlockingVector(enemies, 4.0, 1.5)
-        direction.addInPlace(separation).normalize()
-
-        this.enemy.lookAt(this.enemy.position.add(direction))
-        
-        // Lent
-        this.enemy.position.addInPlace(direction.scale(0.05 * this.speed * slow))
+        // NavGrid AI
+        const result = this.updateNavGridAI(playerMesh, enemies, { separationDist: 4.0 })
+        if (result) this.applyRotation(result.scaledMove)
     }
 }

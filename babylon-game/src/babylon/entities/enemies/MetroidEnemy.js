@@ -16,15 +16,20 @@ import { Enemy } from './Enemy'
 export class MetroidEnemy extends Enemy {
 
     constructor(scene, contact) {
-        super(scene, contact, 15) // maxLife = 15
+        super(scene, contact, 15, {
+            fovDistance: 45,
+            fovAngle: 120,
+            attackRange: 3,
+            retreatThreshold: 0.15,
+        })
         this.enemy = this._createMesh()
         this.material = this.enemy.material
-        this.speed = 0.055
+        this.speed = 1.0
         this.damage = 1
 
         // Paramètres du zigzag
         this._zigzagTimer = 0
-        this._zigzagInterval = 0.8 + Math.random() * 0.6 // entre 0.8s et 1.4s
+        this._zigzagInterval = 0.8 + Math.random() * 0.6
         this._zigzagSide = (Math.random() < 0.5) ? 1 : -1
         this._zigzagStrength = 0.4 + Math.random() * 0.3
 
@@ -51,50 +56,36 @@ export class MetroidEnemy extends Enemy {
     update(playerMesh, projectiles = [], enemies = []) {
         if (!this.enemy) return
 
+        this.updateHitFlash()
+
         const dt = this.scene.getEngine().getDeltaTime() / 1000
 
-        // Flash au hit
-        if (this._hitTimer > 0) {
-            this._hitTimer -= dt
-            if (this._hitTimer <= 0) {
-                this.material.diffuseColor = new Color3(0.1, 0.8, 0.6)
-            }
-        }
+        // NavGrid AI
+        const result = this.updateNavGridAI(playerMesh, enemies)
+        if (!result || !result.moved) return
 
-        // Mise à jour du zigzag
+        // Zigzag par-dessus le mouvement NavGrid
         this._zigzagTimer += dt
         if (this._zigzagTimer >= this._zigzagInterval) {
             this._zigzagTimer = 0
-            this._zigzagSide *= -1 // inverser la direction latérale
+            this._zigzagSide *= -1
             this._zigzagInterval = 0.8 + Math.random() * 0.6
         }
 
-        // Direction principale vers le joueur (Y ignoré)
-        const toPlayer = playerMesh.position.subtract(this.enemy.position)
-        toPlayer.y = 0
-        const dist = toPlayer.length()
-        if (dist < 0.01) return
-        const forward = toPlayer.normalize()
-        
-        // Intelligence: Séparation
-        const separation = this._getFlockingVector(enemies, 3.5, 1.0)
-        forward.addInPlace(separation).normalize()
-
-        // Vecteur perpendiculaire (strafe)
+        const forward = playerMesh.position.subtract(this.enemy.position)
+        forward.y = 0
+        forward.normalize()
         const right = new Vector3(-forward.z, 0, forward.x)
-
-        // Combiner forward + zigzag
-        const zPct = this._zigzagTimer / this._zigzagInterval // 0→1
+        const zPct = this._zigzagTimer / this._zigzagInterval
         const lateral = Math.sin(zPct * Math.PI) * this._zigzagSide * this._zigzagStrength
-
         const slow = (this._slowFactor !== undefined && this._slowFactor >= 0) ? this._slowFactor : 1
+        this.enemy.position.addInPlace(right.scale(lateral * 0.04 * slow))
 
-        const moveDir = forward.scale(this.speed * slow).add(right.scale(lateral * 0.04 * slow))
-        this.enemy.position.addInPlace(moveDir)
-
-        // Flottement vertical sinusoïdal
+        // Flottement vertical
         this._floatTimer += dt * 2.5
         this.enemy.position.y = this._baseY + Math.sin(this._floatTimer) * 0.3
+
+        this.applyRotation(result.scaledMove)
     }
 
     takeDamage(amount) {

@@ -10,11 +10,15 @@ import { Enemy } from './Enemy'
 export class SimpleEnemy extends Enemy {
 
     constructor(scene, contact) {
-        // Passer false pour désactiver l'IA par défaut (compatibilité comportement ancien)
-        // ou pass a config pour l'activer avec params custom
-        super(scene, contact, 10, false)
+        super(scene, contact, 10, {
+            fovDistance: 40,
+            fovAngle: 120,
+            attackRange: 3,
+            retreatThreshold: 0.15,
+        })
         this.enemy = this._createMesh();
         this.material = this.enemy.material
+        this.speed = 1.0
         this.xpValue = 10
         this.coinValue = 5
     }
@@ -33,26 +37,11 @@ export class SimpleEnemy extends Enemy {
     update(playerMesh, projectiles = [], enemies = []) {
         if (!this.enemy) return
 
-        // Flash rouge au hit
-        if (this._hitTimer > 0) {
-            this._hitTimer -= this.scene.getEngine().getDeltaTime() / 1000
-            if (this._hitTimer <= 0) {
-                this.material.diffuseColor = new Color3(1, 1, 1)
-            }
-        }
+        this.updateHitFlash()
 
-        const slow = (this._slowFactor !== undefined && this._slowFactor >= 0) ? this._slowFactor : 1
-        
-        // Direction vers le joueur
-        const direction = playerMesh.position.subtract(this.enemy.position)
-        direction.y = 0
-        direction.normalize()
-
-        // Intelligence: Séparation pour ne pas faire une boule d'ennemis et contourner
-        const separation = this._getFlockingVector(enemies, 3.5, 1.5)
-        direction.addInPlace(separation).normalize()
-
-        this.enemy.position.addInPlace(direction.scale(0.05 * slow))
+        // NavGrid AI
+        const result = this.updateNavGridAI(playerMesh, enemies)
+        if (result) this.applyRotation(result.scaledMove)
     }
 
 }

@@ -14,12 +14,17 @@ import { Enemy } from '../Enemy'
 export class LinkCommander extends Enemy {
 
     constructor(scene, contact) {
-        super(scene, contact, 18)
+        super(scene, contact, 18, {
+            fovDistance: 40,
+            fovAngle: 120,
+            attackRange: 20,
+            retreatThreshold: 0.3,
+        })
         this.enemy = this._createMesh()
         this.material = this.enemy.material
         this.speed = 1.0
-        this.damage = 0 // Ne combat pas vraiment
-        
+        this.damage = 0
+
         this.auraRadius = 15
         this._auraScale = 0
 
@@ -56,53 +61,24 @@ export class LinkCommander extends Enemy {
     update(playerMesh, projectiles = [], enemies = []) {
         if (!this.enemy) return
 
+        this.updateHitFlash()
+
         const dt = this.scene.getEngine().getDeltaTime() / 1000
 
-        if (this._hitTimer > 0) {
-            this._hitTimer -= dt
-            if (this._hitTimer <= 0) this.material.diffuseColor = new Color3(0.8, 0.4, 0.9)
-        }
-
-        const slow = (this._slowFactor !== undefined && this._slowFactor >= 0) ? this._slowFactor : 1
-
-        // Pulse the aura visually
+        // Pulse aura
         this._auraScale += dt * 3
         this.auraMesh.scaling.y = 1 + Math.sin(this._auraScale) * 0.1
-        
-        const toPlayer = playerMesh.position.subtract(this.enemy.position)
-        toPlayer.y = 0
-        const dist = toPlayer.length()
-        
-        // Maintient la distance au maximum pour buff tout le monde
-        let moveDir = new Vector3()
-        const direction = toPlayer.normalize()
 
-        if (dist > 25) moveDir = direction.clone()
-        else if (dist < 20) moveDir = direction.scale(-1)
-        else {
-            const rot = new Vector3(-direction.z, 0, direction.x)
-            moveDir = rot.scale(1)
-        }
+        // NavGrid AI
+        const result = this.updateNavGridAI(playerMesh, enemies, { separationDist: 4.0 })
+        if (result) this.applyRotation(result.scaledMove)
 
-        const separation = this._getFlockingVector(enemies, 4.0, 1.0)
-        moveDir.addInPlace(separation).normalize()
-
-        this.enemy.lookAt(this.enemy.position.add(direction))
-        
-        if (moveDir.length() > 0) {
-            this.enemy.position.addInPlace(moveDir.scale(0.04 * this.speed * slow))
-        }
-
-        // --- BUFF SYSTEM ---
-        // Cherche les alliés dans l'AuraRadius et leur donne un flag temporaire.
-        // Ce système n'est pleinement effectif que si implémenté dans SimpleEnemy/HeavyEnemy (ex: read _buffTimer).
+        // BUFF SYSTEM: alliés dans l'aura
         for (const other of enemies) {
             if (other === this || !other.enemy) continue
             const d = Vector3.Distance(this.enemy.position, other.enemy.position)
             if (d <= this.auraRadius) {
-                // Signal temporaire sur Other
-                other._buffTimer = 0.2 // Très court pce qu'il est mis à jour chaque frame.
-                // Visually: others could glow purple slightly via main loop or their update.
+                other._buffTimer = 0.2
             }
         }
     }

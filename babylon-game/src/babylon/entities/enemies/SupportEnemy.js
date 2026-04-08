@@ -68,7 +68,7 @@ export class SupportEnemy extends Enemy {
 
         perception.canSee = playerVisible
         if (playerVisible) {
-            perception.lastSeenPos = playerMesh.position.clone()
+            if (perception.lastSeenPos) perception.lastSeenPos.copyFrom(playerMesh.position); else perception.lastSeenPos = playerMesh.position.clone()
             perception.lastSeenTime = 0
         } else {
             perception.lastSeenTime += deltaTime

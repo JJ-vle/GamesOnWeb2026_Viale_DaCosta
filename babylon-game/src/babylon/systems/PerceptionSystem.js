@@ -40,12 +40,13 @@ export class PerceptionSystem {
     useLineOfSight = true,
     enemyId = null
   ) {
-    // ── OPTIMISATION: Vérifier le cache ──
+    // ── OPTIMISATION: Vérifier le cache avec offset de stagger ──
     const now = performance.now();
     if (enemyId !== null && this._perceptionCache.has(enemyId)) {
       const cached = this._perceptionCache.get(enemyId);
-      if (now - cached.lastTime < this._cacheValidityDuration * 1000) {
-        // Cache valide, retourner le résultat caché
+      // Chaque ennemi a un offset aléatoire pour éviter que tous les raycasts fire en même temps
+      const staggeredDuration = this._cacheValidityDuration * 1000 + (cached.staggerOffset || 0);
+      if (now - cached.lastTime < staggeredDuration) {
         return cached.lastResult;
       }
     }
@@ -76,9 +77,12 @@ export class PerceptionSystem {
    */
   _cacheResult(enemyId, result, timestamp) {
     if (enemyId !== null) {
+      const existing = this._perceptionCache.get(enemyId);
       this._perceptionCache.set(enemyId, {
         lastResult: result,
-        lastTime: timestamp
+        lastTime: timestamp,
+        // Stagger: offset aléatoire 0-100ms, calculé une seule fois par ennemi
+        staggerOffset: existing ? existing.staggerOffset : Math.random() * 100
       });
     }
   }
@@ -143,7 +147,7 @@ export class PerceptionSystem {
     if (currentlyCanSee) {
       // On voit le joueur maintenant
       perception.canSee = true;
-      perception.lastSeenPos = playerPos.clone();
+      if (perception.lastSeenPos) perception.lastSeenPos.copyFrom(playerPos); else perception.lastSeenPos = playerPos.clone();
       perception.lastSeenTime = 0;
     } else {
       // On ne le voit pas

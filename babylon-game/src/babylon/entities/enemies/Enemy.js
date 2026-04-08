@@ -87,93 +87,148 @@ export class Enemy {
     }
     
     /**
-     * Update principal: IA + déplacement + animations
-     * À surcharger dans les classes filles si besoin
+     * Update principal par défaut.
+     * Les classes filles surchargent update() et appellent updateNavGridAI() pour le mouvement.
      */
     update(playerMesh, projectiles = [], enemies = []) {
         if (!this.enemy) return
+        this.updateHitFlash()
 
-        // Flash rouge au hit
+        // Mouvement IA NavGrid (si perception + fsm + pathfinding sont injectés)
+        const result = this.updateNavGridAI(playerMesh, enemies)
+        if (result && result.moved) {
+            this.applyRotation(result.scaledMove)
+        }
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    //  BRIQUES RÉUTILISABLES — les classes filles composent avec ça
+    // ──────────────────────────────────────────────────────────────
+
+    /**
+     * Gère le flash rouge au hit (à appeler en début d'update)
+     */
+    updateHitFlash() {
         if (this._hitTimer > 0) {
             this._hitTimer -= this.scene.getEngine().getDeltaTime() / 1000
             if (this._hitTimer <= 0) {
-                this.material.diffuseColor = new Color3(1, 1, 1)
+                if (this._originalDiffuseColor && this.material) {
+                    this.material.diffuseColor = this._originalDiffuseColor.clone()
+                } else if (this.material) {
+                    this.material.diffuseColor = new Color3(1, 1, 1)
+                }
             }
-        }
-
-        // Logique IA (si activée par aiConfig)
-        if (this.fsm && this.perception) {
-            this.updateAI(playerMesh, enemies)
         }
     }
 
     /**
-     * Update IA seule: perception + FSM + mouvement
-     * À surcharger pour des comportements spécifiques
-     * Les classes filles appelleront super.updateAI() puis ajouteront leur logique
+     * Pipeline IA complet: Perception → FSM → Pathfinding A* → Mouvement
+     *
+     * Retourne un objet { action, scaledMove, moved, dt } pour que la classe fille
+     * puisse ajouter sa propre logique (tir, dash, rotation, animation…).
+     *
+     * @param {Mesh} playerMesh - mesh du joueur
+     * @param {Enemy[]} enemies - liste des ennemis (pour séparation)
+     * @param {Object} [options]
+     * @param {number} [options.separationDist=2.5] - distance de séparation
+     * @param {number} [options.separationForce=1.2] - force de séparation
+     * @param {boolean} [options.useCollisions=true] - moveWithCollisions vs addInPlace
+     * @returns {{ action: Object, scaledMove: Vector3, moved: boolean, dt: number } | null}
      */
-    updateAI(playerMesh, enemies = []) {
-        if (!this.fsm || !this.perception || !this.pathfinding) return
+    updateNavGridAI(playerMesh, enemies = [], options = {}) {
+        if (!this.enemy || !this.fsm || !this.perception || !this.pathfinding) return null
 
-        const deltaTime = this.scene.getEngine().getDeltaTime() / 1000
-        const perception = this.perception
+        const dt = this.scene.getEngine().getDeltaTime() / 1000
+        const {
+            separationDist = 2.5,
+            separationForce = 1.2,
+            useCollisions = true,
+        } = options
 
-        // 1. PERCEPTION: Vérifier si joueur visible
-        const canSee = this.fsm.machine._machine
-            ? false // Fallback si xstate pas init complètement
-            : false
-        
-        // Meilleure approche: créer un simple système de perception si pas de PerceptionSystem
-        const playerDistance = Vector3.Distance(this.enemy.position, playerMesh.position)
-        const playerVisible = playerDistance < (this.fsm.config.fovDistance || 30)
-        
-        // Mettre à jour perception de manière permanente
-        perception.canSee = playerVisible
-        if (playerVisible) {
-            perception.lastSeenPos = playerMesh.position.clone()
-            perception.lastSeenTime = 0
-            this._hasSeenPlayer = true // L'ennemi se souviendra toujours
-        } else if (this._hasSeenPlayer) {
-            // Toujours continuer à pister le joueur s'il a été vu
-            perception.lastSeenPos = playerMesh.position.clone()
-            perception.lastSeenTime = 0
+        // ── 1. PERCEPTION ──
+        const fovDistance = this.fsm.config.fovDistance || 25
+        const fovAngle = this.fsm.config.fovAngle || 120
+
+        let playerVisible = false
+        if (this.perceptionSystem) {
+            playerVisible = this.perceptionSystem.canSeePlayer(
+                this.enemy.position, playerMesh.position,
+                fovDistance, fovAngle, Vector3.Forward(), false
+            )
         } else {
-            perception.lastSeenTime += deltaTime
+            // Fallback simple : distance seule
+            playerVisible = Vector3.Distance(this.enemy.position, playerMesh.position) < fovDistance
         }
 
-        // 2. FSM: Déterminer action basée sur perception
+        // Mise à jour perception
+        this.perception.canSee = playerVisible
+        if (playerVisible) {
+            if (this.perception.lastSeenPos) this.perception.lastSeenPos.copyFrom(playerMesh.position)
+            else this.perception.lastSeenPos = playerMesh.position.clone()
+            this.perception.lastSeenTime = 0
+            this._hasSeenPlayer = true
+        } else if (this._hasSeenPlayer) {
+            // Continue à tracker même si hors de vue
+            if (this.perception.lastSeenPos) this.perception.lastSeenPos.copyFrom(playerMesh.position)
+            else this.perception.lastSeenPos = playerMesh.position.clone()
+            this.perception.lastSeenTime = 0
+        } else {
+            this.perception.lastSeenTime += dt
+        }
+
+        // ── 2. FSM → déterminer action ──
         const action = this.fsm.getAction({
             health: this.life,
             maxHealth: this.maxLife,
             position: this.enemy.position,
             playerPos: playerVisible ? playerMesh.position : null,
-            targetPos: perception.lastSeenPos,
+            targetPos: this.perception.lastSeenPos,
         })
 
-        // 3. DÉPLACEMENT: Appliquer mouvement basé sur action
-        const deltaMs = this.scene.getEngine().getDeltaTime()
-        const speed = action.speed || 0.1
-        const targetPos = action.targetPos || this.enemy.position
-
-        if (action.action !== 'idle' && action.action !== 'dead') {
-            // ── OPTIMISATION: Filter ennemis proches pour séparation (éviter O(N²)) ──
-            // Ne passer que les ennemis à moins de 10 units (séparation + margin)
-            const nearbyEnemies = enemies.filter(e => {
-                if (!e || !e.enemy) return false
-                const dist = Vector3.Distance(this.enemy.position, e.enemy.position)
-                return dist < 10
-            })
-
-            const moveVec = this.pathfinding.getMovementVector(
-                this.enemy.position,
-                targetPos,
-                speed,
-                nearbyEnemies,
-                3.5,
-                1.5
-            )
-            this.enemy.position.addInPlace(moveVec)
+        // ── 3. MOUVEMENT via Pathfinding A* ──
+        const targetPos = action.targetPos
+        if (!targetPos || action.action === 'idle' || action.action === 'dead') {
+            return { action, scaledMove: Vector3.Zero(), moved: false, dt }
         }
+
+        // Filtrer ennemis proches pour séparation (éviter O(N²))
+        const nearbyEnemies = enemies.filter(e => {
+            if (!e || !e.enemy) return false
+            const dist = Vector3.Distance(this.enemy.position, e.enemy.position)
+            return dist < 10
+        })
+
+        const moveVec = this.pathfinding.getMovementVector(
+            this.enemy.position, targetPos,
+            action.speed * (this.speed || 1),
+            nearbyEnemies, separationDist, separationForce
+        )
+
+        const slow = (this._slowFactor !== undefined && this._slowFactor >= 0) ? this._slowFactor : 1
+        const scaledMove = moveVec.scale(slow)
+
+        if (useCollisions) {
+            this.enemy.moveWithCollisions(scaledMove)
+        } else {
+            this.enemy.position.addInPlace(scaledMove)
+        }
+
+        return { action, scaledMove, moved: true, dt }
+    }
+
+    /**
+     * Applique une rotation smooth vers la direction de mouvement.
+     * @param {Vector3} moveVec - vecteur de mouvement courant
+     * @param {number} [lerpFactor=0.15] - vitesse d'interpolation (0-1)
+     */
+    applyRotation(moveVec, lerpFactor = 0.15) {
+        if (!this.enemy || moveVec.lengthSquared() < 0.0001) return
+
+        const targetY = Math.atan2(moveVec.x, moveVec.z)
+        let diff = targetY - this.enemy.rotation.y
+        while (diff < -Math.PI) diff += Math.PI * 2
+        while (diff > Math.PI) diff -= Math.PI * 2
+        this.enemy.rotation.y += diff * lerpFactor
     }
 
     
@@ -208,17 +263,23 @@ export class Enemy {
         const sep = Enemy._sepVec
         sep.set(0, 0, 0)
         if (!this.enemy || !enemiesArray) return sep
-        
+
+        const px = this.enemy.position.x, pz = this.enemy.position.z
+        const sepDistSq = separationDistance * separationDistance
         let count = 0
-        for (const other of enemiesArray) {
+
+        for (let i = 0; i < enemiesArray.length; i++) {
+            const other = enemiesArray[i]
             if (other === this || !other.enemy) continue
-            const dist = Vector3.Distance(this.enemy.position, other.enemy.position)
-            if (dist < separationDistance && dist > 0.001) {
-                const away = Enemy._awayVec
-                this.enemy.position.subtractToRef(other.enemy.position, away)
-                away.y = 0
-                away.normalize()
-                sep.addInPlace(away.scale(separationDistance - dist))
+            const dx = px - other.enemy.position.x
+            const dz = pz - other.enemy.position.z
+            const distSq = dx * dx + dz * dz
+            if (distSq < sepDistSq && distSq > 0.000001) {
+                const dist = Math.sqrt(distSq)
+                const invDist = 1 / dist
+                const force = separationDistance - dist
+                sep.x += dx * invDist * force
+                sep.z += dz * invDist * force
                 count++
             }
         }

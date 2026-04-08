@@ -14,7 +14,12 @@ import { Enemy } from '../Enemy'
 export class DroneSwarm extends Enemy {
 
     constructor(scene, contact) {
-        super(scene, contact, 4) // 4 HP
+        super(scene, contact, 4, {
+            fovDistance: 50,
+            fovAngle: 120,
+            attackRange: 3,
+            retreatThreshold: 0.1,
+        })
         this.enemy = this._createMesh()
         this.material = this.enemy.material
         this.speed = 1.2 // Vif
@@ -41,34 +46,27 @@ export class DroneSwarm extends Enemy {
     update(playerMesh, projectiles = [], enemies = []) {
         if (!this.enemy) return
 
+        this.updateHitFlash()
+
         const dt = this.scene.getEngine().getDeltaTime() / 1000
 
-        if (this._hitTimer > 0) {
-            this._hitTimer -= dt
-            if (this._hitTimer <= 0) this.material.diffuseColor = new Color3(0.4, 0.4, 0.8)
-        }
+        // NavGrid AI pour le mouvement intelligent
+        const result = this.updateNavGridAI(playerMesh, enemies, {
+            separationDist: 1.5,
+            separationForce: 2.5,
+        })
+        if (!result || !result.moved) return
 
-        const slow = (this._slowFactor !== undefined && this._slowFactor >= 0) ? this._slowFactor : 1
-
-        const toPlayer = playerMesh.position.subtract(this.enemy.position)
-        toPlayer.y = 0
-        const dist = toPlayer.length()
-
-        // Au lieu de foncer bêtement, les Drones cherchent un point "autour" du joueur
+        // Orbite autour du joueur par-dessus le mouvement NavGrid
         this._orbitOffsetTimer += dt * 2
-        // Point cible à distance = 2, angle variable
-        const targetPoint = playerMesh.position.clone()
-        targetPoint.x += Math.cos(this._orbitOffsetTimer) * 2.5
-        targetPoint.z += Math.sin(this._orbitOffsetTimer) * 2.5
+        const slow = (this._slowFactor !== undefined && this._slowFactor >= 0) ? this._slowFactor : 1
+        const orbitOffset = new Vector3(
+            Math.cos(this._orbitOffsetTimer) * 0.03 * this.speed * slow,
+            0,
+            Math.sin(this._orbitOffsetTimer) * 0.03 * this.speed * slow
+        )
+        this.enemy.position.addInPlace(orbitOffset)
 
-        const toTarget = targetPoint.subtract(this.enemy.position)
-        toTarget.y = 0
-        const direction = toTarget.normalize()
-
-        // Forte séparation avec les autres drones pour combler le cercle (Swarm)
-        const swarmForce = this._getFlockingVector(enemies, 1.5, 2.5) // Séparation proche très forte
-        direction.addInPlace(swarmForce).normalize()
-
-        this.enemy.position.addInPlace(direction.scale(0.06 * this.speed * slow))
+        this.applyRotation(result.scaledMove)
     }
 }

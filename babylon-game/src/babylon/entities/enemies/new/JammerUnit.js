@@ -14,7 +14,12 @@ import { Enemy } from '../Enemy'
 export class JammerUnit extends Enemy {
 
     constructor(scene, contact) {
-        super(scene, contact, 18)
+        super(scene, contact, 18, {
+            fovDistance: 35,
+            fovAngle: 120,
+            attackRange: 10,
+            retreatThreshold: 0.2,
+        })
         this.enemy = this._createMesh()
         this.material = this.enemy.material
         this.speed = 1.0
@@ -54,34 +59,13 @@ export class JammerUnit extends Enemy {
         const { onJam } = callbacks
         if (!this.enemy) return
 
+        this.updateHitFlash()
+
         const dt = this.scene.getEngine().getDeltaTime() / 1000
 
-        if (this._hitTimer > 0) {
-            this._hitTimer -= dt
-            if (this._hitTimer <= 0) this.material.diffuseColor = new Color3(0.2, 0.2, 0.2)
-        }
-
-        const slow = (this._slowFactor !== undefined && this._slowFactor >= 0) ? this._slowFactor : 1
-        
-        const toPlayer = playerMesh.position.subtract(this.enemy.position)
-        toPlayer.y = 0
-        const dist = toPlayer.length()
-        
-        const direction = toPlayer.normalize()
-
-        // Essai de rester dans la range idéale (le joueur dedans)
-        let moveDir = new Vector3()
-        if (dist > this.jamRadius - 2) moveDir = direction.clone()
-        else if (dist < 4) moveDir = direction.scale(-1) // Ne s'approche pas trop
-
-        const separation = this._getFlockingVector(enemies, 3.5, 1.2)
-        moveDir.addInPlace(separation).normalize()
-
-        this.enemy.lookAt(this.enemy.position.add(direction))
-        
-        if (moveDir.length() > 0) {
-            this.enemy.position.addInPlace(moveDir.scale(0.04 * this.speed * slow))
-        }
+        // NavGrid AI
+        const result = this.updateNavGridAI(playerMesh, enemies)
+        if (result) this.applyRotation(result.scaledMove)
 
         // Animation de l'onde
         this._ringScale += dt * 4
@@ -89,8 +73,9 @@ export class JammerUnit extends Enemy {
         this.ringMesh.scaling.z = 0.8 + Math.abs(Math.sin(this._ringScale)) * 0.2
 
         // Brouillage actif
+        const dist = Vector3.Distance(this.enemy.position, playerMesh.position)
         if (dist <= this.jamRadius) {
-            if (onJam) onJam(true) // Applique le statut "Jammed" au joueur
+            if (onJam) onJam(true)
         }
     }
 }

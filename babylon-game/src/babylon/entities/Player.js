@@ -3,7 +3,8 @@ import {
     MeshBuilder,
     Color3,
     StandardMaterial,
-    SceneLoader
+    SceneLoader,
+    PointLight
 } from '@babylonjs/core'
 import "@babylonjs/loaders"; // Pour supporter les fichiers .fbx, .glb, etc.
 export class Player {
@@ -30,6 +31,12 @@ export class Player {
         this.armor = 0;     // réduction de dégâts plate (ex: armor=2 → -2 dégâts reçus)
 
         this._regenAccum = 0; // accumulateur regen (évite les micro-heals chaque frame)
+
+        // Cache pour optimisation rotation (évite scene.pick + getChildMeshes chaque frame)
+        this._rotationFrameSkip = 0;
+        this._childMeshCache = null;
+        this._targetRotationY = 0; // rotation cible (mise à jour par pick)
+        this._hasTargetRotation = false;
     }
 
     async _loadCharacter() {
@@ -147,6 +154,15 @@ export class Player {
         box.checkCollisions = true;
         box.ellipsoid = new Vector3(0.6, 0.6, 0.6); // Taille de la "bulle" de collision (55%)
 
+        // --- Lumière du joueur (Aura Cyberpunk) ---
+        // Une lumière qui suit le joueur permettant d'éclairer autour de lui
+        const playerLight = new PointLight("playerLight", new Vector3(0, 5, 0), this.scene);
+        playerLight.parent = box;
+        playerLight.diffuse = new Color3(0.9, 0.95, 1.0); // Lumière blanche pure, très légèrement bleutée
+        playerLight.specular = new Color3(1, 1, 1);
+        playerLight.intensity = 5.0; // Intensité très forte !
+        playerLight.range = 100; // Rayon énorme pour vraiment voir l'écran
+
         return box;
     }
 
@@ -252,23 +268,41 @@ export class Player {
 
 
     _updateRotation() {
-        // Lancer un rayon depuis la caméra vers la souris
-        const pickResult = this.scene.pick(this.scene.pointerX, this.scene.pointerY, (mesh) => {
-            // On ignore le joueur lui-même (et ses enfants) pour ne pas viser ses propres pieds
-            return mesh !== this.mesh && !this.mesh.getChildMeshes().includes(mesh);
-        });
+        // Pick raycast throttlé (1 frame sur 3) pour obtenir la cible
+        this._rotationFrameSkip++;
+        if (this._rotationFrameSkip >= 3) {
+            this._rotationFrameSkip = 0;
 
-        if (pickResult.hit) {
-            const targetPoint = pickResult.pickedPoint;
+            // Cache les child meshes (ne change pas en cours de jeu)
+            if (!this._childMeshCache) {
+                this._childMeshCache = new Set(this.mesh.getChildMeshes());
+            }
+            const childSet = this._childMeshCache;
 
-            // On force la hauteur de la cible à être la même que celle du joueur
-            // Cela permet de ne tourner que sur l'axe Y (gauche/droite) et pas vers le haut/bas
-            targetPoint.y = this.mesh.position.y;
+            const pickResult = this.scene.pick(this.scene.pointerX, this.scene.pointerY, (mesh) => {
+                return mesh !== this.mesh && !childSet.has(mesh);
+            });
 
-            this.mesh.lookAt(targetPoint);
+            if (pickResult.hit) {
+                const targetPoint = pickResult.pickedPoint;
+                targetPoint.y = this.mesh.position.y;
+                // Calculer l'angle cible sans l'appliquer directement
+                const dx = targetPoint.x - this.mesh.position.x;
+                const dz = targetPoint.z - this.mesh.position.z;
+                this._targetRotationY = Math.atan2(-dx, -dz);
+                this._hasTargetRotation = true;
+            }
+        }
 
-            // Si le personnage regarde dos à la souris, décommentez la ligne ci-dessous :
-            this.mesh.rotation.y += Math.PI;
+        // Interpolation fluide chaque frame vers la rotation cible
+        if (this._hasTargetRotation) {
+            let current = this.mesh.rotation.y;
+            let target = this._targetRotationY;
+            // Normaliser la différence d'angle entre -PI et PI
+            let diff = target - current;
+            while (diff > Math.PI) diff -= Math.PI * 2;
+            while (diff < -Math.PI) diff += Math.PI * 2;
+            this.mesh.rotation.y += diff * 0.35;
         }
     }
 

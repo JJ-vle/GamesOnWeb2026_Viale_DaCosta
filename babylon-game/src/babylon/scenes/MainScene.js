@@ -27,7 +27,7 @@ import { TitanRam } from '../entities/enemies/new/TitanRam.js'
 import { LinkCommander } from '../entities/enemies/new/LinkCommander.js'
 import { CoreSpawner } from '../entities/enemies/new/CoreSpawner.js'
 import {
-  Vector3, HemisphericLight, MeshBuilder,
+  Vector3, HemisphericLight, PointLight, GlowLayer, MeshBuilder,
   Color3, StandardMaterial, SceneLoader
 } from '@babylonjs/core'
 import "@babylonjs/loaders"
@@ -143,11 +143,13 @@ export class MainScene extends BaseScene {
         // Stopper le spawner immédiatement
         if (this.spawnerSystem) this.spawnerSystem.stop()
 
-        // Purger les survivants
+        // Purger les survivants (sans accorder d'XP ni de score)
         const purged = this.enemies.length
         for (let i = this.enemies.length - 1; i >= 0; i--) {
           const enemy = this.enemies[i]
           if (!enemy) continue
+          // Supprimer le callback onDeath AVANT destroy() pour ne pas donner d'XP/coins
+          enemy.onDeath = null
           try { enemy.destroy() } catch (e) { /* ignore */ }
           try { this.collisionSystem.removeEnemy(enemy) } catch (e) { /* ignore */ }
           this.enemies.splice(i, 1)
@@ -185,11 +187,12 @@ export class MainScene extends BaseScene {
         enemy.setPerceptionSystem(this.sharedPerceptionSystem)
       }
 
-      // Appliquer une réduction de taille de 50%
+      // Appliquer une réduction de taille supplémentaire (échelle 0.35 au lieu de 0.5)
       if (enemy.enemy) {
-        enemy.enemy.scaling = new Vector3(0.5, 0.5, 0.5);
-        if (enemy.enemy.ellipsoid) {
-          enemy.enemy.ellipsoid = enemy.enemy.ellipsoid.scale(0.5);
+        enemy.enemy.scaling = new Vector3(0.35, 0.35, 0.35);
+        if (enemy.enemy.ellipsoid && !enemy.enemy._hasBeenScaled) {
+          enemy.enemy.ellipsoid = enemy.enemy.ellipsoid.scale(0.35);
+          enemy.enemy._hasBeenScaled = true;
         }
       }
 
@@ -336,6 +339,7 @@ export class MainScene extends BaseScene {
     if (this.spawnerSystem) this.spawnerSystem.stop()
     for (let i = this.enemies.length - 1; i >= 0; i--) {
       const enemy = this.enemies[i]
+      enemy.onDeath = null // Ne pas accorder d'XP/coins lors du changement de zone
       try { enemy.destroy && enemy.destroy() } catch (e) {}
       try { this.collisionSystem.removeEnemy(enemy) } catch (e) {}
       this.enemies.splice(i, 1)
@@ -460,10 +464,33 @@ export class MainScene extends BaseScene {
   }
 
   _createLights() {
+    // Ambiance de base (remontée pour y voir clair !)
     const ambient = new HemisphericLight('ambientLight', new Vector3(0, 1, 0), this.scene)
-    ambient.intensity = 0.6
-    ambient.diffuse = new Color3(0.8, 0.8, 1.0)
-    ambient.groundColor = new Color3(0.2, 0.2, 0.3)
+    ambient.intensity = 0.5 // On remonte l'intensité
+    ambient.diffuse = new Color3(0.5, 0.35, 0.7) // Violet plus vif
+    ambient.groundColor = new Color3(0.2, 0.1, 0.4) // Ne plus rendre le sol noir
+
+    // Lumière Néon Cyan
+    const neonCyan = new PointLight("neonCyan", new Vector3(-30, 10, 30), this.scene)
+    neonCyan.diffuse = new Color3(0.0, 1.0, 1.0)
+    neonCyan.intensity = 5.0
+    neonCyan.range = 120
+
+    // Lumière Néon Rose/Magenta
+    const neonPink = new PointLight("neonPink", new Vector3(30, 10, -30), this.scene)
+    neonPink.diffuse = new Color3(1.0, 0.0, 1.0)
+    neonPink.intensity = 5.0
+    neonPink.range = 120
+
+    // Lueur Bleutée au centre
+    const neonBlue = new PointLight("neonBlue", new Vector3(0, 15, 0), this.scene)
+    neonBlue.diffuse = new Color3(0.2, 0.5, 1.0)
+    neonBlue.intensity = 4.0
+    neonBlue.range = 150
+
+    // Effet de Glow global (Bloom)
+    const gl = new GlowLayer("neonGlow", this.scene)
+    gl.intensity = 0.8
   }
 
   _createWorld() {
@@ -476,8 +503,8 @@ export class MainScene extends BaseScene {
     ground.checkCollisions = true
 
     const groundMat = new StandardMaterial('groundMat', this.scene)
-    groundMat.diffuseColor = new Color3(0.8, 0.8, 0.8)
-    groundMat.specularColor = new Color3(0, 0, 0)
+    groundMat.diffuseColor = new Color3(0.15, 0.15, 0.2) // Sol sombre assumé
+    groundMat.specularColor = new Color3(0.2, 0.2, 0.4) // Léger reflet
     ground.material = groundMat
 
     this.loadingScreen.setProgress(15, 'Creating ground...');
@@ -502,10 +529,14 @@ export class MainScene extends BaseScene {
           m.material.transparencyMode = 1;
           if (m.material.albedoTexture) m.material.useAlphaFromAlbedoTexture = true;
           if (m.material.diffuseTexture) m.material.useAlphaFromDiffuseTexture = true;
-          m.material.backFaceCulling = false;
+          // Backface culling activé sauf meshes transparents (alpha < 1)
+          m.material.backFaceCulling = true;
+          // Freeze le matériau (ne changera plus → évite recalculs GPU)
+          m.material.freeze();
         }
-        // Mettre en place les collisions si nécessaire
         m.checkCollisions = true;
+        // Freeze la matrice monde (mesh statique → pas de recalcul chaque frame)
+        m.freezeWorldMatrix();
       });
       const mapLoadTime = Math.round(performance.now() - mapLoadStart);
       console.log(`[Loading] Map loaded in ${mapLoadTime}ms`);
@@ -549,7 +580,7 @@ export class MainScene extends BaseScene {
     // Pas de Coin pour l'instant (sera remplacé par le système d'engrenages)
     // this.coinEntry = new Coin(...)
 
-    this.scene.clearColor = new Color3(0.1, 0.1, 0.2)
+    this.scene.clearColor = new Color3(0.02, 0.02, 0.05)
 
     // Configuration des Callbacks globaux pour les comportements des Boss/Ennemis
     this.loadingScreen.setProgress(85, 'Setting up callbacks...');
@@ -570,10 +601,11 @@ export class MainScene extends BaseScene {
         if (v.setNavGrid) v.setNavGrid(this.navGrid)
         if (v.enemy) {
           v.enemy.position = pos
-          // Appliquer une réduction de taille de 50%
-          v.enemy.scaling = new Vector3(0.5, 0.5, 0.5);
-          if (v.enemy.ellipsoid) {
-            v.enemy.ellipsoid = v.enemy.ellipsoid.scale(0.5);
+          // Appliquer une réduction de taille de 35% pour les spawns globaux forcés
+          v.enemy.scaling = new Vector3(0.35, 0.35, 0.35);
+          if (v.enemy.ellipsoid && !v.enemy._hasBeenScaled) {
+            v.enemy.ellipsoid = v.enemy.ellipsoid.scale(0.35);
+            v.enemy._hasBeenScaled = true;
           }
         }
         this.enemies.push(v)
@@ -780,14 +812,12 @@ export class MainScene extends BaseScene {
     // Ennemis: met à jour seulement ceux suffisamment proches
     // ⚠️ AGRESSIF: Beaucoup d'ennemis culled = beaucoup meilleure performance
     const ACTIVE_DISTANCE = 50;   // Units - distance max pour update complète (pathfinding + FSM)
-    const PASSIVE_DISTANCE = 80;  // Units - distance max pour update cosmétique seule
-    
+
     let activatedEnemies = 0;
     let culledEnemies = 0;
 
     const playerPos = this.player.mesh.position;
     const ACTIVE_DIST_SQ = ACTIVE_DISTANCE * ACTIVE_DISTANCE;
-    const PASSIVE_DIST_SQ = PASSIVE_DISTANCE * PASSIVE_DISTANCE;
 
     for (let i = this.enemies.length - 1; i >= 0; i--) {
       const enemy = this.enemies[i]
@@ -801,17 +831,12 @@ export class MainScene extends BaseScene {
       const dz = playerPos.z - enemy.enemy.position.z;
       const distSq = dx * dx + dz * dz;
       
-      if (distSq > PASSIVE_DIST_SQ) {
-        // Très loin: COMPLÈTEMENT invisible et skip update
+      if (distSq > ACTIVE_DIST_SQ) {
+        // Loin: COMPLÈTEMENT invisible et skip update (économise GPU + CPU)
         if (enemy.enemy.isVisible) {
           enemy.enemy.isVisible = false;
         }
         culledEnemies++;
-      } else if (distSq > ACTIVE_DIST_SQ) {
-        // Loin: visible MAIS figé (aucun update = performance max)
-        if (!enemy.enemy.isVisible) {
-          enemy.enemy.isVisible = true;
-        }
       } else {
         // Proche: update COMPLET (FSM + pathfinding + collision)
         if (!enemy.enemy.isVisible) {
@@ -876,7 +901,6 @@ export class MainScene extends BaseScene {
       ? this.currentRound.remainingBefore
       : this.currentRound.remainingTime
     this.uiSystem.updateRound(currentIndex, rounds.length, this.currentRound.state, remaining)
-    console.debug('[MainScene] UI Round update — currentIndex=', currentIndex, 'roundsLen=', rounds.length, 'currentState=', this.currentRound.state)
 
     // Vérifier la mort du joueur → écran Game Over
     if (!this._isGameOver && this.playerEntry && this.playerEntry.life <= 0) {

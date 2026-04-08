@@ -14,12 +14,17 @@ import { Enemy } from '../Enemy'
 export class EchoWraith extends Enemy {
 
     constructor(scene, contact) {
-        super(scene, contact, 32)
+        super(scene, contact, 32, {
+            fovDistance: 40,
+            fovAngle: 120,
+            attackRange: 4,
+            retreatThreshold: 0.1,
+        })
         this.enemy = this._createMesh()
         this.material = this.enemy.material
         this.speed = 1.0
         this.damage = 1
-        
+
         this._blinkTimer = 0
 
         this.xpValue = 10
@@ -53,26 +58,18 @@ export class EchoWraith extends Enemy {
             this.material.alpha = 0.1
         }
 
-        // Flash over-rides alpha momentarily
+        // Flash: fully visible when hit
         if (this._hitTimer > 0) {
-            this._hitTimer -= dt
+            this._hitTimer -= this.scene.getEngine().getDeltaTime() / 1000
             if (this._hitTimer <= 0) {
                 this.material.diffuseColor = new Color3(0.5, 0.5, 1)
             } else {
-                this.material.alpha = 1.0 // Fully visible when hit
+                this.material.alpha = 1.0
             }
         }
 
-        const slow = (this._slowFactor !== undefined && this._slowFactor >= 0) ? this._slowFactor : 1
-        
-        let direction = playerMesh.position.subtract(this.enemy.position)
-        direction.y = 0
-        direction.normalize()
-
-        const separation = this._getFlockingVector(enemies, 3.0, 1.0)
-        direction.addInPlace(separation).normalize()
-
-        this.enemy.lookAt(this.enemy.position.add(direction))
-        this.enemy.position.addInPlace(direction.scale(0.05 * this.speed * slow))
+        // NavGrid AI
+        const result = this.updateNavGridAI(playerMesh, enemies)
+        if (result) this.applyRotation(result.scaledMove)
     }
 }

@@ -255,64 +255,83 @@ export class NavGrid {
         const STRAIGHT_COST = 10;
         const DIAG_COST = 14;
 
-        // Utiliser un index unique pour chaque cellule
         const toIndex = (c, r) => r * this.cols + c;
 
-        const openSet = new Map(); // index -> node
-        const closedSet = new Set(); // index
+        // Binary heap pour O(log n) extraction du min au lieu de O(n)
+        const heap = [];
+        const inOpen = new Set();
+        const closedSet = new Set();
 
         const gScore = new Map();
         const fScore = new Map();
         const cameFrom = new Map();
+        const nodeData = new Map(); // idx -> {col, row}
 
         const startIdx = toIndex(startCol, startRow);
         const endIdx = toIndex(endCol, endRow);
 
+        const startF = this._heuristic(startCol, startRow, endCol, endRow);
         gScore.set(startIdx, 0);
-        fScore.set(startIdx, this._heuristic(startCol, startRow, endCol, endRow));
-        openSet.set(startIdx, { col: startCol, row: startRow });
+        fScore.set(startIdx, startF);
+        nodeData.set(startIdx, { col: startCol, row: startRow });
+        heap.push({ idx: startIdx, f: startF });
+        inOpen.add(startIdx);
 
-        // Directions: 8 directions (incluant diagonales)
+        // Heap helpers (min-heap)
+        const swap = (a, b) => { const t = heap[a]; heap[a] = heap[b]; heap[b] = t; };
+        const bubbleUp = (i) => {
+            while (i > 0) {
+                const parent = (i - 1) >> 1;
+                if (heap[i].f < heap[parent].f) { swap(i, parent); i = parent; } else break;
+            }
+        };
+        const sinkDown = (i) => {
+            const len = heap.length;
+            while (true) {
+                let smallest = i;
+                const l = 2 * i + 1, r = 2 * i + 2;
+                if (l < len && heap[l].f < heap[smallest].f) smallest = l;
+                if (r < len && heap[r].f < heap[smallest].f) smallest = r;
+                if (smallest !== i) { swap(i, smallest); i = smallest; } else break;
+            }
+        };
+        const heapPush = (idx, f) => { heap.push({ idx, f }); bubbleUp(heap.length - 1); };
+        const heapPop = () => {
+            if (heap.length === 1) return heap.pop();
+            const top = heap[0]; heap[0] = heap.pop(); sinkDown(0); return top;
+        };
+
         const directions = [
-            { dc: 0, dr: 1, cost: STRAIGHT_COST },   // N
-            { dc: 1, dr: 0, cost: STRAIGHT_COST },   // E
-            { dc: 0, dr: -1, cost: STRAIGHT_COST },  // S
-            { dc: -1, dr: 0, cost: STRAIGHT_COST },  // W
-            { dc: 1, dr: 1, cost: DIAG_COST },       // NE
-            { dc: 1, dr: -1, cost: DIAG_COST },      // SE
-            { dc: -1, dr: 1, cost: DIAG_COST },      // NW
-            { dc: -1, dr: -1, cost: DIAG_COST },     // SW
+            { dc: 0, dr: 1, cost: STRAIGHT_COST },
+            { dc: 1, dr: 0, cost: STRAIGHT_COST },
+            { dc: 0, dr: -1, cost: STRAIGHT_COST },
+            { dc: -1, dr: 0, cost: STRAIGHT_COST },
+            { dc: 1, dr: 1, cost: DIAG_COST },
+            { dc: 1, dr: -1, cost: DIAG_COST },
+            { dc: -1, dr: 1, cost: DIAG_COST },
+            { dc: -1, dr: -1, cost: DIAG_COST },
         ];
 
         let iterations = 0;
-        const MAX_ITERATIONS = 5000; // Anti-boucle infinie (augmenté pour maps complexes)
+        const MAX_ITERATIONS = 5000;
 
-        while (openSet.size > 0 && iterations < MAX_ITERATIONS) {
+        while (heap.length > 0 && iterations < MAX_ITERATIONS) {
             iterations++;
 
-            // Trouver le noeud avec le plus petit fScore
-            let currentIdx = null;
-            let currentNode = null;
-            let bestF = Infinity;
+            // O(log n) extraction du noeud avec le plus petit fScore
+            const { idx: currentIdx } = heapPop();
 
-            for (const [idx, node] of openSet) {
-                const f = fScore.get(idx) || Infinity;
-                if (f < bestF) {
-                    bestF = f;
-                    currentIdx = idx;
-                    currentNode = node;
-                }
-            }
+            // Skip si déjà fermé (doublons dans le heap)
+            if (closedSet.has(currentIdx)) continue;
+            inOpen.delete(currentIdx);
 
-            // Arrivé?
             if (currentIdx === endIdx) {
                 return this._reconstructPath(cameFrom, currentIdx, endCol, endRow);
             }
 
-            openSet.delete(currentIdx);
             closedSet.add(currentIdx);
+            const currentNode = nodeData.get(currentIdx);
 
-            // Explorer les voisins
             for (const dir of directions) {
                 const nc = currentNode.col + dir.dc;
                 const nr = currentNode.row + dir.dr;
@@ -320,8 +339,6 @@ export class NavGrid {
 
                 if (!this._isWalkable(nc, nr) || closedSet.has(nIdx)) continue;
 
-                // Pour les diagonales, vérifier que les deux cellules adjacentes sont libres
-                // (éviter de couper les coins)
                 if (dir.dc !== 0 && dir.dr !== 0) {
                     if (!this._isWalkable(currentNode.col + dir.dc, currentNode.row) ||
                         !this._isWalkable(currentNode.col, currentNode.row + dir.dr)) {
@@ -334,16 +351,16 @@ export class NavGrid {
                 if (tentativeG < (gScore.get(nIdx) || Infinity)) {
                     cameFrom.set(nIdx, currentIdx);
                     gScore.set(nIdx, tentativeG);
-                    fScore.set(nIdx, tentativeG + this._heuristic(nc, nr, endCol, endRow));
-
-                    if (!openSet.has(nIdx)) {
-                        openSet.set(nIdx, { col: nc, row: nr });
-                    }
+                    const f = tentativeG + this._heuristic(nc, nr, endCol, endRow);
+                    fScore.set(nIdx, f);
+                    nodeData.set(nIdx, { col: nc, row: nr });
+                    // Ajouter au heap (lazy deletion: les doublons sont ignorés via closedSet)
+                    heapPush(nIdx, f);
+                    inOpen.add(nIdx);
                 }
             }
         }
 
-        // Pas de chemin trouvé
         return [];
     }
 

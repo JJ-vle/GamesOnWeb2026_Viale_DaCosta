@@ -80,8 +80,8 @@ export class PathfindingHelper {
 
     // ── STUCK DETECTION: Forcer recalc si ennemi bloqué contre mur ──
     if (this._lastPos) {
-      const movedDistance = Vector3.Distance(this._lastPos, currentPos);
-      if (movedDistance < 0.01) {
+      const mdx = this._lastPos.x - currentPos.x, mdz = this._lastPos.z - currentPos.z;
+      if (mdx * mdx + mdz * mdz < 0.0001) {
         // N'a pratiquement pas bougé
         this._stuckFrameCount++;
         if (this._stuckFrameCount >= this._stuckThreshold) {
@@ -94,7 +94,7 @@ export class PathfindingHelper {
         this._stuckFrameCount = 0;
       }
     }
-    this._lastPos = currentPos.clone();
+    if (this._lastPos) this._lastPos.copyFrom(currentPos); else this._lastPos = currentPos.clone();
 
     return movement.scale(speed);
   }
@@ -114,7 +114,7 @@ export class PathfindingHelper {
       if (path.length > 0) {
         this._currentPath = path;
         this._currentWaypointIndex = 0;
-        this._pathTarget = targetPos.clone();
+        if (this._pathTarget) this._pathTarget.copyFrom(targetPos); else this._pathTarget = targetPos.clone();
         // ── STUCK DETECTION: Reset counter on successful recalc ──
         this._stuckFrameCount = 0;
       } else {
@@ -188,31 +188,40 @@ export class PathfindingHelper {
     separationDistance,
     separationForce
   ) {
-    let sep = Vector3.Zero();
+    let sepX = 0, sepZ = 0;
     let count = 0;
+    const sepDistSq = separationDistance * separationDistance;
+    const px = pos.x, pz = pos.z;
 
-    for (const other of allEnemies) {
-      if (!other.enemy && !other.mesh) continue;
-
-      const otherPos = other.enemy?.position || other.mesh?.position;
+    for (let i = 0; i < allEnemies.length; i++) {
+      const other = allEnemies[i];
+      const otherPos = other.enemy ? other.enemy.position : (other.mesh ? other.mesh.position : null);
       if (!otherPos) continue;
 
-      const dist = Vector3.Distance(pos, otherPos);
-      if (dist < separationDistance && dist > 0.001) {
-        const away = pos.subtract(otherPos);
-        away.y = 0;
-        away.normalize();
-        sep.addInPlace(away.scale(separationDistance - dist));
+      const dx = px - otherPos.x;
+      const dz = pz - otherPos.z;
+      const distSq = dx * dx + dz * dz;
+
+      if (distSq < sepDistSq && distSq > 0.000001) {
+        const dist = Math.sqrt(distSq);
+        const invDist = 1 / dist;
+        const force = separationDistance - dist;
+        sepX += dx * invDist * force;
+        sepZ += dz * invDist * force;
         count++;
       }
     }
 
     if (count > 0) {
-      sep.scaleInPlace(separationForce / count);
+      const scale = separationForce / count;
+      sepX *= scale;
+      sepZ *= scale;
     }
 
-    sep.y = 0;
-    return sep;
+    // Réutiliser un Vector3 au lieu d'en créer un nouveau
+    if (!this._sepVector) this._sepVector = new Vector3(0, 0, 0);
+    this._sepVector.set(sepX, 0, sepZ);
+    return this._sepVector;
   }
 
   /**

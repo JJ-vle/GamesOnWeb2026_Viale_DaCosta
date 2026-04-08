@@ -14,12 +14,17 @@ import { Enemy } from '../Enemy'
 export class TitanRam extends Enemy {
 
     constructor(scene, contact) {
-        super(scene, contact, 32)
+        super(scene, contact, 32, {
+            fovDistance: 40,
+            fovAngle: 120,
+            attackRange: 5,
+            retreatThreshold: 0.1,
+        })
         this.enemy = this._createMesh()
         this.material = this.enemy.material
-        this.speed = 1.0
+        this.speed = 0.5
         this.damage = 3
-        
+
         this.state = 'IDLE' // IDLE, LOCKING, RAMMING, STUNNED
         this.stateTimer = 0
         this.ramDirection = new Vector3()
@@ -44,13 +49,9 @@ export class TitanRam extends Enemy {
     update(playerMesh, projectiles = [], enemies = []) {
         if (!this.enemy) return
 
+        this.updateHitFlash()
+
         const dt = this.scene.getEngine().getDeltaTime() / 1000
-
-        if (this._hitTimer > 0) {
-            this._hitTimer -= dt
-            if (this._hitTimer <= 0) this.material.diffuseColor = new Color3(0.5, 0.5, 0.5)
-        }
-
         const slow = (this._slowFactor !== undefined && this._slowFactor >= 0) ? this._slowFactor : 1
 
         const toPlayer = playerMesh.position.subtract(this.enemy.position)
@@ -59,23 +60,21 @@ export class TitanRam extends Enemy {
 
         if (this.state === 'IDLE') {
             this.stateTimer -= dt
-            let dir = toPlayer.normalize()
-            this.enemy.lookAt(this.enemy.position.add(dir))
+
+            // NavGrid AI pour l'approche lente
+            const result = this.updateNavGridAI(playerMesh, enemies)
+            if (result) this.applyRotation(result.scaledMove)
 
             if (this.stateTimer <= 0 && dist < 20) {
                 this.state = 'LOCKING'
-                this.stateTimer = 1.5 // 1.5s warning
-                this.material.emissiveColor = new Color3(1, 0, 0) // Yeux rouges !
-            } else {
-                // Avance très lentement
-                const separation = this._getFlockingVector(enemies, 4.0, 1.0)
-                dir.addInPlace(separation).normalize()
-                this.enemy.position.addInPlace(dir.scale(0.02 * this.speed * slow))
+                this.stateTimer = 1.5
+                this.material.emissiveColor = new Color3(1, 0, 0)
             }
-        } 
+        }
         else if (this.state === 'LOCKING') {
             this.stateTimer -= dt
-            this.enemy.lookAt(this.enemy.position.add(toPlayer.normalize()))
+            const direction = toPlayer.normalize()
+            this.applyRotation(direction)
 
             if (this.stateTimer <= 0) {
                 this.state = 'RAMMING'
@@ -84,19 +83,13 @@ export class TitanRam extends Enemy {
             }
         }
         else if (this.state === 'RAMMING') {
-            // Unstoppable object (presque insensible au slow)
             this.enemy.position.addInPlace(this.ramDirection.scale(0.4 * (slow * 0.5 + 0.5)))
-            
-            // Simplification: Il s'arrête au bout d'un certain temps (ou distance)
-            // Dans une vraie release on vérifierait via un Raycast s'il touche un mur `zone.groundWidth`
-            
-            // Fake mur / distance stop :
+
             const w = 130/2 - 2
             const h = 110/2 - 2
             const pos = this.enemy.position
-            
+
             if (Math.abs(pos.x) > w || Math.abs(pos.z) > h) {
-                // Touche bordure
                 this.state = 'STUNNED'
                 this.stateTimer = 2.5
                 this.material.emissiveColor = new Color3(0, 0, 0)

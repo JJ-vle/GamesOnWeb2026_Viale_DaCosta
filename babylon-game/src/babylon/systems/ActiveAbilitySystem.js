@@ -40,7 +40,34 @@ export class ActiveAbilitySystem {
         this.onAbilityUsed = null    // () => void
         this.onItemChanged = null    // (itemType) => void
 
-        // console.log('[ActiveAbilitySystem] Initialisé. Item équipé:', this.equippedItem)
+        // Pool VFX — pré-créés et réutilisés
+        this._healPool = this._createHealPool(8)
+        this._explosionMesh = this._createExplosionMesh()
+    }
+
+    _createHealPool(count) {
+        const pool = []
+        const mat = new StandardMaterial('healMat_shared', this.scene)
+        mat.diffuseColor = new Color3(0, 1, 0.4)
+        mat.emissiveColor = new Color3(0, 0.8, 0.3)
+
+        for (let i = 0; i < count; i++) {
+            const sphere = MeshBuilder.CreateSphere(`healVFX_pool_${i}`, { diameter: 0.3 }, this.scene)
+            sphere.material = mat
+            sphere.setEnabled(false)
+            pool.push(sphere)
+        }
+        return pool
+    }
+
+    _createExplosionMesh() {
+        const sphere = MeshBuilder.CreateSphere('explosionVFX_pool', { diameter: 0.5, segments: 6 }, this.scene)
+        const mat = new StandardMaterial('explosionMat_pool', this.scene)
+        mat.diffuseColor = new Color3(1, 0.4, 0)
+        mat.emissiveColor = new Color3(1, 0.2, 0)
+        sphere.material = mat
+        sphere.setEnabled(false)
+        return sphere
     }
 
     /**
@@ -146,29 +173,29 @@ export class ActiveAbilitySystem {
      * VFX Heal — anneau vert autour du joueur
      */
     _spawnHealVFX() {
-        const rings = 8
         const radius = 1.5
         const duration = 600 // ms
 
-        for (let i = 0; i < rings; i++) {
-            const angle = (i / rings) * Math.PI * 2
-            const sphere = MeshBuilder.CreateSphere(`healVFX_${i}`, { diameter: 0.3 }, this.scene)
-            sphere.position = this.player.mesh.position.clone().add(
-                new Vector3(Math.cos(angle) * radius, 0.5, Math.sin(angle) * radius)
+        for (let i = 0; i < this._healPool.length; i++) {
+            const sphere = this._healPool[i]
+            const angle = (i / this._healPool.length) * Math.PI * 2
+            const pPos = this.player.mesh.position
+            sphere.position.set(
+                pPos.x + Math.cos(angle) * radius,
+                pPos.y + 0.5,
+                pPos.z + Math.sin(angle) * radius
             )
-            const mat = new StandardMaterial(`healMat_${i}`, this.scene)
-            mat.diffuseColor = new Color3(0, 1, 0.4)
-            mat.emissiveColor = new Color3(0, 0.8, 0.3)
-            sphere.material = mat
+            sphere.scaling.set(1, 1, 1)
+            sphere.setEnabled(true)
 
             const startTime = performance.now()
             const obs = this.scene.onBeforeRenderObservable.add(() => {
                 const elapsed = performance.now() - startTime
                 const t = elapsed / duration
-                sphere.position.y = this.player.mesh.position.y + 0.5 + t * 2
+                sphere.position.y = pPos.y + 0.5 + t * 2
                 sphere.scaling.scaleInPlace(0.97)
                 if (elapsed >= duration) {
-                    sphere.dispose()
+                    sphere.setEnabled(false)
                     this.scene.onBeforeRenderObservable.remove(obs)
                 }
             })
@@ -179,17 +206,18 @@ export class ActiveAbilitySystem {
      * VFX Explosion — sphère rouge qui s'étend puis disparaît
      */
     _spawnExplosionVFX(position) {
-        const sphere = MeshBuilder.CreateSphere('explosionVFX', { diameter: 0.5, segments: 6 }, this.scene)
-        sphere.position = position.clone()
+        const sphere = this._explosionMesh
+        sphere.position.copyFrom(position)
         sphere.position.y = 1
+        sphere.scaling.set(1, 1, 1)
+        sphere.setEnabled(true)
 
-        const mat = new StandardMaterial('explosionMat', this.scene)
-        mat.diffuseColor = new Color3(1, 0.4, 0)
-        mat.emissiveColor = new Color3(1, 0.2, 0)
-        mat.wireframe = false
-        sphere.material = mat
+        const mat = sphere.material
+        mat.diffuseColor.set(1, 0.4, 0)
+        mat.emissiveColor.set(1, 0.2, 0)
+        mat.alpha = 1
 
-        const maxScale = 12 // diamètre explosion = rayon 5u * 2 = 10u + marge
+        const maxScale = 12
         const duration = 400 // ms
         const startTime = performance.now()
 
@@ -198,14 +226,13 @@ export class ActiveAbilitySystem {
             const t = elapsed / duration
 
             const scale = t * maxScale
-            sphere.scaling = new Vector3(scale, scale * 0.4, scale)
+            sphere.scaling.set(scale, scale * 0.4, scale)
 
-            // Fade out
             mat.alpha = 1 - t
-            mat.emissiveColor = new Color3(1 - t, 0.2 * (1 - t), 0)
+            mat.emissiveColor.set(1 - t, 0.2 * (1 - t), 0)
 
             if (elapsed >= duration) {
-                sphere.dispose()
+                sphere.setEnabled(false)
                 this.scene.onBeforeRenderObservable.remove(obs)
             }
         })

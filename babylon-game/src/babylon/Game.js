@@ -10,9 +10,23 @@ export class Game {
 
   start() {
     this.scene = new MainScene(this.engine)
+    
+    // Capper à 60 FPS
+    const targetFps = 60
+    const frameInterval = 1000 / targetFps
+    let lastTime = performance.now()
+
     this.engine.runRenderLoop(() => {
-      this.scene.update()
-      this.scene.render()
+      const currentTime = performance.now()
+      const delta = currentTime - lastTime
+
+      // On attend que le temps écoulé dépasse l'intervalle pour 60fps
+      if (delta >= frameInterval) {
+        lastTime = currentTime - (delta % frameInterval)
+        
+        this.scene.update()
+        this.scene.render()
+      }
     })
   }
 

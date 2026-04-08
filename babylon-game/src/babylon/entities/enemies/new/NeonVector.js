@@ -14,12 +14,17 @@ import { Enemy } from '../Enemy'
 export class NeonVector extends Enemy {
 
     constructor(scene, contact) {
-        super(scene, contact, 6) // maxLife = 6
+        super(scene, contact, 6, {
+            fovDistance: 50,
+            fovAngle: 120,
+            attackRange: 3,
+            retreatThreshold: 0.15,
+        })
         this.enemy = this._createMesh()
         this.material = this.enemy.material
         this.speed = 1.5 // Fast!
         this.damage = 1
-        
+
         // Timer for slight erratic movement
         this._erraticTimer = 0
         this._strafingDir = (Math.random() < 0.5) ? 1 : -1
@@ -44,46 +49,31 @@ export class NeonVector extends Enemy {
     update(playerMesh, projectiles = [], enemies = []) {
         if (!this.enemy) return
 
+        this.updateHitFlash()
+
         const dt = this.scene.getEngine().getDeltaTime() / 1000
 
-        // Flash au hit
-        if (this._hitTimer > 0) {
-            this._hitTimer -= dt
-            if (this._hitTimer <= 0) {
-                this.material.diffuseColor = new Color3(0, 1, 0.8)
-            }
-        }
+        // NavGrid AI pour le mouvement intelligent
+        const result = this.updateNavGridAI(playerMesh, enemies)
+        if (!result || !result.moved) return
 
-        const slow = (this._slowFactor !== undefined && this._slowFactor >= 0) ? this._slowFactor : 1
-        
-        // Direction vers le joueur
-        const toPlayer = playerMesh.position.subtract(this.enemy.position)
-        toPlayer.y = 0
-        const dist = toPlayer.length()
-        if (dist === 0) return
-        
-        const forward = toPlayer.normalize()
-
-        // Change evasive direction periodically
+        // Strafing erratique par-dessus le mouvement NavGrid
         this._erraticTimer -= dt
         if (this._erraticTimer <= 0) {
             this._erraticTimer = 0.5 + Math.random() * 0.5
             this._strafingDir = (Math.random() < 0.5) ? 1 : -1
         }
 
-        // Add strafing (dodge) behavior especially when close to projectiles (simplified via wandering)
-        const right = new Vector3(-forward.z, 0, forward.x)
-        const evasionStrength = dist < 20 ? 0.6 : 0 // Evade more when closer
-        
-        let direction = forward.add(right.scale(this._strafingDir * evasionStrength)).normalize()
+        const dist = Vector3.Distance(this.enemy.position, playerMesh.position)
+        if (dist < 20) {
+            const forward = playerMesh.position.subtract(this.enemy.position)
+            forward.y = 0
+            forward.normalize()
+            const right = new Vector3(-forward.z, 0, forward.x)
+            const slow = (this._slowFactor !== undefined && this._slowFactor >= 0) ? this._slowFactor : 1
+            this.enemy.position.addInPlace(right.scale(this._strafingDir * 0.03 * this.speed * slow))
+        }
 
-        // Intelligence: Séparation
-        const separation = this._getFlockingVector(enemies, 3.0, 1.0)
-        direction.addInPlace(separation).normalize()
-
-        // Facing
-        this.enemy.lookAt(this.enemy.position.add(direction))
-
-        this.enemy.position.addInPlace(direction.scale(0.05 * this.speed * slow))
+        this.applyRotation(result.scaledMove)
     }
 }

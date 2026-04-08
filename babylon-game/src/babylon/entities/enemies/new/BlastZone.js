@@ -15,7 +15,12 @@ import { Enemy } from '../Enemy'
 export class BlastZone extends Enemy {
 
     constructor(scene, contact) {
-        super(scene, contact, 18)
+        super(scene, contact, 18, {
+            fovDistance: 40,
+            fovAngle: 120,
+            attackRange: 6,
+            retreatThreshold: 0.15,
+        })
         this.enemy = this._createMesh()
         this.material = this.enemy.material
         this.speed = 1.0
@@ -69,39 +74,28 @@ export class BlastZone extends Enemy {
         const { onExplode } = callbacks
         if (!this.enemy) return
 
+        this.updateHitFlash()
+
         const dt = this.scene.getEngine().getDeltaTime() / 1000
-
-        if (this._hitTimer > 0) {
-            this._hitTimer -= dt
-            if (this._hitTimer <= 0) this.material.diffuseColor = new Color3(0.8, 0.2, 0.2)
-        }
-
         const slow = (this._slowFactor !== undefined && this._slowFactor >= 0) ? this._slowFactor : 1
-
-        const toPlayer = playerMesh.position.subtract(this.enemy.position)
-        toPlayer.y = 0
-        const dist = toPlayer.length()
+        const dist = Vector3.Distance(this.enemy.position, playerMesh.position)
 
         if (this.state === 'APPROACH') {
+            // NavGrid AI pour l'approche
+            const result = this.updateNavGridAI(playerMesh, enemies)
+            if (result) this.applyRotation(result.scaledMove)
+
             if (dist < this.aoeRadius - 2) {
                 this.state = 'WARNING'
-                this.stateTimer = 2.0 // 2 seconds warning
+                this.stateTimer = 2.0
                 this._createWarningZone()
                 this.material.emissiveColor = new Color3(0.8, 0, 0)
-            } else {
-                const direction = toPlayer.normalize()
-                const separation = this._getFlockingVector(enemies, 3.5, 1.2)
-                direction.addInPlace(separation).normalize()
-
-                this.enemy.lookAt(this.enemy.position.add(direction))
-                this.enemy.position.addInPlace(direction.scale(0.04 * this.speed * slow))
             }
         } else if (this.state === 'WARNING') {
             this.stateTimer -= dt
             if (this.stateTimer <= 0) {
                 this.state = 'EXPLODING'
                 this.stateTimer = 0.5
-                // Trigger explosion callback
                 if (onExplode) {
                     const explodePos = (this._warningMesh && this._warningMesh.position)
                         ? this._warningMesh.position.clone()
@@ -111,7 +105,6 @@ export class BlastZone extends Enemy {
                 this._clearWarningZone()
                 this.material.emissiveColor = new Color3(0, 0, 0)
             } else {
-                // Pulse warning zone
                 if (this._warningMesh) {
                     this._warningMesh.material.alpha = 0.3 + Math.abs(Math.sin(this.stateTimer * 8)) * 0.4
                 }
@@ -124,11 +117,12 @@ export class BlastZone extends Enemy {
             }
         } else if (this.state === 'COOLDOWN') {
             this.stateTimer -= dt
-            
-            // Fuit le joueur pendant le CD
-            const direction = toPlayer.normalize()
-            this.enemy.lookAt(this.enemy.position.add(direction))
-            this.enemy.position.addInPlace(direction.scale(-0.02 * this.speed * slow)) // recule
+
+            // Recule pendant le CD
+            const direction = playerMesh.position.subtract(this.enemy.position)
+            direction.y = 0
+            direction.normalize()
+            this.enemy.position.addInPlace(direction.scale(-0.02 * this.speed * slow))
 
             if (this.stateTimer <= 0) {
                 this.state = 'APPROACH'

@@ -16,10 +16,15 @@ import { Enemy } from './Enemy'
 export class HeavyEnemy extends Enemy {
 
     constructor(scene, contact) {
-        super(scene, contact, 25) // maxLife = 25
+        super(scene, contact, 25, {
+            fovDistance: 40,
+            fovAngle: 120,
+            attackRange: 4,
+            retreatThreshold: 0.1,
+        })
         this.enemy = this._createMesh()
         this.material = this.enemy.material
-        this.speed = 0.028
+        this.speed = 0.5
         this.damage = 2
         this.xpValue = 25
         this.coinValue = 15
@@ -41,25 +46,11 @@ export class HeavyEnemy extends Enemy {
     update(playerMesh, projectiles = [], enemies = []) {
         if (!this.enemy) return
 
-        // Flash rouge au hit
-        if (this._hitTimer > 0) {
-            this._hitTimer -= this.scene.getEngine().getDeltaTime() / 1000
-            if (this._hitTimer <= 0) {
-                this.material.diffuseColor = new Color3(0.8, 0.2, 0.1)
-            }
-        }
+        this.updateHitFlash()
 
-        const slow = (this._slowFactor !== undefined && this._slowFactor >= 0) ? this._slowFactor : 1
-
-        let direction = playerMesh.position.subtract(this.enemy.position)
-        direction.y = 0
-        direction.normalize()
-
-        // Séparation
-        const separation = this._getFlockingVector(enemies, 4.5, 0.8)
-        direction.addInPlace(separation).normalize()
-
-        this.enemy.position.addInPlace(direction.scale(this.speed * slow))
+        // NavGrid AI
+        const result = this.updateNavGridAI(playerMesh, enemies, { separationDist: 4.5 })
+        if (result) this.applyRotation(result.scaledMove)
     }
 
     takeDamage(amount) {

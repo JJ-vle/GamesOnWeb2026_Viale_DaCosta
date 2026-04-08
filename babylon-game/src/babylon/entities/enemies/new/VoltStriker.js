@@ -2,7 +2,8 @@ import {
     Vector3,
     MeshBuilder,
     Color3,
-    StandardMaterial
+    StandardMaterial,
+    SceneLoader
 } from '@babylonjs/core'
 
 import { Enemy } from '../Enemy'
@@ -10,46 +11,80 @@ import { Enemy } from '../Enemy'
 /**
  * Volt-Striker : Unité standard qui fonce directement sur le joueur.
  * 6HP / 1 Dégât / 1 Speed / Catégorie 1
- * 
- * Comportement IA:
- * - Détection FOV: 25m
- * - Vu le joueur? Fonce via A* pathfinding (contourne les murs!)
- * - Perdu de vue? Poursuite sur dernière position connue
- * - <15% HP? Fuite rare
- * - Séparation avec alliés automatique
  */
 export class VoltStriker extends Enemy {
 
     constructor(scene, contact) {
-        // Config agressif: FOV modéré, wide angle, little retreat
         super(scene, contact, 6, {
-            fovDistance: 50,        // Détection large (50 units max)
-            fovAngle: 120,          // Angle vision large (120°)
-            attackRange: 3,         // Attaque rapprochée au corps-à-corps
-            retreatThreshold: 0.15, // Ne fuit que <15% HP (très rarement)
+            fovDistance: 50,
+            fovAngle: 120,
+            attackRange: 3,
+            retreatThreshold: 0.15,
         })
 
         this.enemy = this._createMesh()
-        this.material = this.enemy.material
-        this.speed = 0.5 // Base speed reference
+        this.speed = 0.5
         this.damage = 1
 
         this.xpValue = 10
         this.coinValue = 5
-
-        this._debugLogged = false
-        this._frameCount = 0
     }
 
     _createMesh() {
-        const enemy = MeshBuilder.CreateSphere("VoltStriker", { diameter: 1.5 }, this.scene)
-        enemy.position = new Vector3(4, 0.75, 0)
-        enemy.checkCollisions = true  // Filet de sécurité physique
+        const enemy = MeshBuilder.CreateBox("VoltStriker", { width: 3.5, height: 1.2, depth: 2.5 }, this.scene)
+        enemy.position = new Vector3(4, 0.5, 0)
+        enemy.checkCollisions = true
+        // Assure que la hitbox ne sera jamais rendue à l'écran
+        enemy.isVisible = false 
+        enemy.visibility = 0
+
+        enemy.ellipsoid = new Vector3(1.75, 0.6, 1.25)
+        enemy.ellipsoidOffset = new Vector3(0, 0.6, 0)
+
+        this.visualMeshes = []
+        this.currentAnim = null
+        
+        SceneLoader.ImportMeshAsync("", "/assets/models/", "Volt-Striker.glb", this.scene).then((result) => {
+            const root = result.meshes[0]
+            root.parent = enemy
+            root.position = new Vector3(0, -0.5, 0) 
+            
+            // Cacher les carrés/plans indésirables inclus avec le modèle GLB original
+            result.meshes.forEach(m => {
+                const name = m.name.toLowerCase();
+                if (name.includes("cube") || name.includes("carré") || name.includes("plane") || name.includes("square")) {
+                    m.isVisible = false;
+                }
+            })
+
+            this.visualMeshes = result.meshes.filter(m => m.material && m.isVisible !== false)
+
+            // Sauvegarder les couleurs d'origine des sous-meshes pour pouvoir les restaurer après un hit
+            this.visualMeshes.forEach(m => {
+                if (m.material) {
+                    m._originalEmissive = m.material.emissiveColor ? m.material.emissiveColor.clone() : new Color3(0, 0, 0);
+                    if (m.material.albedoColor) {
+                        m._originalAlbedo = m.material.albedoColor.clone();
+                    } else if (m.material.diffuseColor) {
+                        m._originalDiffuse = m.material.diffuseColor.clone();
+                    }
+                }
+            });
+
+            this.idleAnim = result.animationGroups.find(a => a.name === "Idle_Static")
+            this.leftAnim = result.animationGroups.find(a => a.name === "Lean_Left")
+            this.rightAnim = result.animationGroups.find(a => a.name === "Lean_Right")
+
+            result.animationGroups.forEach(ag => ag.stop())
+            if (this.idleAnim) {
+                this.idleAnim.play(true)
+                this.currentAnim = this.idleAnim
+            }
+        }).catch(err => console.error("Erreur chargement Volt-Striker", err))
 
         const mat = new StandardMaterial("voltStrikerMat", this.scene)
-        mat.diffuseColor = new Color3(0.9, 0.9, 0.9)
-        mat.emissiveColor = new Color3(0.2, 0.2, 0.2)
         enemy.material = mat
+        this.material = mat
 
         return enemy
     }
@@ -57,100 +92,71 @@ export class VoltStriker extends Enemy {
     update(playerMesh, projectiles = [], enemies = []) {
         if (!this.enemy) return
 
-        const dt = this.scene.getEngine().getDeltaTime() / 1000
+        // Flash rouge sur le modèle GLB (multi-mesh)
+        this._updateGLBHitFlash()
 
-        // Flash rouge au hit
+        // IA NavGrid (perception → FSM → pathfinding → mouvement)
+        const result = this.updateNavGridAI(playerMesh, enemies)
+        if (!result || !result.moved) return
+
+        // Rotation smooth + animations lean
+        this.applyRotation(result.scaledMove, 0.15)
+        this._updateLeanAnimation(result.scaledMove)
+    }
+
+    /**
+     * Flash rouge spécifique aux modèles GLB (sous-meshes multiples)
+     */
+    _updateGLBHitFlash() {
         if (this._hitTimer > 0) {
-            this._hitTimer -= dt
-            if (this._hitTimer <= 0) {
-                this.material.diffuseColor = new Color3(0.9, 0.9, 0.9)
+            this._hitTimer -= this.scene.getEngine().getDeltaTime() / 1000
+            if (this._hitTimer < 0) this._hitTimer = 0
+        }
+
+        const isHit = this._hitTimer > 0
+        if (!this.visualMeshes) return
+
+        for (const mesh of this.visualMeshes) {
+            if (!mesh.material) continue
+            if (isHit) {
+                mesh.material.emissiveColor = new Color3(1, 0, 0)
+                if (mesh.material.albedoColor) mesh.material.albedoColor = new Color3(1, 0, 0)
+            } else {
+                mesh.material.emissiveColor = mesh._originalEmissive || new Color3(0, 0, 0)
+                if (mesh.material.albedoColor && mesh._originalAlbedo) {
+                    mesh.material.albedoColor = mesh._originalAlbedo
+                } else if (mesh.material.diffuseColor && mesh._originalDiffuse) {
+                    mesh.material.diffuseColor = mesh._originalDiffuse
+                }
             }
         }
+    }
 
-        // Vérifications de sécurité: si les systèmes ne sont pas prêts, ne rien faire
-        // Ne pas marquer _debugLogged en erreur : on veut pouvoir logger l'init quand
-        // tout sera prêt (évite de masquer le log OK si l'ennemi est créé tôt).
-        if (!this.fsm || !this.perception || !this.pathfinding || !this.perceptionSystem) {
-            return;
+    /**
+     * Animation lean gauche/droite basée sur la direction de mouvement
+     */
+    _updateLeanAnimation(moveVec) {
+        if (moveVec.lengthSquared() > 0.0001) {
+            const targetY = Math.atan2(moveVec.x, moveVec.z)
+            let diff = targetY - this.enemy.rotation.y
+            while (diff < -Math.PI) diff += Math.PI * 2
+            while (diff > Math.PI) diff -= Math.PI * 2
+
+            let targetAnim = this.idleAnim
+            if (diff > 0.1 && this.leftAnim) targetAnim = this.leftAnim
+            else if (diff < -0.1 && this.rightAnim) targetAnim = this.rightAnim
+
+            if (this.currentAnim !== targetAnim && targetAnim) {
+                if (this.currentAnim) this.currentAnim.stop()
+                targetAnim.play(true)
+                this.currentAnim = targetAnim
+            }
+        } else {
+            if (this.currentAnim !== this.idleAnim && this.idleAnim) {
+                if (this.currentAnim) this.currentAnim.stop()
+                this.idleAnim.play(true)
+                this.currentAnim = this.idleAnim
+            }
         }
-
-        // Log une fois pour confirmer initialisation
-        if (!this._debugLogged) {
-            const hasNavGrid = !!this.pathfinding.navGrid;
-            console.log('[VoltStriker] ✅ Init OK — systèmes prêts. NavGrid A*:', hasNavGrid ? 'OUI' : 'NON');
-            this._debugLogged = true;
-        }
-
-        // 1) PERCEPTION: FOV simple (distance-based, pas de raycast bloquant)
-        const fovDistance = this.fsm.config.fovDistance || 25
-        const fovAngle = this.fsm.config.fovAngle || 120
-
-        const playerVisible = this.perceptionSystem.canSeePlayer(
-            this.enemy.position,
-            playerMesh.position,
-            fovDistance,
-            fovAngle,
-            Vector3.Forward(),
-            false  // Pas de raycast LOS (utiliser A* pour naviguer, pas LOS pour détecter)
-        )
-
-        // Mettre à jour perception — mémoire PERMANENTE
-        // Une fois le joueur vu, l'ennemi ne l'oublie jamais
-        this.perception.canSee = playerVisible
-        if (playerVisible) {
-            this.perception.lastSeenPos = playerMesh.position.clone()
-            this.perception.lastSeenTime = 0
-            this._hasSeenPlayer = true  // Flag permanent
-        } else if (this._hasSeenPlayer) {
-            // Vu au moins une fois → toujours tracker la position du joueur
-            this.perception.lastSeenPos = playerMesh.position.clone()
-            this.perception.lastSeenTime = 0
-        }
-
-        // 2) FSM: Déterminer action (state + speed + targetPos)
-        const action = this.fsm.getAction({
-            health: this.life,
-            maxHealth: this.maxLife,
-            position: this.enemy.position,
-            playerPos: playerVisible ? playerMesh.position : null,
-            targetPos: this.perception.lastSeenPos,
-        })
-
-        // Debug périodique
-        this._frameCount++;
-        if (this._frameCount % 120 === 0) {
-            const distToPlayer = Vector3.Distance(this.enemy.position, playerMesh.position);
-            const hasPath = this.pathfinding._currentPath?.length > 0;
-            const wpIdx = this.pathfinding._currentWaypointIndex || 0;
-            // console.log(`[VS] dist=${distToPlayer.toFixed(1)} state=${action.state} path=${hasPath ? this.pathfinding._currentPath.length + 'wp' : 'none'} wp#${wpIdx}`);
-        }
-
-        // 3) MOUVEMENT via A* pathfinding
-        let targetPos = action.targetPos
-
-        if (!targetPos) return
-        if (action.action === 'idle' || action.action === 'dead') return
-
-        // Le PathfindingHelper gère tout: A* + séparation + waypoints
-        let moveVec = this.pathfinding.getMovementVector(
-            this.enemy.position,
-            targetPos,
-            action.speed * this.speed,
-            enemies.filter(e => {
-                if (!e || !e.enemy) return false
-                const dist = Vector3.Distance(this.enemy.position, e.enemy.position)
-                return dist < 10
-            }),
-            2.5,    // separationDistance
-            1.2     // separationForce
-        )
-
-        // Appliquer slow (stun, ralenti, debuff)
-        const slow = (this._slowFactor !== undefined && this._slowFactor >= 0) ? this._slowFactor : 1
-        const scaledMove = moveVec.scale(slow);
-
-        // Déplacement avec collision physique en filet de sécurité
-        // A* guide autour des murs, moveWithCollisions empêche de traverser
-        this.enemy.moveWithCollisions(scaledMove);
     }
 }
