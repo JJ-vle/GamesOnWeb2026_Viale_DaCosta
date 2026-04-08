@@ -1,16 +1,23 @@
 /**
  * BuildSystem — Gère les slots de modules du robot et l'application des effets.
  *
- * Structure initiale : 1 slot par partie du corps (Tête/Corps/Bras/Jambes).
- * Évolution : addSlot(part) pour débloquer un slot supplémentaire (via Master Core 4★).
+ * Deux catégories d'items :
+ *  - Standard (1-2★) : consommables, pas de limite, stockés dans `consumables`
+ *  - Châssis  (3-4★) : un seul item par slot corporel (6 emplacements)
+ *
+ * Slots corporels : head, body, rightArm, leftArm, rightLeg, leftLeg
  *
  * Usage :
  *   const build = new BuildSystem(player)
- *   build.equipItem(item)            // equipe dans le bon slot
+ *   build.equipItem(item)            // equipe selon la catégorie
  *   build.getEquippedItems()         // retourne tous les items équipés
  *   build.getProcItems()             // items ayant un onProc (pour CollisionSystem)
+ *   build.getOccupiedSlots()         // set des slots chassis occupés (pour auto-ban)
  */
 export class BuildSystem {
+
+    /** Liste des 6 slots corporels */
+    static SLOT_NAMES = ['head', 'body', 'rightArm', 'leftArm', 'rightLeg', 'leftLeg'];
 
     /**
      * @param {Player} player
@@ -18,13 +25,18 @@ export class BuildSystem {
     constructor(player) {
         this.player = player;
 
-        /** Slots par partie du corps — tableau de taille variable */
-        this.slots = {
-            head: [null],
-            body: [null],
-            arms: [null],
-            legs: [null],
+        /** Slots châssis (3-4★) — un seul item par slot (null = vide) */
+        this.chassisSlots = {
+            head: null,
+            body: null,
+            rightArm: null,
+            leftArm: null,
+            rightLeg: null,
+            leftLeg: null,
         };
+
+        /** Items standard (1-2★) — pas de limite */
+        this.consumables = [];
 
         /** Historique des items équipés (pour l'affichage) */
         this.equippedHistory = [];
@@ -34,32 +46,40 @@ export class BuildSystem {
     }
 
     // ─────────────────────────────────────────────
-    // GESTION DES SLOTS
+    // GESTION DES SLOTS CHÂSSIS
     // ─────────────────────────────────────────────
 
     /**
-     * Ajoute un slot supplémentaire à une partie du corps.
-     * @param {'head'|'body'|'arms'|'legs'} part
+     * Retourne true si le slot châssis est libre.
+     * @param {string} slot
      */
-    addSlot(part) {
-        if (!this.slots[part]) return;
-        this.slots[part].push(null);
-        // console.log(`[BuildSystem] +1 slot ${part} → ${this.slots[part].length} slots`);
+    isSlotFree(slot) {
+        return slot in this.chassisSlots && this.chassisSlots[slot] === null;
     }
 
     /**
-     * Retourne le nombre de slots libres pour une partie.
-     * @param {'head'|'body'|'arms'|'legs'} part
+     * Retourne le Set des noms de slots actuellement occupés.
+     * Utilisé par LootSystem pour l'auto-ban.
      */
-    freeSlots(part) {
-        return this.slots[part]?.filter(s => s === null).length ?? 0;
+    getOccupiedSlots() {
+        const occupied = new Set();
+        for (const [slot, item] of Object.entries(this.chassisSlots)) {
+            if (item !== null) occupied.add(slot);
+        }
+        return occupied;
     }
 
     /**
-     * Retourne le nombre total de slots pour une partie.
+     * Libère un slot châssis et retire l'effet de l'item.
+     * @param {string} slot
+     * @returns {Item|null} l'item retiré, ou null
      */
-    totalSlots(part) {
-        return this.slots[part]?.length ?? 0;
+    unequipSlot(slot) {
+        if (!(slot in this.chassisSlots) || this.chassisSlots[slot] === null) return null;
+        const item = this.chassisSlots[slot];
+        item.remove(this.player);
+        this.chassisSlots[slot] = null;
+        return item;
     }
 
     // ─────────────────────────────────────────────
@@ -67,33 +87,32 @@ export class BuildSystem {
     // ─────────────────────────────────────────────
 
     /**
-     * Équipe un item dans le bon slot.
-     * Si le slot est plein, remplace l'item le plus ancien.
+     * Équipe un item.
+     *  - Standard (1-2★) → ajouté aux consumables (pas de limite)
+     *  - Châssis  (3-4★) → placé dans le slot corporel (un seul par slot)
      * @param {Item} item
      */
     equipItem(item) {
-        const part = item.slot;
-        if (!this.slots[part]) {
-            console.warn(`[BuildSystem] Slot inconnu: ${part}`);
-            return false;
-        }
-
-        const freeIdx = this.slots[part].indexOf(null);
-
-        if (freeIdx !== -1) {
-            // Slot libre → on équipe directement
-            this.slots[part][freeIdx] = item;
+        if (item.isChassis) {
+            const slot = item.slot;
+            if (!(slot in this.chassisSlots)) {
+                console.warn(`[BuildSystem] Slot inconnu: ${slot}`);
+                return false;
+            }
+            // Si le slot est déjà occupé, on retire l'ancien
+            if (this.chassisSlots[slot] !== null) {
+                this.unequipSlot(slot);
+            }
+            this.chassisSlots[slot] = item;
         } else {
-            // Pas de slot libre → on étend la taille des slots et on l'ajoute !
-            this.slots[part].push(item);
-            // console.log(`[BuildSystem] Accumulation: Nouveau module ajouté (${this.slots[part].length} dans ${part})`);
+            // Standard (1-2★) → consumables sans limite
+            this.consumables.push(item);
         }
 
         // Appliquer l'effet (passer buildSystem pour les Master Cores qui ajoutent des slots)
         item.equip(this.player, this);
         this.equippedHistory.push(item);
 
-        // console.log(`[BuildSystem] Équipé: ${item.rarityStars} ${item.name} (${part})`);
         if (this.onItemEquipped) this.onItemEquipped(item);
         return true;
     }
@@ -102,11 +121,10 @@ export class BuildSystem {
     // GETTERS
     // ─────────────────────────────────────────────
 
-    /** Retourne tous les items actuellement équipés (non null) */
+    /** Retourne tous les items actuellement équipés (châssis + consumables) */
     getEquippedItems() {
-        return Object.values(this.slots)
-            .flat()
-            .filter(Boolean);
+        const chassis = Object.values(this.chassisSlots).filter(Boolean);
+        return [...chassis, ...this.consumables];
     }
 
     /** Retourne les items qui ont un effet onProc */
@@ -117,9 +135,20 @@ export class BuildSystem {
     /** Résumé texte pour le debug */
     getSummary() {
         const lines = [];
-        for (const [part, items] of Object.entries(this.slots)) {
-            const filled = items.map(i => i ? `${i.icon}${i.name}` : '[ vide ]').join(' | ');
-            lines.push(`${part.padEnd(5)}: ${filled}`);
+        const slotLabels = {
+            head: 'Tête    ',
+            body: 'Corps   ',
+            rightArm: 'Bras D  ',
+            leftArm: 'Bras G  ',
+            rightLeg: 'Jambe D ',
+            leftLeg: 'Jambe G ',
+        };
+        for (const [slot, item] of Object.entries(this.chassisSlots)) {
+            const label = slotLabels[slot] || slot;
+            lines.push(`${label}: ${item ? `${item.icon}${item.name}` : '[ vide ]'}`);
+        }
+        if (this.consumables.length > 0) {
+            lines.push(`Modules : ${this.consumables.map(i => `${i.icon}${i.name}`).join(', ')}`);
         }
         return lines.join('\n');
     }

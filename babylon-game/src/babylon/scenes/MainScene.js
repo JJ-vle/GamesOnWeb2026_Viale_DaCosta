@@ -922,7 +922,8 @@ export class MainScene extends BaseScene {
     const { startNextRoundAfterPick = false } = options
 
     this._isGamePausedForLoot = true
-    const pool = this.lootSystem.generatePool(3, this.playerEntry.luck)
+    const occupiedSlots = this.buildSystem.getOccupiedSlots()
+    const pool = this.lootSystem.generatePool(3, this.playerEntry.luck, occupiedSlots)
     this.lootUI.show(pool, this.buildSystem, (item) => {
       // console.log(`[MainScene] Item choisi: ${item.name}`)
       this._isGamePausedForLoot = false

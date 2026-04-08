@@ -4,11 +4,15 @@
  * Chaque item possède :
  *  - id, name, description, icon (emoji)
  *  - rarity : 1 (USB) | 2 (Module) | 3 (Module MK2) | 4 (Master Core)
- *  - slot   : 'head' | 'body' | 'arms' | 'legs'
+ *  - slot   : 'head' | 'body' | 'rightArm' | 'leftArm' | 'rightLeg' | 'leftLeg'
  *  - onEquip(player)  : applique l'effet permanent
  *  - onRemove(player) : retire l'effet (pour futurs swaps)
  *  - onProc(enemy, player) : effet déclenché par chance lors d'un tir (peut être null)
  *  - procChance : probabilité de base (0→1) avant multiplication par player.luck
+ *
+ * Classification :
+ *  - Standard (1-2★) : consommables / utilitaires légers, pas de limite de stockage
+ *  - Châssis  (3-4★) : s'installent sur un slot corporel unique (1 par slot)
  */
 export class Item {
     /**
@@ -18,7 +22,7 @@ export class Item {
      * @param {string} config.description
      * @param {string} config.icon  emoji
      * @param {1|2|3|4} config.rarity
-     * @param {'head'|'body'|'arms'|'legs'} config.slot
+     * @param {'head'|'body'|'rightArm'|'leftArm'|'rightLeg'|'leftLeg'} config.slot
      * @param {function(player):void} config.onEquip
      * @param {function(player):void} [config.onRemove]
      * @param {function(enemy, player):void} [config.onProc]
@@ -35,6 +39,11 @@ export class Item {
         this._onRemove = config.onRemove ?? (() => {});
         this.onProc = config.onProc ?? null;
         this.procChance = config.procChance ?? 0;
+    }
+
+    /** true si l'item est un item de châssis (3-4★) qui occupe un slot corporel */
+    get isChassis() {
+        return this.rarity >= 3;
     }
 
     /** Applique les effets permanents de l'item au joueur */

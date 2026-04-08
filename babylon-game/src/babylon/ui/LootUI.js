@@ -190,7 +190,7 @@ export class LootUI {
 
         // ── Slot ──
         const slotText = new TextBlock(`slot_${item.id}`);
-        const slotIcons = { head: '🔧 Tête', body: '🔧 Corps', arms: '🔧 Bras', legs: '🔧 Jambes' };
+        const slotIcons = { head: '🔧 Tête', body: '🔧 Corps', rightArm: '🔧 Bras D', leftArm: '🔧 Bras G', rightLeg: '🔧 Jambe D', leftLeg: '🔧 Jambe G' };
         slotText.text = slotIcons[item.slot] ?? item.slot;
         slotText.color = '#ffffff55';
         slotText.fontSize = 11;
