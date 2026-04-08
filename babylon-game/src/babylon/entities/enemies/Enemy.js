@@ -14,6 +14,7 @@ export class Enemy {
         this.scene = scene;
         this.enemy = null; // à créer dans les classes filles
         this.material = null
+        this._originalDiffuseColor = null // Sauvegardé au premier takeDamage
         this.verticalVelocity = 0;
         this.contact = contact;
 
@@ -179,6 +180,11 @@ export class Enemy {
     takeDamage(amount) {
         this.life -= amount
 
+        // Sauvegarder la couleur d'origine avant le premier flash rouge
+        if (this.material && !this._originalDiffuseColor) {
+            this._originalDiffuseColor = this.material.diffuseColor.clone()
+        }
+
         if (this.material) this.material.diffuseColor = new Color3(1, 0, 0)
         this._hitTimer = 0.1 
 
@@ -234,23 +240,52 @@ export class Enemy {
         this.onDeath = null
         this.contact = null
 
-        // Reset AI state
-        if (this.perception) {
+        // Reset material color (annuler le flash rouge de takeDamage)
+        if (this.material) {
+            if (this._originalDiffuseColor) {
+                this.material.diffuseColor = this._originalDiffuseColor.clone()
+            } else {
+                this.material.diffuseColor = new Color3(1, 1, 1)
+            }
+        }
+
+        // Reset AI state — recréer si détruit par destroy()
+        if (!this.perception) {
+            this.perception = {
+                canSee: false,
+                lastSeenPos: null,
+                lastSeenTime: Infinity,
+            }
+        } else {
             this.perception.canSee = false
             this.perception.lastSeenPos = null
             this.perception.lastSeenTime = Infinity
         }
+
         if (this.fsm) {
-            // Arrêter le service xstate actuel et en recréer un propre
+            // Sauvegarder la config AVANT de dispose
+            const fsmConfig = this.fsm.config
             this.fsm.dispose()
-            this.fsm = new EnemyAIFSM(this.fsm.config)
+            this.fsm = new EnemyAIFSM(fsmConfig)
+        } else {
+            // FSM été détruit par destroy() → recréer avec config par défaut
+            this.fsm = new EnemyAIFSM({
+                fovDistance: 50,
+                fovAngle: 90,
+                attackRange: 5,
+                retreatThreshold: 0.3,
+            })
         }
+
         if (this.pathfinding) {
             this.pathfinding._currentPath = []
             this.pathfinding._currentWaypointIndex = 0
             this.pathfinding._pathTarget = null
             this.pathfinding._stuckFrameCount = 0
             this.pathfinding._lastPos = null
+        } else {
+            // Pathfinding détruit par destroy() → recréer
+            this.pathfinding = new PathfindingHelper(this.scene, null)
         }
 
         // Reset mesh visual
@@ -265,17 +300,11 @@ export class Enemy {
         const deathCallback = this.onDeath
         this.onDeath = null // Empêcher double-call
 
-        // Nettoyer systèmes IA
-        if (this.fsm) {
-            this.fsm.dispose()
-            this.fsm = null
-        }
-        this.perception = null
-        this.pathfinding = null
+        // ⚠️ NE PAS détruire fsm/perception/pathfinding ici!
+        // L'ennemi sera recyclé par le pool via reset() qui gère le cleanup proprement.
+        // Si on les null ici, reset() ne peut plus les recréer correctement.
 
-        // NE PAS disposer le mesh si l'ennemi sera recyclé par le pool
-        // Le mesh sera caché par reset() et réutilisé
-        // destroy() est maintenant réservé au nettoyage final (quand on quitte la scène)
+        // Cacher le mesh en attendant le recyclage
         if (this.enemy) {
             this.enemy.setEnabled(false)
             this.enemy.position.set(0, -1000, 0)
