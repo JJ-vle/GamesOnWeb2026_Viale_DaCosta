@@ -4,6 +4,7 @@ import {
     TextBlock,
     Control,
     Button,
+    Slider
 } from '@babylonjs/gui';
 
 /**
@@ -58,14 +59,14 @@ export class PauseUI {
         // ── Conteneur des boutons ──
         const buttonContainer = new Rectangle('buttonContainer');
         buttonContainer.width = '400px';
-        buttonContainer.height = '250px';
+        buttonContainer.height = '350px';
         buttonContainer.thickness = 0;
         buttonContainer.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
         buttonContainer.verticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
         overlay.addControl(buttonContainer);
 
         // ── Bouton Resume ──
-        const resumeBtn = new Button('resumeBtn');
+        const resumeBtn = Button.CreateSimpleButton('resumeBtn', '▶ Resume');
         resumeBtn.width = '300px';
         resumeBtn.height = '60px';
         resumeBtn.top = '-40px';
@@ -76,7 +77,6 @@ export class PauseUI {
         resumeBtn.fontFamily = 'monospace';
         resumeBtn.fontStyle = 'bold';
         resumeBtn.paddingInPixels = 10;
-        resumeBtn.textBlock.text = '▶ Resume';
         buttonContainer.addControl(resumeBtn);
 
         const resumeObserver = resumeBtn.onPointerClickObservable.add(() => {
@@ -93,7 +93,7 @@ export class PauseUI {
         });
 
         // ── Bouton Settings (placeholder) ──
-        const settingsBtn = new Button('settingsBtn');
+        const settingsBtn = Button.CreateSimpleButton('settingsBtn', '⚙ Settings');
         settingsBtn.width = '300px';
         settingsBtn.height = '60px';
         settingsBtn.top = '50px';
@@ -104,7 +104,6 @@ export class PauseUI {
         settingsBtn.fontFamily = 'monospace';
         settingsBtn.fontStyle = 'bold';
         settingsBtn.paddingInPixels = 10;
-        settingsBtn.textBlock.text = '⚙ Settings';
         buttonContainer.addControl(settingsBtn);
 
         // Placeholder click
@@ -120,6 +119,63 @@ export class PauseUI {
         settingsBtn.onPointerOutObservable.add(() => {
             settingsBtn.background = '#4a3f35';
         });
+
+        // ── Slider Luminosité ──
+        const brightnessPanel = new Rectangle('brightnessPanel');
+        brightnessPanel.width = '300px';
+        brightnessPanel.height = '80px';
+        brightnessPanel.top = '140px';
+        brightnessPanel.thickness = 0;
+        buttonContainer.addControl(brightnessPanel);
+
+        if (!this.scene.metadata) this.scene.metadata = {};
+        if (typeof this.scene.metadata.brightnessMultiplier === 'undefined') {
+            this.scene.metadata.brightnessMultiplier = 1.0;
+        }
+
+        const brightnessLabel = new TextBlock('brightnessLabel');
+        brightnessLabel.text = `Luminosité: ${Math.round(this.scene.metadata.brightnessMultiplier * 100)}%`;
+        brightnessLabel.color = '#ffffff';
+        brightnessLabel.fontSize = 18;
+        brightnessLabel.fontFamily = 'monospace';
+        brightnessLabel.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+        brightnessLabel.height = "30px";
+        brightnessPanel.addControl(brightnessLabel);
+
+        const brightnessSlider = new Slider('brightnessSlider');
+        brightnessSlider.minimum = 0.1;
+        brightnessSlider.maximum = 3.0;
+        brightnessSlider.value = this.scene.metadata.brightnessMultiplier;
+        brightnessSlider.height = '20px';
+        brightnessSlider.width = '280px';
+        brightnessSlider.color = '#ffcc00';
+        brightnessSlider.background = '#333333';
+        brightnessSlider.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
+        brightnessPanel.addControl(brightnessSlider);
+
+        const sliderObs = brightnessSlider.onValueChangedObservable.add((value) => {
+            this.scene.metadata.brightnessMultiplier = value;
+            brightnessLabel.text = `Luminosité: ${Math.round(value * 100)}%`;
+
+            // Adjust main scene lights
+            this.scene.lights.forEach(light => {
+                const name = light.name;
+                let base = 1.0;
+                if (name === "ambientLight") base = 0.5;
+                else if (name === "neonCyan" || name === "neonPink") base = 5.0;
+                else if (name === "neonBlue") base = 4.0;
+                else return; // Ignore dynamic lights 
+                light.intensity = base * value;
+            });
+
+            // Adjust global glow layer if any
+            if (this.scene.effectLayers) {
+                this.scene.effectLayers.forEach(layer => {
+                    if (layer.name === "neonGlow") layer.intensity = 0.8 * value;
+                });
+            }
+        });
+        this._listeners.push({ observable: brightnessSlider.onValueChangedObservable, observer: sliderObs });
 
         // ── Animation d'apparition (fade in) ──
         overlay.alpha = 0;
@@ -170,6 +226,9 @@ export class PauseUI {
             try { c.dispose(); } catch (e) { /* ignore */ }
         });
         this.ui.getControlsByType('Button').forEach(c => {
+            try { c.dispose(); } catch (e) { /* ignore */ }
+        });
+        this.ui.getControlsByType('Slider').forEach(c => {
             try { c.dispose(); } catch (e) { /* ignore */ }
         });
         this._overlay = null;
