@@ -230,6 +230,15 @@ export class UISystem {
         this.abilityIcon.top = "8px";
         container.addControl(this.abilityIcon);
 
+        // Large image shown when no emoji item is present (uses placeholder floppydisk)
+        this.abilityIconImage = new Image("abilityIconImage", "assets/items/floppydisk.png");
+        this.abilityIconImage.width = "56px";
+        this.abilityIconImage.height = "56px";
+        this.abilityIconImage.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+        this.abilityIconImage.top = "6px";
+        this.abilityIconImage.isVisible = false;
+        container.addControl(this.abilityIconImage);
+
         this.abilityCooldownOverlay = new Rectangle("abilityCooldownOverlay");
         this.abilityCooldownOverlay.width = "100%";
         this.abilityCooldownOverlay.height = "0%";
@@ -412,14 +421,30 @@ export class UISystem {
         // On recrée la liste (performance OK pour un tableau de < 50 items)
         this.itemsListPanel.clearControls();
         items.forEach(item => {
-            const txt = new TextBlock(`item_${item.id}_${Math.random()}`); // random pour éviter confit si items multiples
-            txt.text = `${item.icon} ${item.name} ${item.rarityStars}`;
-            txt.color = item.rarityColor;
+            // Row: image + name
+            const row = new StackPanel(`itemRow_${item.id}_${Math.random()}`);
+            row.isVertical = false;
+            row.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
+            row.height = "28px";
+
+            const img = new Image(`itemImg_${item.id}_${Math.random()}`, item.image || "assets/items/floppydisk.png");
+            img.width = "40px";
+            img.height = "40px";
+            img.verticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
+            img.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+            row.addControl(img);
+
+            const txt = new TextBlock(`item_${item.id}_${Math.random()}`); // random pour éviter conflit si items multiples
+            txt.text = `${item.name} ${item.rarityStars || ''}`;
+            txt.color = item.rarityColor || "#ffffff";
             txt.fontSize = 12;
-            txt.height = "20px";
+            txt.height = "36px";
             txt.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
             txt.fontFamily = "monospace";
-            this.itemsListPanel.addControl(txt);
+            txt.paddingLeft = "10px";
+            row.addControl(txt);
+
+            this.itemsListPanel.addControl(row);
 
             const desc = new TextBlock(`itemDesc_${item.id}_${Math.random()}`);
             desc.text = item.description;
@@ -480,7 +505,18 @@ export class UISystem {
      */
     updateActiveAbility(cooldownPercent, itemType, cooldownRemaining = 0) {
         const icons = { heal: "💊", grenade: "💣" };
-        this.abilityIcon.text = icons[itemType] ?? "—";
+        this._lastItemType = itemType;
+
+        if (itemType == null) {
+            // show image when there's no emoji-type item
+            try { this.abilityIconImage.source = "assets/items/floppydisk.png"; } catch (e) { /* ignore */ }
+            this.abilityIconImage.isVisible = true;
+            this.abilityIcon.isVisible = false;
+        } else {
+            this.abilityIcon.text = icons[itemType] ?? "—";
+            this.abilityIcon.isVisible = true;
+            if (this.abilityIconImage) this.abilityIconImage.isVisible = false;
+        }
 
         const overlayHeight = Math.round(cooldownPercent * 100);
         this.abilityCooldownOverlay.height = overlayHeight + "%";

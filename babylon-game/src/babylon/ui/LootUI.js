@@ -4,6 +4,7 @@ import {
     TextBlock,
     Control,
     Button,
+    Image,
 } from '@babylonjs/gui';
 
 /**
@@ -128,27 +129,50 @@ export class LootUI {
         // ── Bandeau rareté (haut de la carte) ──
         const rarityBg = new Rectangle(`rarity_${item.id}`);
         rarityBg.width = '100%';
-        rarityBg.height = '40px';
+        rarityBg.height = '48px';
+        // align left so leftInPixels on children is relative to left edge
+        rarityBg.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+        rarityBg.leftInPixels = 0;
         rarityBg.background = item.rarityColor + '33';
         rarityBg.thickness = 0;
         rarityBg.cornerRadius = 10;
         rarityBg.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
         card.addControl(rarityBg);
 
-        const rarityText = new TextBlock(`rarityTxt_${item.id}`);
-        rarityText.text = item.rarityStars;
-        rarityText.fontSize = 18;
-        rarityText.color = item.rarityColor;
-        rarityBg.addControl(rarityText);
+        // Afficher des étoiles en image plutôt qu'un emoji
+        // déterminer le nombre d'étoiles : item.rarity (number) ou item.rarityStars (string de ★)
+        let starCount = 0;
+        if (typeof item.rarity === 'number') starCount = item.rarity;
+        else if (typeof item.rarityStars === 'string') {
+            const m = item.rarityStars.match(/★/g);
+            starCount = m ? m.length : 0;
+        }
+        if (starCount <= 0) starCount = 1;
+
+        // center stars in the 260px card
+        const cardWidth = 260;
+        const starSpacing = 22; // px between star origins
+        const starW = 20;
+        const totalStarWidth = (starCount - 1) * starSpacing + starW;
+        const startLeft = Math.round((cardWidth - totalStarWidth) / 2);
+        for (let i = 0; i < starCount; i++) {
+            const starImg = new Image(`star_${item.id}_${i}`, 'assets/star.png');
+            starImg.width = '20px';
+            starImg.height = '20px';
+            starImg.verticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
+            starImg.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+            starImg.leftInPixels = startLeft + i * starSpacing;
+            rarityBg.addControl(starImg);
+        }
 
         // ── Icône ──
-        const iconText = new TextBlock(`icon_${item.id}`);
-        iconText.text = item.icon;
-        iconText.fontSize = 52;
-        iconText.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
-        iconText.topInPixels = 50;
-        iconText.height = "70px";
-        card.addControl(iconText);
+        // Icône de l'item (image) — remplace le grand emoji
+        const iconImg = new Image(`icon_${item.id}` , item.image || 'assets/items/floppydisk.png');
+        iconImg.width = '96px';
+        iconImg.height = '96px';
+        iconImg.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+        iconImg.topInPixels = 52; // slightly up to make room
+        card.addControl(iconImg);
 
         // ── Nom ──
         const nameText = new TextBlock(`name_${item.id}`);
@@ -158,7 +182,7 @@ export class LootUI {
         nameText.fontFamily = 'monospace';
         nameText.fontStyle = 'bold';
         nameText.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
-        nameText.topInPixels = 128; // recadré légèrement
+        nameText.topInPixels = 156; // placed under the icon
         nameText.height = "34px";
         nameText.textWrapping = true;
         nameText.width = '90%';
@@ -172,8 +196,8 @@ export class LootUI {
         slotText.fontSize = 11;
         slotText.fontFamily = 'monospace';
         slotText.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
-        slotText.topInPixels = 166;
-        slotText.height = "25px";
+        slotText.topInPixels = 194; // below name
+        slotText.height = "20px";
         card.addControl(slotText);
 
         // ── Description ──
@@ -183,7 +207,7 @@ export class LootUI {
         descText.fontSize = 14;
         descText.fontFamily = 'monospace';
         descText.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
-        descText.topInPixels = 196;
+        descText.topInPixels = 220;
         descText.height = "60px";
         descText.textWrapping = true;
         descText.width = '85%';
