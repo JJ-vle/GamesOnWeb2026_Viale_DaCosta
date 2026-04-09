@@ -1,18 +1,14 @@
 // src/babylon/scenes/MainScene.js
 import { BaseScene } from './BaseScene'
 import { CameraManager } from "../cameras/CameraManager"
-import { Player } from '../entities/Player'
 import { SpawnerSystem } from '../systems/SpawnerSystem'
 import { Zone } from '../Zone'
 import { generateZoneTree } from '../ZoneTree'
 import { EnemyProjectile } from '../entities/weapons/EnemyProjectile.js'
-import { VoltStriker } from '../entities/enemies/new/VoltStriker.js'
 import { RoundOrchestrator } from './RoundOrchestrator'
-import {
-  Vector3, HemisphericLight, PointLight, GlowLayer, MeshBuilder,
-  Color3, StandardMaterial, SceneLoader
-} from '@babylonjs/core'
-import "@babylonjs/loaders"
+import { WorldBuilder } from './WorldBuilder'
+import { EnemySpawnHandler } from './EnemySpawnHandler'
+import { Vector3 } from '@babylonjs/core'
 import { PistolWeapon } from "../entities/weapons/PistolWeapon"
 import { WeaponSystem } from "../systems/WeaponSystem"
 import { CollisionSystem } from "../systems/CollisionSystem"
@@ -23,10 +19,8 @@ import { LootSystem } from "../systems/LootSystem"
 import { XPSystem } from "../systems/XPSystem"
 import { LootUI } from "../ui/LootUI"
 import { PauseUI } from "../ui/PauseUI"
-import { NavGrid } from "../systems/NavGrid"
 import { XRaySystem } from "../systems/XRaySystem"
 import { PerformanceMonitor } from "../systems/PerformanceMonitor"
-import { LoadingScreen } from "../systems/LoadingScreen"
 import { PerceptionSystem } from "../systems/PerceptionSystem"
 
 
@@ -37,8 +31,18 @@ export class MainScene extends BaseScene {
     // ID du noeud de zone actuellement chargé (utile pour demander l'ouverture de la map)
     this.currentZoneNodeId = null
 
-    this._createLights()
-    this._createWorld()
+    const _wb = new WorldBuilder(this.scene)
+    _wb.createLights()
+    const { playerEntry, navGrid } = _wb.build({
+      onMapLoaded: (updatedNavGrid) => {
+        for (const enemy of this.enemies) {
+          if (enemy.setNavGrid) enemy.setNavGrid(updatedNavGrid)
+        }
+        console.log(`[NavGrid] NavGrid rebuilt and injected into ${this.enemies.length} existing enemies`)
+      }
+    })
+    this.playerEntry = playerEntry
+    this.navGrid = navGrid
 
     this.uiSystem = new UISystem(this.scene)
 
@@ -121,58 +125,26 @@ export class MainScene extends BaseScene {
     this.zone.addSpawner(this.spawnerSystem);
 
     // Callback ennemi spawné
-    this.spawnerSystem.onEnemySpawned = (enemy) => {
-      // Injecter la NavGrid A* pour le pathfinding intelligent
-      if (enemy.setNavGrid) {
-        enemy.setNavGrid(this.navGrid)
-      }
-
-      // ── OPTIMISATION: Injecter le PerceptionSystem partagé ──
-      if (enemy.setPerceptionSystem) {
-        enemy.setPerceptionSystem(this.sharedPerceptionSystem)
-      }
-
-      // Appliquer une réduction de taille supplémentaire (échelle 0.35 au lieu de 0.5)
-      if (enemy.enemy) {
-        enemy.enemy.scaling = new Vector3(0.35, 0.35, 0.35);
-        if (enemy.enemy.ellipsoid && !enemy.enemy._hasBeenScaled) {
-          enemy.enemy.ellipsoid = enemy.enemy.ellipsoid.scale(0.35);
-          enemy.enemy._hasBeenScaled = true;
-        }
-      }
-
-      // Dégâts au contact selon le type
-      const dmg = enemy.contactDamage || 1
-      enemy.contact = () => {
-        this.playerEntry.takeDamage(dmg)
-        if (this.uiSystem) {
-          this.uiSystem.updateLife(this.playerEntry.life, this.playerEntry.maxLife)
-        }
-      }
-      // Callback mort ennemi → notifier le round
-      enemy.onDeath = () => {
+    const spawnHandler = new EnemySpawnHandler(this.scene, {
+      getNavGrid: () => this.navGrid,
+      perceptionSystem: this.sharedPerceptionSystem,
+      playerEntry: this.playerEntry,
+      uiSystem: this.uiSystem,
+      enemies: this.enemies,
+      collisionSystem: this.collisionSystem,
+      spawnerSystem: this.spawnerSystem,
+      getCurrentRound: () => this.currentRound,
+      onEnemyKilled: (enemy) => {
         this.kills++
-        // XP et pièces : utilisation obligatoire des propriétés de l'ennemi
-        const xpGained = enemy.xpValue
-        this.xpSystem.addXP(xpGained)
-        const coinsGained = enemy.coinValue
-        this.score += coinsGained
+        this.xpSystem.addXP(enemy.xpValue)
+        this.score += enemy.coinValue
         this.uiSystem?.updateKills(this.kills)
         this.uiSystem?.updateGears(this.score)
         this.uiSystem?.updateXP(this.xpSystem.progressToNext, this.xpSystem.level)
-        if (this.currentRound) this.currentRound.notifyEnemyKilled()
-        const idx = this.enemies.indexOf(enemy)
-        if (idx !== -1) this.enemies.splice(idx, 1)
-        this.collisionSystem.removeEnemy(enemy)
-        
-        // ── OPTIMISATION: Recycler l'ennemi au pool ──
-        if (this.spawnerSystem) this.spawnerSystem.recycleEnemy(enemy)
-      }
-
-      this.enemies.push(enemy)
-      this.collisionSystem.registerEnemy(enemy)
-      if (this.currentRound) this.currentRound.notifyEnemySpawned()
-    }
+      },
+      onKillOnly: () => { this.kills++ }
+    })
+    this.spawnerSystem.onEnemySpawned = spawnHandler.makeSpawnCallback()
 
     // ── OPTIMISATION: Initialiser le Performance Monitor ──
     this.performanceMonitor = new PerformanceMonitor(this.scene, this.spawnerSystem)
@@ -247,6 +219,8 @@ export class MainScene extends BaseScene {
       }
     })
 
+    this.enemyCallbacks = spawnHandler.makeEnemyCallbacks()
+    this._setupInputs()
     this._setupDebugCommands()
   }
 
@@ -328,209 +302,6 @@ export class MainScene extends BaseScene {
     }
 
     this.uiSystem && this.uiSystem.showNotification(`Chargé: zone ${nodeId} (${node.type})`, '#88ccff', 2000)
-  }
-
-  // ─────────────────────────────────────────────
-  _createBorders(width, height) {
-    const wallHeight = 10
-    const thickness = 1
-
-    const borders = [
-      { name: "wall_N", w: width, h: wallHeight, d: thickness, pos: new Vector3(0, wallHeight / 2, height / 2) },
-      { name: "wall_S", w: width, h: wallHeight, d: thickness, pos: new Vector3(0, wallHeight / 2, -height / 2) },
-      { name: "wall_E", w: thickness, h: wallHeight, d: height, pos: new Vector3(width / 2, wallHeight / 2, 0) },
-      { name: "wall_W", w: thickness, h: wallHeight, d: height, pos: new Vector3(-width / 2, wallHeight / 2, 0) },
-    ]
-
-    borders.forEach(b => {
-      const wall = MeshBuilder.CreateBox(b.name, { width: b.w, height: b.h, depth: b.d }, this.scene)
-      wall.position = b.pos
-      wall.isVisible = false
-      wall.checkCollisions = true
-    })
-  }
-
-  _createObstacles() {
-    const wallHeight = 10
-    const thickness = 1
-
-    // Coin caché en bas à droite de la map - entouré de murs
-    const hideSpotX = 60  // Décalé vers la droite
-    const hideSpotY = -50 // Décalé vers le bas
-    const hideSpotSize = 20 // Taille du coin
-
-    const obstacles = []
-
-    obstacles.forEach(o => {
-      const wall = MeshBuilder.CreateBox(o.name, { width: o.w, height: o.h, depth: o.d }, this.scene)
-      wall.position = o.pos
-      wall.checkCollisions = true
-      wall.isPickable = true  // Important pour raycast
-
-      // Matériau visible pour debug
-      const obstacleMat = new StandardMaterial(`mat_${o.name}`, this.scene)
-      obstacleMat.diffuseColor = new Color3(1, 0.2, 0.2) // Rouge
-      obstacleMat.alpha = 0.3 // Semi-transparent
-      wall.material = obstacleMat
-    })
-  }
-
-  _createLights() {
-    // Ambiance de base (remontée pour y voir clair !)
-    const ambient = new HemisphericLight('ambientLight', new Vector3(0, 1, 0), this.scene)
-    ambient.intensity = 0.5 // On remonte l'intensité
-    ambient.diffuse = new Color3(0.5, 0.35, 0.7) // Violet plus vif
-    ambient.groundColor = new Color3(0.2, 0.1, 0.4) // Ne plus rendre le sol noir
-
-    // Lumière Néon Cyan
-    const neonCyan = new PointLight("neonCyan", new Vector3(-30, 10, 30), this.scene)
-    neonCyan.diffuse = new Color3(0.0, 1.0, 1.0)
-    neonCyan.intensity = 5.0
-    neonCyan.range = 120
-
-    // Lumière Néon Rose/Magenta
-    const neonPink = new PointLight("neonPink", new Vector3(30, 10, -30), this.scene)
-    neonPink.diffuse = new Color3(1.0, 0.0, 1.0)
-    neonPink.intensity = 5.0
-    neonPink.range = 120
-
-    // Lueur Bleutée au centre
-    const neonBlue = new PointLight("neonBlue", new Vector3(0, 15, 0), this.scene)
-    neonBlue.diffuse = new Color3(0.2, 0.5, 1.0)
-    neonBlue.intensity = 4.0
-    neonBlue.range = 150
-
-    // Effet de Glow global (Bloom)
-    const gl = new GlowLayer("neonGlow", this.scene)
-    gl.intensity = 0.8
-  }
-
-  _createWorld() {
-    // ── LOADING SCREEN ──
-    this.loadingScreen = new LoadingScreen();
-    this.loadingScreen.setProgress(5, 'Loading assets...');
-
-    // Sol avec matériau sombre style cyberpunk
-    const ground = MeshBuilder.CreateGround('ground', { width: 130, height: 110, subdivisions: 1 }, this.scene)
-    ground.checkCollisions = true
-
-    const groundMat = new StandardMaterial('groundMat', this.scene)
-    groundMat.diffuseColor = new Color3(0.15, 0.15, 0.2) // Sol sombre assumé
-    groundMat.specularColor = new Color3(0.2, 0.2, 0.4) // Léger reflet
-    ground.material = groundMat
-
-    this.loadingScreen.setProgress(15, 'Creating ground...');
-
-    this.loadingScreen.setProgress(25, 'Creating borders...');
-    this._createBorders(130, 110)
-    
-    this.loadingScreen.setProgress(40, 'Creating obstacles...');
-    this._createObstacles()
-
-    // ── NavGrid A* ── Créer la grille (vide pour l'instant, sera peuplée après chargement de la map)
-    this.navGrid = new NavGrid(130, 110, 1)
-    // Build initial avec les obstacles synchrones (murs invisibles, etc.)
-    this.navGrid.buildFromScene(this.scene)
-
-    // --- Chargement de la map GLB (ASYNC) ---
-    const mapLoadStart = performance.now();
-    SceneLoader.ImportMeshAsync("", "/assets/models/", "map_1.glb", this.scene).then((result) => {
-      result.meshes.forEach(m => {
-        // Activer le mode alpha sur les matériaux
-        if (m.material) {
-          m.material.transparencyMode = 1;
-          if (m.material.albedoTexture) m.material.useAlphaFromAlbedoTexture = true;
-          if (m.material.diffuseTexture) m.material.useAlphaFromDiffuseTexture = true;
-          // Backface culling activé sauf meshes transparents (alpha < 1)
-          m.material.backFaceCulling = true;
-          // Freeze le matériau (ne changera plus → évite recalculs GPU)
-          m.material.freeze();
-        }
-        m.checkCollisions = true;
-        // Freeze la matrice monde (mesh statique → pas de recalcul chaque frame)
-        m.freezeWorldMatrix();
-      });
-      const mapLoadTime = Math.round(performance.now() - mapLoadStart);
-      console.log(`[Loading] Map loaded in ${mapLoadTime}ms`);
-      this.loadingScreen.setProgress(55, `Map assets loaded (${mapLoadTime}ms)`);
-
-      // ══════════════════════════════════════════════════════════════
-      // ⚡ REBUILD NAVGRID APRÈS LE CHARGEMENT DE LA MAP GLB
-      // Maintenant que les meshes de la map existent, on reconstruit
-      // la grille A* pour que les ennemis contournent les vrais murs
-      // ══════════════════════════════════════════════════════════════
-      console.log('[NavGrid] Rebuilding NavGrid after map loaded...');
-      this.navGrid.buildFromScene(this.scene);
-
-      // Réinjecter la NavGrid mise à jour dans tous les ennemis déjà spawnés
-      for (const enemy of this.enemies) {
-        if (enemy.setNavGrid) {
-          enemy.setNavGrid(this.navGrid);
-        }
-      }
-      console.log(`[NavGrid] NavGrid rebuilt and injected into ${this.enemies.length} existing enemies`);
-      
-      // ── Cacher le loading screen une fois que tout est prêt ──
-      setTimeout(() => {
-        this.loadingScreen.setProgress(100, 'Ready!');
-        this.loadingScreen.hide(500);
-      }, 800);
-    }).catch(err => {
-      console.error("Erreur de chargement de map_1.glb", err);
-      this.loadingScreen.setProgress(55, 'Map load skipped (error)');
-      
-      // ── Cacher le loading screen même en cas d'erreur ──
-      setTimeout(() => {
-        this.loadingScreen.setProgress(100, 'Ready!');
-        this.loadingScreen.hide(500);
-      }, 800);
-    });
-    this.loadingScreen.setProgress(60, 'Loading map...');
-
-    this.loadingScreen.setProgress(80, 'Initializing player...');
-    this.playerEntry = new Player(this.scene)
-    // Pas de Coin pour l'instant (sera remplacé par le système d'engrenages)
-    // this.coinEntry = new Coin(...)
-
-    this.scene.clearColor = new Color3(0.02, 0.02, 0.05)
-
-    // Configuration des Callbacks globaux pour les comportements des Boss/Ennemis
-    this.loadingScreen.setProgress(85, 'Setting up callbacks...');
-    this.enemyCallbacks = {
-      onShoot: (pos, dir, type) => {
-        // Crée un projectile rouge qui voyage vite
-        // type: FIRE ou normal
-        // console.log("Enemy shoots!", pos, dir, type)
-      },
-      onExplode: (pos, radius) => {
-        // Applique les dégats en zone au joueur
-        // console.log("BOOM", pos, radius)
-      },
-      onSpawn: (type, pos) => {
-        // Créer l'ennemi en question
-        // console.log("Spawn mob", type, pos)
-        const v = new VoltStriker(this.scene)
-        if (v.setNavGrid) v.setNavGrid(this.navGrid)
-        if (v.enemy) {
-          v.enemy.position = pos
-          // Appliquer une réduction de taille de 35% pour les spawns globaux forcés
-          v.enemy.scaling = new Vector3(0.35, 0.35, 0.35);
-          if (v.enemy.ellipsoid && !v.enemy._hasBeenScaled) {
-            v.enemy.ellipsoid = v.enemy.ellipsoid.scale(0.35);
-            v.enemy._hasBeenScaled = true;
-          }
-        }
-        this.enemies.push(v)
-        v.onDeath = () => this.kills++
-      },
-      onJam: (isJammed) => {
-        // Bloque le heal
-        if (this.activeAbilitySystem) {
-          // Simplification, on pourrait vider le CDR pour simuler le blocage
-        }
-      }
-    }
-    this._setupInputs()
   }
 
   _setupInputs() {
