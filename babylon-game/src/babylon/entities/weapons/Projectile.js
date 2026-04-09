@@ -8,6 +8,7 @@ export class Projectile {
     this.speed = 10
     this.damage = 1
     this.mesh = null
+    this.trail = null
   }
 
   update(deltaTime) {
@@ -24,6 +25,10 @@ export class Projectile {
   }
 
   dispose() {
+    if (this.trail) {
+      this.trail.dispose()
+      this.trail = null
+    }
     if (this.mesh) {
       this.mesh.dispose()
       this.mesh = null
