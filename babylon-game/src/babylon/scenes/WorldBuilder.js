@@ -7,6 +7,7 @@ import '@babylonjs/loaders'
 import { Player } from '../entities/Player'
 import { NavGrid } from '../systems/NavGrid'
 import { LoadingScreen } from '../systems/LoadingScreen'
+import { MAP, LIGHTS } from './GameConfig'
 
 export class WorldBuilder {
   constructor(scene) {
@@ -16,27 +17,27 @@ export class WorldBuilder {
 
   createLights() {
     const ambient = new HemisphericLight('ambientLight', new Vector3(0, 1, 0), this.scene)
-    ambient.intensity = 0.5
-    ambient.diffuse = new Color3(0.5, 0.35, 0.7)
-    ambient.groundColor = new Color3(0.2, 0.1, 0.4)
+    ambient.intensity = LIGHTS.AMBIENT_INTENSITY
+    ambient.diffuse = new Color3(...LIGHTS.AMBIENT_DIFFUSE)
+    ambient.groundColor = new Color3(...LIGHTS.AMBIENT_GROUND)
 
-    const neonCyan = new PointLight('neonCyan', new Vector3(-30, 10, 30), this.scene)
-    neonCyan.diffuse = new Color3(0.0, 1.0, 1.0)
-    neonCyan.intensity = 5.0
-    neonCyan.range = 120
+    const neonCyan = new PointLight('neonCyan', new Vector3(...LIGHTS.CYAN_POS), this.scene)
+    neonCyan.diffuse = new Color3(...LIGHTS.CYAN_DIFFUSE)
+    neonCyan.intensity = LIGHTS.CYAN_INTENSITY
+    neonCyan.range = LIGHTS.CYAN_RANGE
 
-    const neonPink = new PointLight('neonPink', new Vector3(30, 10, -30), this.scene)
-    neonPink.diffuse = new Color3(1.0, 0.0, 1.0)
-    neonPink.intensity = 5.0
-    neonPink.range = 120
+    const neonPink = new PointLight('neonPink', new Vector3(...LIGHTS.PINK_POS), this.scene)
+    neonPink.diffuse = new Color3(...LIGHTS.PINK_DIFFUSE)
+    neonPink.intensity = LIGHTS.PINK_INTENSITY
+    neonPink.range = LIGHTS.PINK_RANGE
 
-    const neonBlue = new PointLight('neonBlue', new Vector3(0, 15, 0), this.scene)
-    neonBlue.diffuse = new Color3(0.2, 0.5, 1.0)
-    neonBlue.intensity = 4.0
-    neonBlue.range = 150
+    const neonBlue = new PointLight('neonBlue', new Vector3(...LIGHTS.BLUE_POS), this.scene)
+    neonBlue.diffuse = new Color3(...LIGHTS.BLUE_DIFFUSE)
+    neonBlue.intensity = LIGHTS.BLUE_INTENSITY
+    neonBlue.range = LIGHTS.BLUE_RANGE
 
     const gl = new GlowLayer('neonGlow', this.scene)
-    gl.intensity = 0.8
+    gl.intensity = LIGHTS.GLOW_INTENSITY
   }
 
   /**
@@ -48,21 +49,21 @@ export class WorldBuilder {
     const loadingScreen = new LoadingScreen()
     loadingScreen.setProgress(5, 'Loading assets...')
 
-    const ground = MeshBuilder.CreateGround('ground', { width: 130, height: 110, subdivisions: 1 }, this.scene)
+    const ground = MeshBuilder.CreateGround('ground', { width: MAP.WIDTH, height: MAP.HEIGHT, subdivisions: MAP.GROUND_SUBDIVISIONS }, this.scene)
     ground.checkCollisions = true
     const groundMat = new StandardMaterial('groundMat', this.scene)
-    groundMat.diffuseColor = new Color3(0.15, 0.15, 0.2)
-    groundMat.specularColor = new Color3(0.2, 0.2, 0.4)
+    groundMat.diffuseColor = new Color3(...MAP.GROUND_DIFFUSE)
+    groundMat.specularColor = new Color3(...MAP.GROUND_SPECULAR)
     ground.material = groundMat
     loadingScreen.setProgress(15, 'Creating ground...')
 
     loadingScreen.setProgress(25, 'Creating borders...')
-    this._createBorders(130, 110)
+    this._createBorders(MAP.WIDTH, MAP.HEIGHT)
 
     loadingScreen.setProgress(40, 'Creating obstacles...')
     this._createObstacles()
 
-    this.navGrid = new NavGrid(130, 110, 1)
+    this.navGrid = new NavGrid(MAP.WIDTH, MAP.HEIGHT, MAP.NAV_CELL_SIZE)
     this.navGrid.buildFromScene(this.scene)
 
     const mapLoadStart = performance.now()
@@ -87,7 +88,7 @@ export class WorldBuilder {
       onMapLoaded?.(this.navGrid)
 
       setTimeout(() => { loadingScreen.setProgress(100, 'Ready!'); loadingScreen.hide(500) }, 800)
-    }).catch(err => {
+    }).catch((err) => {
       console.error('Erreur de chargement de map_1.glb', err)
       loadingScreen.setProgress(55, 'Map load skipped (error)')
       setTimeout(() => { loadingScreen.setProgress(100, 'Ready!'); loadingScreen.hide(500) }, 800)
@@ -96,15 +97,15 @@ export class WorldBuilder {
 
     loadingScreen.setProgress(80, 'Initializing player...')
     const playerEntry = new Player(this.scene)
-    this.scene.clearColor = new Color3(0.02, 0.02, 0.05)
+    this.scene.clearColor = new Color3(...MAP.CLEAR_COLOR)
     loadingScreen.setProgress(85, 'Setting up callbacks...')
 
     return { playerEntry, navGrid: this.navGrid }
   }
 
   _createBorders(width, height) {
-    const wallHeight = 10
-    const thickness = 1
+    const wallHeight = MAP.WALL_HEIGHT
+    const thickness = MAP.WALL_THICKNESS
     const borders = [
       { name: 'wall_N', w: width,     h: wallHeight, d: thickness, pos: new Vector3(0,          wallHeight / 2,  height / 2) },
       { name: 'wall_S', w: width,     h: wallHeight, d: thickness, pos: new Vector3(0,          wallHeight / 2, -height / 2) },

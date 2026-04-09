@@ -1,6 +1,7 @@
 // src/babylon/scenes/RoundOrchestrator.js
 import { Round } from '../Round'
 import { Zone } from '../Zone'
+import { ROUND } from './GameConfig'
 import { VoltStriker } from '../entities/enemies/new/VoltStriker.js'
 import { NeonVector } from '../entities/enemies/new/NeonVector.js'
 import { BastionRed } from '../entities/enemies/new/BastionRed.js'
@@ -29,18 +30,18 @@ const pickRandom = (arr, count) => [...arr].sort(() => 0.5 - Math.random()).slic
  * Peuple un Round avec des mobs selon la progression (index de round r, départ à 0).
  */
 function populateRound(round, r) {
-  const totalMobs = 6 + r * 4
+  const totalMobs = ROUND.MOBS_BASE + r * ROUND.MOBS_STEP
   const types1 = pickRandom(CAT1, 2)
-  const c1 = Math.ceil(totalMobs * 0.7 / Math.max(1, types1.length))
-  types1.forEach(T => round.addMob({ type: T, count: c1, spawnInterval: 1.5 }))
+  const c1 = Math.ceil(totalMobs * ROUND.FRAC_CAT1 / Math.max(1, types1.length))
+  types1.forEach(T => round.addMob({ type: T, count: c1, spawnInterval: ROUND.INTERVAL_CAT1 }))
 
   if (r >= 1) {
     const types2 = pickRandom(CAT2, 2)
-    const c2 = Math.ceil(totalMobs * 0.25 / Math.max(1, types2.length))
-    types2.forEach(T => round.addMob({ type: T, count: c2, spawnInterval: 3.0 }))
+    const c2 = Math.ceil(totalMobs * ROUND.FRAC_CAT2 / Math.max(1, types2.length))
+    types2.forEach(T => round.addMob({ type: T, count: c2, spawnInterval: ROUND.INTERVAL_CAT2 }))
   }
   if (r >= 3) {
-    pickRandom(CAT3, 1).forEach(T => round.addMob({ type: T, count: 1, spawnInterval: 6.0 }))
+    pickRandom(CAT3, 1).forEach(T => round.addMob({ type: T, count: 1, spawnInterval: ROUND.INTERVAL_CAT3 }))
   }
 }
 
@@ -101,7 +102,7 @@ export class RoundOrchestrator {
 
     const nb = node.nbrounds || 1
     for (let r = 0; r < nb; r++) {
-      const round = new Round(this.scene, newZone, { timelimit: 90 + r * 30, timebefore: 3 })
+      const round = new Round(this.scene, newZone, { timelimit: ROUND.TIME_LIMIT_BASE + r * ROUND.TIME_LIMIT_STEP, timebefore: ROUND.TIME_BEFORE })
       populateRound(round, r)
       newZone.addRound(round)
       this._attachRoundEndHandler(round)
@@ -118,10 +119,10 @@ export class RoundOrchestrator {
     const rootNode = tree?.nodes?.find(n => n.depth === 1) ?? { nbrounds: 1 }
     this.currentZoneNodeId = rootNode.id ?? null
 
-    const round = new Round(this.scene, existingZone, { timelimit: 120, timebefore: 5 })
-    
-    // Le premier niveau ne spawne que 5 VoltStrikers (fixe)
-    round.addMob({ type: VoltStriker, count: 5, spawnInterval: 2 })
+    const round = new Round(this.scene, existingZone, { timelimit: ROUND.INITIAL_TIME_LIMIT, timebefore: ROUND.INITIAL_TIME_BEFORE })
+
+    // Le premier niveau ne spawne que des VoltStrikers (fixe)
+    round.addMob({ type: VoltStriker, count: ROUND.INITIAL_VOLT_COUNT, spawnInterval: ROUND.INTERVAL_CAT1 })
     
     existingZone.addRound(round)
     this._attachRoundEndHandler(round)
@@ -157,22 +158,22 @@ export class RoundOrchestrator {
     // Mode infini
     this.roundNumber++
     const n = this.roundNumber
-    const newRound = new Round(this.scene, this.zone, { timelimit: 120 + n * 20, timebefore: 5 })
+    const newRound = new Round(this.scene, this.zone, { timelimit: ROUND.INFINITE_TIME_BASE + n * ROUND.INFINITE_TIME_STEP, timebefore: ROUND.INFINITE_TIME_BEFORE })
 
-    const totalMobs = 10 + n * 5
+    const totalMobs = ROUND.INFINITE_MOBS_BASE + n * ROUND.INFINITE_MOBS_STEP
     const types1 = pickRandom(CAT1, 2)
     const c1 = Math.floor(totalMobs * (n >= 2 ? 0.6 : 1.0))
-    if (c1 > 0) types1.forEach(T => newRound.addMob({ type: T, count: Math.ceil(c1 / types1.length), spawnInterval: 1.5 }))
+    if (c1 > 0) types1.forEach(T => newRound.addMob({ type: T, count: Math.ceil(c1 / types1.length), spawnInterval: ROUND.INTERVAL_CAT1 }))
 
     if (n >= 2) {
       const types2 = pickRandom(CAT2, Math.min(2 + Math.floor(n / 3), CAT2.length))
       const c2 = Math.floor(totalMobs * (n >= 4 ? 0.35 : 0.3))
-      if (c2 > 0) types2.forEach(T => newRound.addMob({ type: T, count: Math.ceil(c2 / types2.length), spawnInterval: 3.0 }))
+      if (c2 > 0) types2.forEach(T => newRound.addMob({ type: T, count: Math.ceil(c2 / types2.length), spawnInterval: ROUND.INTERVAL_CAT2 }))
 
       if (n >= 4) {
         const types3 = pickRandom(CAT3, 1 + Math.floor(n / 4))
         const c3 = totalMobs - c1 - Math.floor(totalMobs * (n >= 4 ? 0.35 : 0.3))
-        if (c3 > 0) types3.forEach(T => newRound.addMob({ type: T, count: Math.ceil(c3 / types3.length), spawnInterval: 6.0 }))
+        if (c3 > 0) types3.forEach(T => newRound.addMob({ type: T, count: Math.ceil(c3 / types3.length), spawnInterval: ROUND.INTERVAL_CAT3 }))
       }
     }
 

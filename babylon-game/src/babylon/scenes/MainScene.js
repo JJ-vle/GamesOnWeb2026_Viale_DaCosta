@@ -8,6 +8,7 @@ import { EnemyProjectile } from '../entities/weapons/EnemyProjectile.js'
 import { RoundOrchestrator } from './RoundOrchestrator'
 import { WorldBuilder } from './WorldBuilder'
 import { EnemySpawnHandler } from './EnemySpawnHandler'
+import { MAP, SPAWN, ZONE_TREE } from './GameConfig'
 import { Vector3 } from '@babylonjs/core'
 import { PistolWeapon } from "../entities/weapons/PistolWeapon"
 import { WeaponSystem } from "../systems/WeaponSystem"
@@ -93,7 +94,7 @@ export class MainScene extends BaseScene {
 
     // Générer l'arbre de zones et l'attacher à la zone pour debug/itération
     try {
-      const tree = generateZoneTree({ minDepth: 7, maxDepth: 8 })
+      const tree = generateZoneTree(ZONE_TREE)
       this.zone.tree = tree
       // Set current zone node to the real starting node (depth 1)
       const startNode = tree.nodes.find(n => n.depth === 1)
@@ -108,19 +109,14 @@ export class MainScene extends BaseScene {
     }
 
     // Créer le système de spawn aléatoire
-    this.spawnerSystem = new SpawnerSystem(this.scene, 130, 110, 5);
+    this.spawnerSystem = new SpawnerSystem(this.scene, MAP.WIDTH, MAP.HEIGHT, SPAWN.MIN_DIST_FROM_PLAYER);
 
     // Le joueur spawn en 0, 0, 0. On veut protéger un carré autour de lui (ex: de -20 à +20)
     // (Vector3 point_1, Vector3 point_2)
-    this.spawnerSystem.addExclusionZone(new Vector3(-6.3, 0, 8.1), new Vector3(-16.1, 0, 22.0));
-
-    this.spawnerSystem.addExclusionZone(new Vector3(8.1, 0, 6.6), new Vector3(31.2, 0, 30.4));
-    this.spawnerSystem.addExclusionZone(new Vector3(-20.9, 0, 7.0), new Vector3(-31.7, 0, 31.0));
-    this.spawnerSystem.addExclusionZone(new Vector3(8.3, 0, -16.6), new Vector3(16.6, 0, -32.2));
-    this.spawnerSystem.addExclusionZone(new Vector3(20.9, 0, -23.6), new Vector3(31.4, 0, -31.9));
-
-    this.spawnerSystem.addInclusionZone(new Vector3(-45.1, 0, 41.3), new Vector3(44.5, 0, -46.6)
+    SPAWN.EXCLUSION_ZONES.forEach(([a, b]) =>
+      this.spawnerSystem.addExclusionZone(new Vector3(...a), new Vector3(...b))
     )
+    this.spawnerSystem.addInclusionZone(new Vector3(...SPAWN.INCLUSION_ZONE[0]), new Vector3(...SPAWN.INCLUSION_ZONE[1]))
 
     this.zone.addSpawner(this.spawnerSystem);
 
@@ -494,13 +490,10 @@ export class MainScene extends BaseScene {
     // ── OPTIMISATION: Distance-based & Culling Updates ──
     // Ennemis: met à jour seulement ceux suffisamment proches
     // ⚠️ AGRESSIF: Beaucoup d'ennemis culled = beaucoup meilleure performance
-    const ACTIVE_DISTANCE = 50;   // Units - distance max pour update complète (pathfinding + FSM)
-
+    const ACTIVE_DIST_SQ = SPAWN.ACTIVE_DISTANCE * SPAWN.ACTIVE_DISTANCE;
     let activatedEnemies = 0;
     let culledEnemies = 0;
-
     const playerPos = this.player.mesh.position;
-    const ACTIVE_DIST_SQ = ACTIVE_DISTANCE * ACTIVE_DISTANCE;
 
     for (let i = this.enemies.length - 1; i >= 0; i--) {
       const enemy = this.enemies[i]

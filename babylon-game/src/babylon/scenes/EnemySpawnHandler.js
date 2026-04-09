@@ -1,6 +1,7 @@
 // src/babylon/scenes/EnemySpawnHandler.js
 import { Vector3 } from '@babylonjs/core'
 import { VoltStriker } from '../entities/enemies/new/VoltStriker.js'
+import { SPAWN } from './GameConfig'
 
 export class EnemySpawnHandler {
   /**
@@ -25,9 +26,9 @@ export class EnemySpawnHandler {
 
   _scaleEnemy(enemy) {
     if (!enemy.enemy) return
-    enemy.enemy.scaling = new Vector3(0.35, 0.35, 0.35)
+    enemy.enemy.scaling = new Vector3(SPAWN.ENEMY_SCALE, SPAWN.ENEMY_SCALE, SPAWN.ENEMY_SCALE)
     if (enemy.enemy.ellipsoid && !enemy.enemy._hasBeenScaled) {
-      enemy.enemy.ellipsoid = enemy.enemy.ellipsoid.scale(0.35)
+      enemy.enemy.ellipsoid = enemy.enemy.ellipsoid.scale(SPAWN.ENEMY_SCALE)
       enemy.enemy._hasBeenScaled = true
     }
   }
