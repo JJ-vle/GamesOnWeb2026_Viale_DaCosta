@@ -33,7 +33,7 @@ export class VoltStriker extends Enemy {
     _createMesh() {
         const enemy = MeshBuilder.CreateBox("VoltStriker", { width: 3.5, height: 1.2, depth: 2.5 }, this.scene)
         enemy.position = new Vector3(4, 0.5, 0)
-        enemy.checkCollisions = true
+        enemy.checkCollisions = false
         // Assure que la hitbox ne sera jamais rendue à l'écran
         enemy.isVisible = false 
         enemy.visibility = 0

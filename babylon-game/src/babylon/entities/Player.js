@@ -32,6 +32,11 @@ export class Player {
 
         this._regenAccum = 0; // accumulateur regen (évite les micro-heals chaque frame)
 
+        // ── I-frames ──
+        this.isInvulnerable = false;
+        this.invulnerabilityTimer = 0;
+        this._blinkTimer = 0;
+
         // Cache pour optimisation rotation (évite scene.pick + getChildMeshes chaque frame)
         this._rotationFrameSkip = 0;
         this._childMeshCache = null;
@@ -255,12 +260,26 @@ export class Player {
         }
 
         // ── Régénération passive ──
+        const dt = this.scene.getEngine().getDeltaTime() / 1000;
         if (this.regen > 0 && this.life < this.maxLife) {
-            this._regenAccum += this.regen * (this.scene.getEngine().getDeltaTime() / 1000);
+            this._regenAccum += this.regen * dt;
             if (this._regenAccum >= 1) {
                 const healAmt = Math.floor(this._regenAccum);
                 this._regenAccum -= healAmt;
                 this.heal(healAmt);
+            }
+        }
+
+        // ── I-frames : invulnérabilité temporaire ──
+        if (this.isInvulnerable) {
+            this.invulnerabilityTimer -= dt;
+            this._blinkTimer += dt;
+            // Clignotement toutes les 0.1s
+            this.mesh.visibility = Math.floor(this._blinkTimer / 0.1) % 2 === 0 ? 0.2 : 1.0;
+            if (this.invulnerabilityTimer <= 0) {
+                this.isInvulnerable = false;
+                this.invulnerabilityTimer = 0;
+                this.mesh.visibility = 1.0;
             }
         }
 
@@ -307,12 +326,15 @@ export class Player {
     }
 
     takeDamage(amount) {
+        if (this.isInvulnerable) return;
         // L'armure réduit les dégâts (minimum 1)
         const effective = Math.max(1, amount - this.armor);
         this.life -= effective;
-        if (this.life < 0) {
-            this.life = 0;
-        }
+        if (this.life < 0) this.life = 0;
+        // Déclencher les i-frames
+        this.isInvulnerable = true;
+        this.invulnerabilityTimer = 1.5;
+        this._blinkTimer = 0;
     }
 
     heal(amount) {

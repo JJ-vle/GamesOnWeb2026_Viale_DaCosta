@@ -230,6 +230,8 @@ export class CollisionSystem {
 
       for (let enemy of nearbyEnemies) {
         if (!enemy.enemy) continue
+        // Intangibilité : le joueur traverse les ennemis pendant les i-frames
+        if (this.player.isInvulnerable) continue
         if (enemy.enemy.intersectsMesh(this.player.mesh, false)) {
           const lastDamageTime = this.enemyDamageCooldown.get(enemy) || -Infinity
           if (this.currentTime - lastDamageTime >= this.DAMAGE_COOLDOWN) {
