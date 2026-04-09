@@ -2,6 +2,7 @@
 import { Round } from '../Round'
 import { Zone } from '../Zone'
 import { ROUND } from './GameConfig'
+import { clearEnemies } from './EnemySpawnHandler'
 import { VoltStriker } from '../entities/enemies/new/VoltStriker.js'
 import { NeonVector } from '../entities/enemies/new/NeonVector.js'
 import { BastionRed } from '../entities/enemies/new/BastionRed.js'
@@ -68,14 +69,7 @@ export class RoundOrchestrator {
     round.onRoundEnd = () => {
       if (spawnerSystem) spawnerSystem.stop()
 
-      for (let i = enemies.length - 1; i >= 0; i--) {
-        const enemy = enemies[i]
-        if (!enemy) continue
-        enemy.onDeath = null
-        try { enemy.destroy() } catch (e) {}
-        try { collisionSystem.removeEnemy(enemy) } catch (e) {}
-        enemies.splice(i, 1)
-      }
+      clearEnemies(enemies, collisionSystem)
 
       const rounds = this.zone?.getRounds() ?? []
       const idx = rounds.indexOf(round)

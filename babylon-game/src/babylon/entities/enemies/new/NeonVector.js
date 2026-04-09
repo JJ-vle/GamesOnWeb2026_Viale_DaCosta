@@ -70,7 +70,7 @@ export class NeonVector extends Enemy {
             forward.y = 0
             forward.normalize()
             const right = new Vector3(-forward.z, 0, forward.x)
-            const slow = (this._slowFactor !== undefined && this._slowFactor >= 0) ? this._slowFactor : 1
+            const slow = this._slow
             this.enemy.position.addInPlace(right.scale(this._strafingDir * 0.03 * this.speed * slow))
         }
 

@@ -38,6 +38,11 @@ export class Enemy {
         }
     }
 
+    /** Multiplicateur de ralentissement (1 = normal, 0 = immobile). */
+    get _slow() {
+        return (this._slowFactor !== undefined && this._slowFactor >= 0) ? this._slowFactor : 1
+    }
+
     /**
      * Initialise les systèmes AI (overridable dans les classes filles)
      */
@@ -204,7 +209,7 @@ export class Enemy {
             nearbyEnemies, separationDist, separationForce
         )
 
-        const slow = (this._slowFactor !== undefined && this._slowFactor >= 0) ? this._slowFactor : 1
+        const slow = this._slow
         const scaledMove = moveVec.scale(slow)
 
         if (useCollisions) {

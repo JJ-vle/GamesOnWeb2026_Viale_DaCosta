@@ -59,7 +59,7 @@ export class DroneSwarm extends Enemy {
 
         // Orbite autour du joueur par-dessus le mouvement NavGrid
         this._orbitOffsetTimer += dt * 2
-        const slow = (this._slowFactor !== undefined && this._slowFactor >= 0) ? this._slowFactor : 1
+        const slow = this._slow
         const orbitOffset = new Vector3(
             Math.cos(this._orbitOffsetTimer) * 0.03 * this.speed * slow,
             0,

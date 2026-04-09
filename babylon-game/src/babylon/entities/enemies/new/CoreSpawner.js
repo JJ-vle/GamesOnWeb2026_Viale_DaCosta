@@ -55,7 +55,7 @@ export class CoreSpawner extends Enemy {
         this.updateHitFlash()
 
         const dt = this.scene.getEngine().getDeltaTime() / 1000
-        const slow = (this._slowFactor !== undefined && this._slowFactor >= 0) ? this._slowFactor : 1
+        const slow = this._slow
 
         // NavGrid AI (quasi-immobile grâce à speed=0.1)
         const result = this.updateNavGridAI(playerMesh, enemies, { separationDist: 6.0 })

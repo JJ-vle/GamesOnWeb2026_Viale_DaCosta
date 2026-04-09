@@ -3,6 +3,26 @@ import { Vector3 } from '@babylonjs/core'
 import { VoltStriker } from '../entities/enemies/new/VoltStriker.js'
 import { SPAWN } from './GameConfig'
 
+export function clearEnemies(enemies, collisionSystem) {
+  for (let i = enemies.length - 1; i >= 0; i--) {
+    const enemy = enemies[i]
+    if (!enemy) continue
+    enemy.onDeath = null
+    try { enemy.destroy() } catch (e) {}
+    try { collisionSystem.removeEnemy(enemy) } catch (e) {}
+    enemies.splice(i, 1)
+  }
+}
+
+export function applyEnemyScaling(enemy) {
+  if (!enemy.enemy) return
+  enemy.enemy.scaling = new Vector3(SPAWN.ENEMY_SCALE, SPAWN.ENEMY_SCALE, SPAWN.ENEMY_SCALE)
+  if (enemy.enemy.ellipsoid && !enemy.enemy._hasBeenScaled) {
+    enemy.enemy.ellipsoid = enemy.enemy.ellipsoid.scale(SPAWN.ENEMY_SCALE)
+    enemy.enemy._hasBeenScaled = true
+  }
+}
+
 export class EnemySpawnHandler {
   /**
    * @param {object} scene
@@ -24,14 +44,7 @@ export class EnemySpawnHandler {
     this.d = deps
   }
 
-  _scaleEnemy(enemy) {
-    if (!enemy.enemy) return
-    enemy.enemy.scaling = new Vector3(SPAWN.ENEMY_SCALE, SPAWN.ENEMY_SCALE, SPAWN.ENEMY_SCALE)
-    if (enemy.enemy.ellipsoid && !enemy.enemy._hasBeenScaled) {
-      enemy.enemy.ellipsoid = enemy.enemy.ellipsoid.scale(SPAWN.ENEMY_SCALE)
-      enemy.enemy._hasBeenScaled = true
-    }
-  }
+  _scaleEnemy(enemy) { applyEnemyScaling(enemy) }
 
   /** Callback pour spawnerSystem.onEnemySpawned */
   makeSpawnCallback() {

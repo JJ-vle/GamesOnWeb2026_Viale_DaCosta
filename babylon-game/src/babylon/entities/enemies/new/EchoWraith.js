@@ -51,16 +51,12 @@ export class EchoWraith extends Enemy {
 
         // Blink visible occasionally
         this._blinkTimer += dt
-        if (this._blinkTimer > 3) {
-            this.material.alpha = 0.8
-            if (this._blinkTimer > 3.5) this._blinkTimer = 0
-        } else {
-            this.material.alpha = 0.1
-        }
+        this.material.alpha = this._blinkTimer > 3 ? 0.8 : 0.1
+        if (this._blinkTimer > 3.5) this._blinkTimer = 0
 
         // Flash: fully visible when hit
         if (this._hitTimer > 0) {
-            this._hitTimer -= this.scene.getEngine().getDeltaTime() / 1000
+            this._hitTimer -= dt
             if (this._hitTimer <= 0) {
                 this.material.diffuseColor = new Color3(0.5, 0.5, 1)
             } else {

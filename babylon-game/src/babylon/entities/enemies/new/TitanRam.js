@@ -52,7 +52,7 @@ export class TitanRam extends Enemy {
         this.updateHitFlash()
 
         const dt = this.scene.getEngine().getDeltaTime() / 1000
-        const slow = (this._slowFactor !== undefined && this._slowFactor >= 0) ? this._slowFactor : 1
+        const slow = this._slow
 
         const toPlayer = playerMesh.position.subtract(this.enemy.position)
         toPlayer.y = 0

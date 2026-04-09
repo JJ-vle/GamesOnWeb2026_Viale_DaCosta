@@ -78,7 +78,7 @@ export class MetroidEnemy extends Enemy {
         const right = new Vector3(-forward.z, 0, forward.x)
         const zPct = this._zigzagTimer / this._zigzagInterval
         const lateral = Math.sin(zPct * Math.PI) * this._zigzagSide * this._zigzagStrength
-        const slow = (this._slowFactor !== undefined && this._slowFactor >= 0) ? this._slowFactor : 1
+        const slow = this._slow
         this.enemy.position.addInPlace(right.scale(lateral * 0.04 * slow))
 
         // Flottement vertical

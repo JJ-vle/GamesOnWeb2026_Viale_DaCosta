@@ -56,15 +56,10 @@ export class LaserProjectile extends Projectile {
   }
 
   dispose() {
-    if (this._observer) {
-      this.scene.onBeforeRenderObservable.remove(this._observer)
-      this._observer = null
-    }
-
-    if (this.mesh) {
-      this.mesh.dispose()
-      this.mesh = null
-    }
+    if (this._observer) this.scene.onBeforeRenderObservable.remove(this._observer)
+    this._observer = null
+    this.mesh?.dispose()
+    this.mesh = null
   }
 
 

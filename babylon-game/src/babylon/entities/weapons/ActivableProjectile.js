@@ -50,14 +50,7 @@ export class ActivableProjectile extends Projectile {
 
     // check for ground impact (approx y <= 0)
     if (this.mesh.position.y <= 0) {
-      // trigger optional callback then die
-      if (this.onGroundImpact) {
-        try {
-          this.onGroundImpact()
-        } catch (e) {
-          console.error("Error in onGroundImpact callback", e)
-        }
-      }
+      try { this.onGroundImpact?.() } catch (e) { console.error("Error in onGroundImpact callback", e) }
       return false
     }
 

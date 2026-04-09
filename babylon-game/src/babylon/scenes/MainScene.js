@@ -9,6 +9,7 @@ import { RoundOrchestrator } from './RoundOrchestrator'
 import { WorldBuilder } from './WorldBuilder'
 import { EnemySpawnHandler } from './EnemySpawnHandler'
 import { MAP, SPAWN, ZONE_TREE } from './GameConfig'
+import { clearEnemies } from './EnemySpawnHandler'
 import { Vector3 } from '@babylonjs/core'
 import { PistolWeapon } from "../entities/weapons/PistolWeapon"
 import { WeaponSystem } from "../systems/WeaponSystem"
@@ -252,13 +253,7 @@ export class MainScene extends BaseScene {
 
     // Purge existing enemies and stop spawner
     if (this.spawnerSystem) this.spawnerSystem.stop()
-    for (let i = this.enemies.length - 1; i >= 0; i--) {
-      const enemy = this.enemies[i]
-      enemy.onDeath = null // Ne pas accorder d'XP/coins lors du changement de zone
-      try { enemy.destroy && enemy.destroy() } catch (e) {}
-      try { this.collisionSystem.removeEnemy(enemy) } catch (e) {}
-      this.enemies.splice(i, 1)
-    }
+    clearEnemies(this.enemies, this.collisionSystem)
 
     this.roundOrchestrator.currentZoneNodeId = nodeId
     const newZone = this.roundOrchestrator.buildZoneForNode(node, this.zone.tree)
@@ -430,21 +425,10 @@ export class MainScene extends BaseScene {
   update() {
     const deltaTime = this.scene.getEngine().getDeltaTime() / 1000
 
-    // Tick la NavGrid (cache management)
     if (this.navGrid) this.navGrid.tick()
+    if (this._isGamePausedForLoot || this._isGamePaused) return
 
-    // Pause globale pendant le menu de loot: on fige le gameplay.
-    if (this._isGamePausedForLoot) {
-      return
-    }
-
-    // ── PAUSE: Si le jeu est en pause, skip tous les updates ──
-    if (this._isGamePaused) {
-      return
-    }
-
-    // Ouvre le loot de level-up uniquement si le round courant est encore actif.
-    // Si le round est déjà fini, on garde en attente et on affichera plus tard.
+    // Level-up loot en attente : ouvrir seulement si le round est encore actif
     if (
       this._pendingLevelUpLootLevel != null &&
       !this.lootUI.isVisible &&
@@ -457,103 +441,79 @@ export class MainScene extends BaseScene {
       return
     }
 
-    // Joueur
-    this.playerEntry.update(this.inputMap)
+    this._updatePlayer(deltaTime)
+    this._updateSubsystems(deltaTime)
+    const { activatedEnemies, culledEnemies } = this._updateEnemiesAndCulling()
+    this._updateProjectiles(deltaTime)
+    this._updateUI(activatedEnemies, culledEnemies)
 
-    // Capacité active
-    if (this.activeAbilitySystem) {
-      this.activeAbilitySystem.update(deltaTime, this.inputMap)
+    if (!this._isGameOver && this.playerEntry && this.playerEntry.life <= 0) {
+      this._isGameOver = true
+      this._isGamePausedForLoot = true
+      if (this.uiSystem && this.uiSystem.showGameOver) this.uiSystem.showGameOver()
+      return
     }
+  }
 
-    // Toggle caméra (C)
+  _updatePlayer(deltaTime) {
+    this.playerEntry.update(this.inputMap)
+    if (this.activeAbilitySystem) this.activeAbilitySystem.update(deltaTime, this.inputMap)
     if (this.inputMap['c'] && !this._cameraSwitchLock) {
       this._cameraSwitchLock = true
       this.cameraManager.toggle()
     }
-    if (!this.inputMap['c']) {
-      this._cameraSwitchLock = false
-    }
+    if (!this.inputMap['c']) this._cameraSwitchLock = false
+  }
 
-    // Map display is handled by the Vue ZoneMapView component
+  _updateSubsystems(deltaTime) {
+    if (this.spawnerSystem) this.spawnerSystem.update(deltaTime, this.player.mesh.position)
+    if (this.currentRound) this.currentRound.update(deltaTime)
+    this.weaponSystem.update(deltaTime)
+    if (this.xraySystem) this.xraySystem.update()
+    this.collisionSystem.update(deltaTime)
+  }
 
-
-    // Spawner
-    if (this.spawnerSystem) {
-      this.spawnerSystem.update(deltaTime, this.player.mesh.position)
-    }
-
-    // Round (timer)
-    if (this.currentRound) {
-      this.currentRound.update(deltaTime)
-    }
-
-    // ── OPTIMISATION: Distance-based & Culling Updates ──
-    // Ennemis: met à jour seulement ceux suffisamment proches
-    // ⚠️ AGRESSIF: Beaucoup d'ennemis culled = beaucoup meilleure performance
-    const ACTIVE_DIST_SQ = SPAWN.ACTIVE_DISTANCE * SPAWN.ACTIVE_DISTANCE;
-    let activatedEnemies = 0;
-    let culledEnemies = 0;
-    const playerPos = this.player.mesh.position;
+  _updateEnemiesAndCulling() {
+    const ACTIVE_DIST_SQ = SPAWN.ACTIVE_DISTANCE * SPAWN.ACTIVE_DISTANCE
+    const playerPos = this.player.mesh.position
+    let activatedEnemies = 0
+    let culledEnemies = 0
 
     for (let i = this.enemies.length - 1; i >= 0; i--) {
       const enemy = this.enemies[i]
-      if (!enemy || !enemy.enemy) {
-        this.enemies.splice(i, 1)
-        continue
-      }
-      
-      // ── OPTIMISATION: Utiliser distanceSquared (pas de sqrt) ──
-      const dx = playerPos.x - enemy.enemy.position.x;
-      const dz = playerPos.z - enemy.enemy.position.z;
-      const distSq = dx * dx + dz * dz;
-      
-      if (distSq > ACTIVE_DIST_SQ) {
-        // Loin: COMPLÈTEMENT invisible et skip update (économise GPU + CPU)
-        if (enemy.enemy.isVisible) {
-          enemy.enemy.isVisible = false;
-        }
-        culledEnemies++;
+      if (!enemy || !enemy.enemy) { this.enemies.splice(i, 1); continue }
+
+      const dx = playerPos.x - enemy.enemy.position.x
+      const dz = playerPos.z - enemy.enemy.position.z
+
+      if (dx * dx + dz * dz > ACTIVE_DIST_SQ) {
+        if (enemy.enemy.isVisible) enemy.enemy.isVisible = false
+        culledEnemies++
       } else {
-        // Proche: update COMPLET (FSM + pathfinding + collision)
-        if (!enemy.enemy.isVisible) {
-          enemy.enemy.isVisible = true;
-        }
+        if (!enemy.enemy.isVisible) enemy.enemy.isVisible = true
         enemy.update(this.player.mesh, this.projectiles, this.enemies, this.enemyCallbacks)
-        activatedEnemies++;
+        activatedEnemies++
       }
     }
+    return { activatedEnemies, culledEnemies }
+  }
 
-    // Arme
-    this.weaponSystem.update(deltaTime)
-
-
-    // Projectiles — mise à jour des positions (collision gérée par CollisionSystem)
+  _updateProjectiles(deltaTime) {
     for (let i = this.projectiles.length - 1; i >= 0; i--) {
       const p = this.projectiles[i]
-      if (!p.mesh) {
-        this.projectiles.splice(i, 1)
-        continue
-      }
+      if (!p.mesh) { this.projectiles.splice(i, 1); continue }
       const alive = p.update(deltaTime)
-      if (!alive) {
-        p.dispose()
-        this.projectiles.splice(i, 1)
-      }
+      if (!alive) { p.dispose(); this.projectiles.splice(i, 1) }
     }
+  }
 
-    // X-Ray (voir le joueur derrière les obstacles)
-    if (this.xraySystem) this.xraySystem.update()
-
-    // Collisions
-    this.collisionSystem.update(deltaTime)
-
-    // ── UI ──
+  _updateUI(activatedEnemies, culledEnemies) {
     this.uiSystem.updateLife(this.playerEntry.life, this.playerEntry.maxLife)
     this.uiSystem.updateGears(this.score)
     this.uiSystem.updateKills(this.kills)
     this.uiSystem.updateStats(this.playerEntry)
+    this.uiSystem.updateXP(this.xpSystem.progressToNext, this.xpSystem.level)
 
-    // UI Capacité active
     if (this.activeAbilitySystem) {
       this.uiSystem.updateActiveAbility(
         this.activeAbilitySystem.getCooldownPercent(),
@@ -562,15 +522,6 @@ export class MainScene extends BaseScene {
       )
     }
 
-    // ── OPTIMISATION: Mettre à jour le monitoring de performance ──
-    if (this.performanceMonitor) {
-      this.performanceMonitor.update(activatedEnemies, culledEnemies)
-    }
-
-    // UI XP
-    this.uiSystem.updateXP(this.xpSystem.progressToNext, this.xpSystem.level)
-
-    // UI Round
     const rounds = this.zone.getRounds()
     const currentIndex = rounds.indexOf(this.currentRound) + 1
     const remaining = this.currentRound.state === 'waiting'
@@ -578,14 +529,7 @@ export class MainScene extends BaseScene {
       : this.currentRound.remainingTime
     this.uiSystem.updateRound(currentIndex, rounds.length, this.currentRound.state, remaining)
 
-    // Vérifier la mort du joueur → écran Game Over
-    if (!this._isGameOver && this.playerEntry && this.playerEntry.life <= 0) {
-      this._isGameOver = true
-      this._isGamePausedForLoot = true
-      // console.log('[MainScene] Joueur mort — Game Over')
-      if (this.uiSystem && this.uiSystem.showGameOver) this.uiSystem.showGameOver()
-      return
-    }
+    if (this.performanceMonitor) this.performanceMonitor.update(activatedEnemies, culledEnemies)
   }
 
   // ─────────────────────────────────────────────

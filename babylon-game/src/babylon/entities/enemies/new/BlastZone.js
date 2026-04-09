@@ -77,7 +77,7 @@ export class BlastZone extends Enemy {
         this.updateHitFlash()
 
         const dt = this.scene.getEngine().getDeltaTime() / 1000
-        const slow = (this._slowFactor !== undefined && this._slowFactor >= 0) ? this._slowFactor : 1
+        const slow = this._slow
         const dist = Vector3.Distance(this.enemy.position, playerMesh.position)
 
         if (this.state === 'APPROACH') {
@@ -97,17 +97,13 @@ export class BlastZone extends Enemy {
                 this.state = 'EXPLODING'
                 this.stateTimer = 0.5
                 if (onExplode) {
-                    const explodePos = (this._warningMesh && this._warningMesh.position)
-                        ? this._warningMesh.position.clone()
-                        : (this.enemy ? this.enemy.position.clone() : new Vector3(0, 0, 0))
+                    const explodePos = this._warningMesh?.position?.clone() ?? this.enemy?.position?.clone() ?? new Vector3(0, 0, 0)
                     onExplode(explodePos, this.aoeRadius)
                 }
                 this._clearWarningZone()
                 this.material.emissiveColor = new Color3(0, 0, 0)
             } else {
-                if (this._warningMesh) {
-                    this._warningMesh.material.alpha = 0.3 + Math.abs(Math.sin(this.stateTimer * 8)) * 0.4
-                }
+                if (this._warningMesh) this._warningMesh.material.alpha = 0.3 + Math.abs(Math.sin(this.stateTimer * 8)) * 0.4
             }
         } else if (this.state === 'EXPLODING') {
             this.stateTimer -= dt
