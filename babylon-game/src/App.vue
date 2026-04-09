@@ -32,13 +32,16 @@ function returnToMenu() {
 
   const keyHandler = (e) => {
     if (!gameStarted.value) return
-    if (e.key && e.key.toLowerCase() === 'm') {
-      // Open the zone map on 'm' — avoid toggling off here to prevent conflict
-      // with ZoneMapView's own key handling. When opening, set a player id
-      // so the map receives it as a prop immediately.
+    if (e.key && e.key.toLowerCase() === 'm' || e.key === 'Tab') {
+      // Toggle map open/close on 'm'
       if (mode.value !== 'map') {
-        playerNodeId.value = 5
+        const g = getGame();
+        // If scene defines the current node, use it. Otherwise fallback.
+        const currentId = g?.scene?.currentZoneNodeId ?? null;
+        playerNodeId.value = currentId;
         setMode('map')
+      } else {
+        setMode('combat')
       }
     }
   }
@@ -74,7 +77,7 @@ function onSelectZone(id) {
     <!-- Keep Babylon canvas mounted persistently. Show the map as an overlay when mode === 'map'. -->
     <div class="game-root">
       <BabylonScene />
-      <ZoneMapView v-if="mode === 'map'" :playerNodeId="playerNodeId" @selectZone="onSelectZone" />
+      <ZoneMapView v-if="mode === 'map'" :playerNodeId="playerNodeId" @selectZone="onSelectZone" @close="setMode('combat')" />
     </div>
   </template>
 </template>

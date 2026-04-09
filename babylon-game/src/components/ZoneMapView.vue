@@ -4,12 +4,10 @@ import { generateZoneTree } from '../babylon/ZoneTree'
 import { getGame } from '../babylon/BabylonService'
 
 const props = defineProps({ playerNodeId: { type: Number, default: null } })
-const emit = defineEmits(['selectZone'])
+const emit = defineEmits(['selectZone', 'close'])
 
 const tree = ref(null)
-// allow overriding the player id from this component (keyboard testing)
-const activePlayerId = ref(props.playerNodeId)
-const currentPlayerId = computed(() => activePlayerId.value ?? props.playerNodeId)
+const currentPlayerId = computed(() => props.playerNodeId)
 const reachableSet = ref(new Set())
 const successorsSet = ref(new Set())
 const container = ref(null)
@@ -31,21 +29,9 @@ function buildGroupedNodes(nodes, depth) {
   return groups
 }
 
-// keyboard shortcut for testing: press 'M' to focus node id=5
 const keyHandler = (e) => {
-  if (e.code === 'KeyM' || e.key === 'm' || e.key === 'M') {
-    // prefer id=5 for testing, fallback to an existing node id if not present
-    const nodes = (tree.value && tree.value.nodes) ? tree.value.nodes : []
-    const exists5 = nodes.some(n => n.id === 5)
-    if (exists5) activePlayerId.value = 5
-    else if (nodes.length > 0) activePlayerId.value = nodes[Math.floor(nodes.length/2)].id
-    else activePlayerId.value = 5
-    // re-run layout update+centering
-      nextTick(() => {
-        updateLinks()
-      })
-      // debug
-      console.debug('ZoneMapView: activePlayerId set', activePlayerId.value)
+  if (e.code === 'KeyM' || e.key === 'm' || e.key === 'M' || e.code === 'Tab') {
+    emit('close')
   }
 }
 

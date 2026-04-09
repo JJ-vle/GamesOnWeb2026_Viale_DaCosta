@@ -36,6 +36,12 @@ export class PerformanceMonitor {
     // Si pas de document (SSR), skip
     if (typeof document === 'undefined') return;
 
+    // Supprime l'ancien s'il existe pour Ã©viter les doublons
+    const oldContainer = document.getElementById('performance-monitor');
+    if (oldContainer) {
+      oldContainer.remove();
+    }
+
     const container = document.createElement('div');
     container.id = 'performance-monitor';
     
@@ -133,19 +139,19 @@ export class PerformanceMonitor {
     // FPS color: vert si >30, jaune si 20-30, rouge si <20
     const fpsColor = this._fps >= 30 ? '#00ff00' : (this._fps >= 20 ? '#ffff00' : '#ff0000');
 
-    document.getElementById('perf-fps').innerHTML = 
+    this._container.querySelector('#perf-fps').innerHTML = 
       `<span style="color: ${fpsColor};">FPS: ${this._fps}</span>`;
     
-    document.getElementById('perf-gpu').innerHTML = 
+    this._container.querySelector('#perf-gpu').innerHTML = 
       `GPU: ${this._gpuTime}ms`;
     
-    document.getElementById('perf-enemies').innerHTML = 
+    this._container.querySelector('#perf-enemies').innerHTML = 
       `Enemies: ${this._activeEnemies} (Culled: ${this._culledEnemies})`;
 
     if (this.spawnerSystem) {
       const poolStats = this.spawnerSystem.getPoolStats();
       const totalPooled = Object.keys(poolStats).length;
-      document.getElementById('perf-pool').innerHTML = 
+      this._container.querySelector('#perf-pool').innerHTML = 
         `Pool: ${totalPooled} types`;
     }
   }

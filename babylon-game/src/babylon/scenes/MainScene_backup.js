@@ -91,9 +91,8 @@ export class MainScene extends BaseScene {
     try {
       const tree = generateZoneTree({ minDepth: 7, maxDepth: 8 })
       this.zone.tree = tree
-      // Set current zone node to the real starting node (depth 1)
-      const startNode = tree.nodes.find(n => n.depth === 1)
-      this.currentZoneNodeId = startNode ? startNode.id : tree.root
+      // Set current zone node to root initially so map openings know where the player is
+      this.currentZoneNodeId = tree.root
       console.log('[ZoneTree] Generated tree depth', tree.depth)
       console.log('[ZoneTree] Nodes:', JSON.stringify(tree.nodes, null, 2))
       // Afficher la représentation DOT pour usage externe (Graphviz, mermaid, etc.)
