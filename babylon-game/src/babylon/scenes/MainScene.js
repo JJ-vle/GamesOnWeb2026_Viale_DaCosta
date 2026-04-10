@@ -57,7 +57,7 @@ export class MainScene extends BaseScene {
     this.collisionSystem = new CollisionSystem()
 
     // ── Build System ──
-    this.buildSystem = new BuildSystem(this.playerEntry)
+    //this.buildSystem = new BuildSystem(this.playerEntry) OLD
     this.lootSystem = new LootSystem()
     this.xpSystem = new XPSystem()
     this.lootUI = new LootUI(this.scene)
@@ -67,9 +67,9 @@ export class MainScene extends BaseScene {
     this._pauseSwitchLock = false  // ── PAUSE: Prevent spamming ──
     this._pendingLevelUpLootLevel = null
 
-    this.buildSystem.onItemEquipped = (item) => {
-      this.uiSystem.showNotification(`${item.icon} ${item.name} équipé!`, item.rarityColor, 2000)
-      this.uiSystem.updateItems(this.buildSystem.getEquippedItems())
+    this.playerEntry.inventory.onItemEquipped = (item) => {
+      this.uiSystem.showNotification(`${item.name} équipé!`, '#ffcc00', 2000)
+      this.uiSystem.updateItems(this.playerEntry.inventory.getItems().map(i => i.item))
     }
 
     // LevelUp → afficher l'écran de loot
@@ -168,8 +168,8 @@ export class MainScene extends BaseScene {
     this._isGameOver = false
 
     this.collisionSystem.registerPlayer(this.playerEntry)
-    // Injecter le buildSystem dans le collisionSystem pour les procs
-    this.collisionSystem.buildSystem = this.buildSystem
+    // Injecter l'inventory dans le collisionSystem pour les procs
+    this.collisionSystem.inventory = this.playerEntry.inventory
 
     // ── ActiveAbilitySystem (Espace) ──
     this.activeAbilitySystem = new ActiveAbilitySystem(
@@ -542,9 +542,9 @@ export class MainScene extends BaseScene {
     const { startNextRoundAfterPick = false } = options
 
     this._isGamePausedForLoot = true
-    const occupiedSlots = this.buildSystem.getOccupiedSlots()
+    const occupiedSlots = this.playerEntry.inventory.getOccupiedSlots()
     const pool = this.lootSystem.generatePool(3, this.playerEntry.luck, occupiedSlots)
-    this.lootUI.show(pool, this.buildSystem, (item) => {
+    this.lootUI.show(pool, this.playerEntry, (item) => {
       // console.log(`[MainScene] Item choisi: ${item.name}`)
       this._isGamePausedForLoot = false
       if (startNextRoundAfterPick) {

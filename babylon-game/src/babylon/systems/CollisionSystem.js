@@ -9,8 +9,8 @@ export class CollisionSystem {
       this.enemyDamageCooldown = new Map()
       this.DAMAGE_COOLDOWN = 1.0
 
-      /** Référence au BuildSystem pour déclencher les procs */
-      this.buildSystem = null
+      /** Référence à l'inventory pour déclencher les procs */
+      this.inventory = null
 
       // ── OPTIMISATION: Spatial partitioning simple ──
       this._spatialGrid = new Map();
@@ -247,13 +247,11 @@ export class CollisionSystem {
 
     /** Déclenche les procs des items équipés */
     _triggerProcs(enemy) {
-      if (!this.buildSystem) return
-      const procItems = this.buildSystem.getProcItems()
-      for (const item of procItems) {
-        if (item.rollProc(this.player.luck)) {
-          item.onProc(enemy, this.player)
-        }
-      }
+      if (!this.inventory) return
+      
+      // Temporaire: avec la nouvelle db on gérera le rollProc et onProc différemment
+      // const procItems = this.inventory.getItems().map(e => e.item).filter(i => i.procChance)
+      // On le bypass pour l'instant car les items de on proc n'ont plus la fonction JS (c'est des modifiers purs pour l'instant)
     }
 
     /** Tick des effets de statut sur les ennemis */

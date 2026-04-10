@@ -1,4 +1,4 @@
-import { Item } from '../entities/items/Item.js'
+import { ItemDatabase } from '../entities/items/items.js'
 
 /**
  * LootSystem — Génère des pools d'items aléatoires selon les raretés.
@@ -11,7 +11,7 @@ import { Item } from '../entities/items/Item.js'
  *
  * Usage :
  *   const loot = new LootSystem()
- *   const pool = loot.generatePool(3)   // tableau de 3 Items
+ *   const pool = loot.generatePool(3)   // tableau de 3 plain-objects depuis ItemDatabase
  */
 export class LootSystem {
 
@@ -19,179 +19,17 @@ export class LootSystem {
         /** Poids de rareté [r1, r2, r3, r4] — somme = 100 */
         this.rarityWeights = [60, 20, 8, 1];
 
-        /** Catalogue complet de tous les items */
+        /** Catalogue complet de tous les items (plain objects avec id injecté) */
         this.catalog = this._buildCatalog();
     }
 
     // ════════════════════════════════════════════════════
     // CATALOGUE D'ITEMS
     // ════════════════════════════════════════════════════
+
+    /** Construit le catalogue à partir de ItemDatabase (Data-Driven). */
     _buildCatalog() {
-        return [
-
-            // ── ⭐ 1 — USB Keys (consommables, pas de slot) ─────────
-            new Item({
-                id: 'usb_damage',
-                name: 'Câble Acier',
-                description: '+0.2 Dégâts',
-                icon: '🔌',
-                rarity: 1,
-                slot: 'rightArm',
-                onEquip: p => { p.strength += 0.2; },
-                onRemove: p => { p.strength -= 0.2; },
-            }),
-            new Item({
-                id: 'usb_speed',
-                name: 'Moteur Turbo',
-                description: '+0.15 Vitesse',
-                icon: '⚡',
-                rarity: 1,
-                slot: 'rightLeg',
-                onEquip: p => { p.speed += 0.15; },
-                onRemove: p => { p.speed -= 0.15; },
-            }),
-            new Item({
-                id: 'usb_luck',
-                name: 'Puce Aléatoire',
-                description: '+0.2 Chance',
-                icon: '🎲',
-                rarity: 1,
-                slot: 'head',
-                onEquip: p => { p.luck += 0.2; },
-                onRemove: p => { p.luck -= 0.2; },
-            }),
-            new Item({
-                id: 'usb_armor',
-                name: 'Blindage Léger',
-                description: '+0.5 Armure',
-                icon: '🛡️',
-                rarity: 1,
-                slot: 'body',
-                onEquip: p => { p.armor += 0.5; },
-                onRemove: p => { p.armor -= 0.5; },
-            }),
-            new Item({
-                id: 'usb_firerate',
-                name: 'Condensateur USB',
-                description: '+0.1 Cadence de tir',
-                icon: '💾',
-                rarity: 1,
-                slot: 'leftArm',
-                onEquip: p => { p.speedshot += 0.1; },
-                onRemove: p => { p.speedshot -= 0.1; },
-            }),
-
-            // ── ⭐⭐ 2 — Modules élémentaires (consommables) ────────
-            new Item({
-                id: 'fire_module',
-                name: 'Module Ignis',
-                description: '20% : Brûlure (1HP/s, 2s)',
-                icon: '🔥',
-                rarity: 2,
-                slot: 'rightArm',
-                procChance: 0.20,
-                onEquip: p => { p._hasFireModule = true; },
-                onRemove: p => { p._hasFireModule = false; },
-                onProc: (enemy) => {
-                    if (!enemy || !enemy.enemy) return;
-                    if (enemy._burnTimer > 0) return;
-                    enemy._burnTimer = 2.0;
-                    enemy._burnDps = 1;
-                },
-            }),
-            new Item({
-                id: 'ice_module',
-                name: 'Module Glacies',
-                description: '20% : Ralentit -50% (1.5s)',
-                icon: '❄️',
-                rarity: 2,
-                slot: 'leftArm',
-                procChance: 0.20,
-                onEquip: p => { p._hasIceModule = true; },
-                onRemove: p => { p._hasIceModule = false; },
-                onProc: (enemy) => {
-                    if (!enemy || !enemy.enemy) return;
-                    enemy._slowTimer = 1.5;
-                    enemy._slowFactor = 0.5;
-                },
-            }),
-
-            // ── ⭐⭐⭐ 3 — Châssis MK2 (occupent un slot) ───────────
-            new Item({
-                id: 'fire_mk2',
-                name: 'Module Ignis MK2',
-                description: '30% : Brûlure (2HP/s, 3s)',
-                icon: '🌋',
-                rarity: 3,
-                slot: 'rightArm',
-                procChance: 0.30,
-                onEquip: p => { p._hasFireMK2 = true; },
-                onRemove: p => { p._hasFireMK2 = false; },
-                onProc: (enemy) => {
-                    if (!enemy || !enemy.enemy) return;
-                    enemy._burnTimer = 3.0;
-                    enemy._burnDps = 2;
-                },
-            }),
-            new Item({
-                id: 'ice_mk2',
-                name: 'Module Glacies MK2',
-                description: '30% : Gel total (2s)',
-                icon: '🧊',
-                rarity: 3,
-                slot: 'leftArm',
-                procChance: 0.30,
-                onEquip: p => { p._hasIceMK2 = true; },
-                onRemove: p => { p._hasIceMK2 = false; },
-                onProc: (enemy) => {
-                    if (!enemy || !enemy.enemy) return;
-                    enemy._slowTimer = 2.0;
-                    enemy._slowFactor = 0;
-                },
-            }),
-            new Item({
-                id: 'pierce_module',
-                name: 'Module Perçant',
-                description: '+0.4 Dégâts (armure ignorée)',
-                icon: '🗡️',
-                rarity: 3,
-                slot: 'rightArm',
-                onEquip: p => { p.strength += 0.4; p._piercingDamage = (p._piercingDamage || 0) + 1; },
-                onRemove: p => { p.strength -= 0.4; p._piercingDamage = Math.max(0, (p._piercingDamage || 1) - 1); },
-            }),
-
-            // ── ⭐⭐⭐⭐ 4 — Master Cores (châssis légendaire) ───────
-            new Item({
-                id: 'regen_core',
-                name: 'Coeur Régénérant',
-                description: '+2 HP/s régénération',
-                icon: '💚',
-                rarity: 4,
-                slot: 'body',
-                onEquip: p => { p.regen += 2; },
-                onRemove: p => { p.regen -= 2; },
-            }),
-            new Item({
-                id: 'damage_mult',
-                name: 'Surcharge Quantum',
-                description: 'Dégâts ×1.5',
-                icon: '⚛️',
-                rarity: 4,
-                slot: 'body',
-                onEquip: p => { p.strength *= 1.5; },
-                onRemove: p => { p.strength /= 1.5; },
-            }),
-            new Item({
-                id: 'lucky_core',
-                name: 'Processeur Fortune',
-                description: 'Chance ×2',
-                icon: '🍀',
-                rarity: 4,
-                slot: 'head',
-                onEquip: p => { p.luck *= 2; },
-                onRemove: p => { p.luck /= 2; },
-            }),
-        ];
+        return Object.entries(ItemDatabase).map(([id, data]) => ({ id, ...data }));
     }
 
     // ════════════════════════════════════════════════════
@@ -203,8 +41,8 @@ export class LootSystem {
      * Les items de châssis (3-4★) dont le slot est déjà occupé sont exclus (auto-ban).
      * @param {number} [count=3]
      * @param {number} [luckBonus=1]  player.luck pour biaiser vers le haut
-     * @param {Set<string>} [occupiedSlots=new Set()]  slots châssis déjà pris
-     * @returns {Item[]}
+     * @param {Set<string>} [occupiedSlots=new Set()]  slots déjà pris
+     * @returns {Object[]}  plain-objects depuis ItemDatabase (avec champ `id`)
      */
     generatePool(count = 3, luckBonus = 1, occupiedSlots = new Set()) {
         const pool = [];
@@ -218,7 +56,7 @@ export class LootSystem {
                 if (i.rarity !== rarity) return false;
                 if (usedIds.has(i.id)) return false;
                 // Auto-ban : exclure les items châssis (3-4★) dont le slot est occupé
-                if (i.isChassis && occupiedSlots.has(i.slot)) return false;
+                if (i.rarity >= 3 && occupiedSlots.has(i.slot)) return false;
                 return true;
             });
             if (candidates.length === 0) continue;

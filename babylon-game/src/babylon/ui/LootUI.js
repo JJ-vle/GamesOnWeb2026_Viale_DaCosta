@@ -38,12 +38,12 @@ export class LootUI {
 
     /**
      * Affiche l'écran de sélection d'item.
-     * @param {Item[]} pool        3 items proposés
-     * @param {BuildSystem} buildSystem
+     * @param {Object[]} pool      3 plain-objects depuis ItemDatabase
+     * @param {Player} player      le joueur (pour player.inventory.addItem)
      * @param {function} onPick   callback quand un item est choisi
      * @param {number} [level=1]  niveau actuel (affichage)
      */
-    show(pool, buildSystem, onPick, level = 1) {
+    show(pool, player, onPick, level = 1) {
         this._clearUI();
         this._visible = true;
         this._isClosing = false;
@@ -96,7 +96,7 @@ export class LootUI {
 
         pool.forEach((item, idx) => {
             const xOff = startX + idx * (cardWidth + cardGap);
-            this._buildCard(item, xOff, cardContainer, buildSystem, onPick, pool);
+            this._buildCard(item, xOff, cardContainer, player, onPick, pool);
         });
 
         // Animation d'apparition
@@ -113,12 +113,13 @@ export class LootUI {
     // CRÉER UNE CARTE D'ITEM
     // ─────────────────────────────────────────────────────
 
-    _buildCard(item, xOffset, parent, buildSystem, onPick, pool) {
+    _buildCard(item, xOffset, parent, player, onPick, pool) {
+        const color = LootUI._rarityColor(item.rarity);
         const card = new Rectangle(`card_${item.id}`);
         card.width = '260px';
         card.height = '340px';
         card.background = '#0d0d1e';
-        card.color = item.rarityColor;
+        card.color = color;
         card.thickness = 2;
         card.cornerRadius = 12;
         card.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
@@ -133,7 +134,7 @@ export class LootUI {
         // align left so leftInPixels on children is relative to left edge
         rarityBg.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
         rarityBg.leftInPixels = 0;
-        rarityBg.background = item.rarityColor + '33';
+        rarityBg.background = color + '33';
         rarityBg.thickness = 0;
         rarityBg.cornerRadius = 10;
         rarityBg.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
@@ -190,7 +191,11 @@ export class LootUI {
 
         // ── Slot ──
         const slotText = new TextBlock(`slot_${item.id}`);
-        const slotIcons = { head: '🔧 Tête', body: '🔧 Corps', rightArm: '🔧 Bras D', leftArm: '🔧 Bras G', rightLeg: '🔧 Jambe D', leftLeg: '🔧 Jambe G' };
+        const slotIcons = {
+            head: '🔧 Tête', body: '🔧 Corps',
+            arm: '🔧 Bras', leg: '🔧 Jambe', active: '⚡ Actif', none: '∞ Libre',
+            rightArm: '🔧 Bras D', leftArm: '🔧 Bras G', rightLeg: '🔧 Jambe D', leftLeg: '🔧 Jambe G',
+        };
         slotText.text = slotIcons[item.slot] ?? item.slot;
         slotText.color = '#ffffff55';
         slotText.fontSize = 11;
@@ -202,8 +207,8 @@ export class LootUI {
 
         // ── Description ──
         const descText = new TextBlock(`desc_${item.id}`);
-        descText.text = item.description;
-        descText.color = item.rarityColor;
+        descText.text = item.extraInfo || item.bonus || item.description || '';
+        descText.color = color;
         descText.fontSize = 14;
         descText.fontFamily = 'monospace';
         descText.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
@@ -217,8 +222,8 @@ export class LootUI {
         const btn = Button.CreateSimpleButton(`btn_${item.id}`, 'ÉQUIPER');
         btn.width = '85%';
         btn.height = '44px';
-        btn.background = item.rarityColor + '22';
-        btn.color = item.rarityColor;
+        btn.background = color + '22';
+        btn.color = color;
         btn.thickness = 1;
         btn.cornerRadius = 8;
         btn.fontSize = 14;
@@ -242,7 +247,7 @@ export class LootUI {
         const pickItem = () => {
             if (this._isClosing) return;
             this._isClosing = true;
-            buildSystem.equipItem(item);
+            player.inventory.addItem(item.id);
             this.hide(() => onPick(item));
         };
 
@@ -291,6 +296,11 @@ export class LootUI {
             try { c.dispose(); } catch (e) { /* ignore */ }
         });
         this._overlay = null;
+    }
+
+    /** Couleur CSS associée à la rareté (remplace Item.rarityColor pour les plain-objects). */
+    static _rarityColor(rarity) {
+        return { 1: '#aaaaaa', 2: '#44cc44', 3: '#4488ff', 4: '#ff9900' }[rarity] ?? '#ffffff';
     }
 
     dispose() {

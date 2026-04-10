@@ -7,6 +7,8 @@ import {
     PointLight
 } from '@babylonjs/core'
 import "@babylonjs/loaders"; // Pour supporter les fichiers .fbx, .glb, etc.
+import { PlayerInventory } from './items/PlayerInventory.js';
+
 export class Player {
 
     constructor(scene) {
@@ -31,6 +33,8 @@ export class Player {
         this.armor = 0;     // réduction de dégâts plate (ex: armor=2 → -2 dégâts reçus)
 
         this._regenAccum = 0; // accumulateur regen (évite les micro-heals chaque frame)
+        this.inventory = new PlayerInventory(this);
+
 
         // ── I-frames ──
         this.isInvulnerable = false;
