@@ -2,12 +2,16 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import BabylonScene from './components/BabylonScene.vue'
 import ZoneMapView from './components/ZoneMapView.vue'
+import InventoryView from './components/InventoryView.vue'
 import { getGame } from './babylon/BabylonService'
 import { useGameMode } from './stores/useGameMode'
 
 const gameStarted = ref(false)
 // current player node id to pass to ZoneMapView
 const playerNodeId = ref(null)
+// Inventory overlay
+const showInventory = ref(false)
+const inventoryData = ref(null)
 
 const { mode, setMode, toggleMap } = useGameMode()
 
@@ -32,7 +36,7 @@ function returnToMenu() {
 
   const keyHandler = (e) => {
     if (!gameStarted.value) return
-    if (e.key && e.key.toLowerCase() === 'm' || e.key === 'Tab') {
+    if (e.key && e.key.toLowerCase() === 'm') {
       // Toggle map open/close on 'm'
       if (mode.value !== 'map') {
         const g = getGame();
@@ -42,6 +46,20 @@ function returnToMenu() {
         setMode('map')
       } else {
         setMode('combat')
+      }
+    }
+    if (e.key && (e.key.toLowerCase() === 'i' || e.key === 'Tab')) {
+      e.preventDefault()
+      if (!showInventory.value) {
+        // Snapshot de l'inventaire depuis la scène (read-only)
+        const g = getGame()
+        const inv = g?.scene?.player?.inventory
+        inventoryData.value = inv
+          ? { items: [...inv.items], slotCapacity: { ...inv.slotCapacity }, slotCount: { ...inv.slotCount } }
+          : { items: [], slotCapacity: {}, slotCount: {} }
+        showInventory.value = true
+      } else {
+        showInventory.value = false
       }
     }
   }
@@ -78,6 +96,7 @@ function onSelectZone(id) {
     <div class="game-root">
       <BabylonScene />
       <ZoneMapView v-if="mode === 'map'" :playerNodeId="playerNodeId" @selectZone="onSelectZone" @close="setMode('combat')" />
+      <InventoryView v-if="showInventory && inventoryData" :inventory="inventoryData" @close="showInventory = false" />
     </div>
   </template>
 </template>
