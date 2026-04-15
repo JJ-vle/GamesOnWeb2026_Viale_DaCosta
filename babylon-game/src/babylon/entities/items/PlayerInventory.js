@@ -17,6 +17,12 @@ const MODIFIER_MAP = {
     luck:               { prop: 'luck',      type: 'additive' },
     healthRegen:        { prop: 'regen',     type: 'additive' },
 
+    // ── Multiplicateurs (appliqués au calcul, pas à la stat de base) ──
+    damageMultiplier:   { prop: 'damageMultiplier',   type: 'multiply' },
+
+    // ── Snapshot: multiplie la stat courante une fois à l'équipement ──
+    flatDamageDouble:   { prop: 'strength',  type: 'snapshot_multiply' },
+
     // ── Flags booléens stockés sur le joueur ──
     homingProjectiles:  { prop: 'homingProjectiles',   type: 'boolean' },
     invulnerable:       { prop: 'invulnerableItem',    type: 'boolean' },
@@ -69,6 +75,9 @@ export class PlayerInventory {
 
         /** Callback appelé lorsqu'un item est équipé */
         this.onItemEquipped = null;
+
+        /** Callback appelé lorsqu'un item est retiré */
+        this.onItemRemoved = null;
     }
 
     // ─────────────────────────────────────────────
@@ -106,6 +115,39 @@ export class PlayerInventory {
         
         if (this.onItemEquipped) {
             this.onItemEquipped(item);
+        }
+
+        return true;
+    }
+
+    /**
+     * Tente de retirer un item de l'inventaire.
+     *
+     * 1. Cherche l'item via son ID.
+     * 2. Retire l'item du tableau.
+     * 3. Libère l'espace dans le slot.
+     * 4. Retire les statistiques (modifiers) accordées.
+     *
+     * @param {string} itemId
+     * @returns {boolean}
+     */
+    removeItem(itemId) {
+        const index = this.items.findIndex(i => i.id === itemId);
+        if (index === -1) {
+            console.warn(`[PlayerInventory] Item non possédé : "${itemId}"`);
+            return false;
+        }
+
+        const removedData = this.items.splice(index, 1)[0];
+        const item = removedData.item;
+
+        this._freeSlot(item.slot);
+        this._unapplyModifiers(item.modifiers);
+
+        console.log(`[PlayerInventory] "${item.name}" déséquipé (slot: ${item.slot})`);
+
+        if (this.onItemRemoved) {
+            this.onItemRemoved(item);
         }
 
         return true;
@@ -156,6 +198,13 @@ export class PlayerInventory {
         if (slot !== 'none') this.slotCount[slot]++;
     }
 
+    /** Décrémente le compteur du slot */
+    _freeSlot(slot) {
+        if (slot !== 'none' && this.slotCount[slot] > 0) {
+            this.slotCount[slot]--;
+        }
+    }
+
     /**
      * Boucle dynamique sur les modifiers et applique chaque effet.
      *
@@ -174,6 +223,11 @@ export class PlayerInventory {
             const mapping = MODIFIER_MAP[mod];
 
             if (!mapping) {
+                // Wind Up: bloquer les modifiers négatifs si preventStatDecrease est actif
+                if (this.player.preventStatDecrease && typeof value === 'number' && value < 0) {
+                    console.info(`[PlayerInventory] Wind Up: modifier négatif "${mod}" (${value}) bloqué`);
+                    continue;
+                }
                 // Modifier non mappé : stocké brut sur le joueur pour usage futur
                 this.player[mod] = (this.player[mod] ?? 0) + value;
                 console.info(`[PlayerInventory] Modifier non mappé "${mod}" stocké brut sur le joueur (valeur: ${value})`);
@@ -182,7 +236,24 @@ export class PlayerInventory {
 
             switch (mapping.type) {
                 case 'additive':
+                    // Wind Up: bloquer les modifiers négatifs si preventStatDecrease est actif
+                    if (this.player.preventStatDecrease && value < 0) {
+                        console.info(`[PlayerInventory] Wind Up: stat decrease "${mapping.prop}" (${value}) bloquée`);
+                        break;
+                    }
                     this.player[mapping.prop] = (this.player[mapping.prop] ?? 0) + value;
+                    break;
+
+                case 'multiply':
+                    // Multiplicateur persistant (appliqué au calcul, pas à la stat)
+                    // Plusieurs items se cumulent : x1.5 puis x2 → total x3
+                    this.player[mapping.prop] = (this.player[mapping.prop] ?? 1) * value;
+                    break;
+
+                case 'snapshot_multiply':
+                    // Multiplie la stat courante une seule fois à l'équipement
+                    // Ex: strength=3, flatDamageDouble=2 → strength=6
+                    this.player[mapping.prop] = (this.player[mapping.prop] ?? 1) * value;
                     break;
 
                 case 'boolean':
@@ -191,6 +262,50 @@ export class PlayerInventory {
 
                 case 'slot':
                     this.slotCapacity[mapping.slot] = (this.slotCapacity[mapping.slot] ?? 1) + value;
+                    break;
+            }
+        }
+    }
+
+    /**
+     * Retire les effets d'un item.
+     *
+     * @param {Object} modifiers
+     */
+    _unapplyModifiers(modifiers) {
+        if (!modifiers) return;
+
+        for (const [mod, value] of Object.entries(modifiers)) {
+            const mapping = MODIFIER_MAP[mod];
+
+            if (!mapping) {
+                this.player[mod] = (this.player[mod] ?? 0) - value;
+                continue;
+            }
+
+            switch (mapping.type) {
+                case 'additive':
+                    this.player[mapping.prop] = (this.player[mapping.prop] ?? 0) - value;
+                    break;
+
+                case 'multiply':
+                    // Inverse du multiplicateur
+                    this.player[mapping.prop] = (this.player[mapping.prop] ?? 1) / value;
+                    break;
+
+                case 'snapshot_multiply':
+                    // Inverse du snapshot (divise la stat courante)
+                    this.player[mapping.prop] = (this.player[mapping.prop] ?? 1) / value;
+                    break;
+
+                case 'boolean':
+                    this.player[mapping.prop] = this.items.some(
+                        i => i.item.modifiers && i.item.modifiers[mod] === true
+                    );
+                    break;
+
+                case 'slot':
+                    this.slotCapacity[mapping.slot] = (this.slotCapacity[mapping.slot] ?? 1) - value;
                     break;
             }
         }

@@ -46,6 +46,11 @@ export class Player {
         this._childMeshCache = null;
         this._targetRotationY = 0; // rotation cible (mise à jour par pick)
         this._hasTargetRotation = false;
+
+        // ── Orbiting projectiles (Égalité) ──
+        this._orbitAngle = 0;
+        this._orbitMeshes = [];
+        this._orbitDamageCD = new Map(); // enemy → lastHitTime
     }
 
     async _loadCharacter() {
@@ -287,8 +292,90 @@ export class Player {
             }
         }
 
+        // ── Orbiting projectiles (Égalité) ──
+        this._updateOrbitingProjectiles(dt);
     }
 
+
+    /**
+     * Égalité: maintient des projectiles en orbite autour du joueur.
+     * Nombre = player.orbitingProjectiles. Inflige 2 DPS par contact.
+     */
+    _updateOrbitingProjectiles(dt) {
+        const count = this.orbitingProjectiles || 0
+        if (count <= 0) {
+            // Nettoyer si l'item est retiré
+            if (this._orbitMeshes.length > 0) {
+                this._orbitMeshes.forEach(m => m.dispose())
+                this._orbitMeshes = []
+            }
+            return
+        }
+
+        // Créer/ajuster le nombre de meshes orbitants
+        while (this._orbitMeshes.length < count) {
+            const orb = MeshBuilder.CreateSphere(
+                "orbitProj_" + this._orbitMeshes.length,
+                { diameter: 0.4, segments: 6 }, this.scene
+            )
+            // Matériau partagé
+            if (!Player._orbitMat || Player._orbitMat.getScene() !== this.scene) {
+                const mat = new StandardMaterial("orbitProjMat", this.scene)
+                mat.diffuseColor = new Color3(0.4, 0.6, 1)
+                mat.emissiveColor = new Color3(0.2, 0.4, 1)
+                mat.disableLighting = true
+                Player._orbitMat = mat
+            }
+            orb.material = Player._orbitMat
+            orb.isPickable = false
+            orb.checkCollisions = false
+            this._orbitMeshes.push(orb)
+        }
+        while (this._orbitMeshes.length > count) {
+            this._orbitMeshes.pop().dispose()
+        }
+
+        // Rotation orbitale
+        const orbitRadius = 2.5
+        const orbitSpeed = 3.0 // rad/s
+        this._orbitAngle += orbitSpeed * dt
+        const angleStep = (Math.PI * 2) / count
+
+        const now = performance.now() / 1000
+
+        for (let i = 0; i < count; i++) {
+            const orb = this._orbitMeshes[i]
+            if (!orb) continue
+            const angle = this._orbitAngle + i * angleStep
+            orb.position.x = this.mesh.position.x + Math.cos(angle) * orbitRadius
+            orb.position.y = this.mesh.position.y + 0.3
+            orb.position.z = this.mesh.position.z + Math.sin(angle) * orbitRadius
+        }
+
+        // Dégâts au contact avec les ennemis (via CollisionSystem.enemies)
+        if (this._collisionEnemies) {
+            const orbRadiusSq = (orbitRadius + 1.5) * (orbitRadius + 1.5) // pré-filtre
+            for (const enemy of this._collisionEnemies) {
+                if (!enemy.enemy || enemy.life <= 0 || enemy._isAlly) continue
+                // Pré-filtre distance au joueur
+                const edx = enemy.enemy.position.x - this.mesh.position.x
+                const edz = enemy.enemy.position.z - this.mesh.position.z
+                if (edx * edx + edz * edz > orbRadiusSq) continue
+
+                // Cooldown par ennemi (0.5s entre chaque hit)
+                const lastHit = this._orbitDamageCD.get(enemy) || 0
+                if (now - lastHit < 0.5) continue
+
+                for (const orb of this._orbitMeshes) {
+                    if (orb.intersectsMesh(enemy.enemy, false)) {
+                        enemy.takeDamage(2)
+                        this._orbitDamageCD.set(enemy, now)
+                        break
+                    }
+                }
+            }
+        }
+    }
 
     _updateRotation() {
         // Pick raycast throttlé (1 frame sur 3) pour obtenir la cible
@@ -331,14 +418,32 @@ export class Player {
 
     takeDamage(amount) {
         if (this.isInvulnerable) return;
+        // Immuable: invulnérabilité temporaire via item actif
+        if (this.invulnerableItem) return;
+        // Confiance: multiplier les dégâts reçus
+        const multiplied = amount * (this.damageTakenMultiplier || 1);
         // L'armure réduit les dégâts (minimum 1)
-        const effective = Math.max(1, amount - this.armor);
+        const effective = Math.max(1, multiplied - this.armor);
         this.life -= effective;
         if (this.life < 0) this.life = 0;
-        // Déclencher les i-frames
-        this.isInvulnerable = true;
-        this.invulnerabilityTimer = 1.5;
-        this._blinkTimer = 0;
+
+        // ── Mise à jour: respawn si HP = 0 et respawnCount > 0 ──
+        if (this.life <= 0 && (this.respawnCount || 0) > 0) {
+            this.respawnCount--;
+            this.life = Math.ceil(this.maxLife * 0.5);
+            this.isInvulnerable = true;
+            this.invulnerabilityTimer = 2.0;
+            this._blinkTimer = 0;
+            return;
+        }
+
+        // Super Hot (iframes: 0) → pas d'invulnérabilité post-hit
+        const iframeDuration = this.iframes ?? 1.5;
+        if (iframeDuration > 0) {
+            this.isInvulnerable = true;
+            this.invulnerabilityTimer = iframeDuration;
+            this._blinkTimer = 0;
+        }
     }
 
     heal(amount) {

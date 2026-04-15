@@ -169,22 +169,22 @@ export const ItemDatabase = {
     type: "Passif",
     name: "Module Explosif",
     bonus: "Explosion",
-    modifiers: { explosionRadius: 1.5, explosionDamage: 50 },
+    modifiers: { explosionRadius: 3, explosionDamage: 7.5, explosionProc: 0.25 },
     pool: "chest",
     target: "on damage",
     slot: "arm",
-    rarity: 2,
-    extraInfo: "Explosion à l'impact"
+    rarity: 3,
+    extraInfo: "Explosion à l'impact (25% de chance)"
   },
   "defragmenteur": {
     type: "Passif",
     name: "Défragmenteur",
     bonus: "Tire",
-    modifiers: { additionalProjectiles: 1 },
+    modifiers: { additionalProjectiles: 1, fireRate: -0.1 },
     pool: "chest",
     target: "self",
     slot: "arm",
-    rarity: 2,
+    rarity: 3,
     extraInfo: "Ajoute un projectile (tir en cône)"
   },
   "sabots_d_acier": {
@@ -195,33 +195,31 @@ export const ItemDatabase = {
     cooldown: 10,
     target: "zone",
     slot: "leg",
-    rarity: 2,
+    rarity: 3,
     extraInfo: "Fait une AoE tous les 10 pas"
   },
   "module_ignis": {
     type: "Passif",
     name: "Module Ignis",
     bonus: "Brûlure",
-    modifiers: { burnDamage: 2 },
+    modifiers: { burnDamage: 2, burnProc: 0.2 },
     pool: "chest",
-    procChance: 0.2,
     duration: 2,
     target: "on damage",
     slot: "arm",
-    rarity: 2,
+    rarity: 3,
     effectType: "burn"
   },
   "module_glacies": {
     type: "Passif",
     name: "Module Glacies",
     bonus: "Ralentissement",
-    modifiers: { slowEffect: 0.5 },
+    modifiers: { slowEffect: 0.5, slowProc: 0.2 },
     pool: "chest",
-    procChance: 0.2,
     duration: 3,
     target: "on damage",
     slot: "arm",
-    rarity: 2
+    rarity: 3
   },
   "module_aero": {
     type: "Passif",
@@ -232,7 +230,7 @@ export const ItemDatabase = {
     cooldown: 3,
     target: "self",
     slot: "leg",
-    rarity: 2
+    rarity: 3
   },
   "equivalence": {
     type: "Passif",

@@ -1,5 +1,5 @@
 // src/babylon/systems/CollisionSystem.js
-import { Ray } from '@babylonjs/core'
+import { Ray, Vector3, MeshBuilder, StandardMaterial, Color3 } from '@babylonjs/core'
 
 export class CollisionSystem {
     constructor() {
@@ -22,11 +22,23 @@ export class CollisionSystem {
       // ── OPTIMISATION: Cache des enemy mesh IDs pour raycasts ──
       this._cachedEnemyMeshIds = new Set()
       this._lastEnemyCount = -1  // Détecter changement
+
+      // ── Auras: tracking distance parcourue ──
+      this._lastPlayerPos = null
+      this._distanceTraveled = 0
+      this._sabotsCooldownDist = 0  // distance accumulée pour Sabots d'Acier
     }
   
-    registerPlayer(player) { this.player = player }
+    registerPlayer(player) {
+      this.player = player
+      // Injecter la liste d'ennemis pour les orbiting projectiles
+      player._collisionEnemies = this.enemies
+    }
     registerEnemy(enemy) { this.enemies.push(enemy) }
-    registerProjectile(projectile) { this.projectiles.push(projectile) }
+    registerProjectile(projectile) {
+      projectile._collisionEnemies = this.enemies
+      this.projectiles.push(projectile)
+    }
   
     removeEnemy(enemy) {
       // ── OPTIMISATION: splice au lieu de filter (pas de nouvel array) ──
@@ -192,8 +204,8 @@ export class CollisionSystem {
         // Tester collisions seulement avec ennemis proches
         let projHit = false;
         for (let enemy of nearbyEnemies) {
-          if (!enemy.enemy) continue
-          
+          if (!enemy.enemy || enemy._isAlly) continue
+
           // ── OPTIMISATION: Distance-squared check (pas de sqrt) ──
           const dx = proj.mesh.position.x - enemy.enemy.position.x;
           const dz = proj.mesh.position.z - enemy.enemy.position.z;
@@ -201,9 +213,21 @@ export class CollisionSystem {
           if (distSq > 64) continue; // 8² = 64
           
           if (proj.mesh.intersectsMesh(enemy.enemy, false)) {
-            enemy.takeDamage(proj.damage || 1)
-            // Déclencher les procs d'items du joueur
-            this._triggerProcs(enemy)
+            const dmg = proj.damage || 1
+            const impactPos = proj.mesh.position.clone()
+
+            // ── Appropriation Mécanique: conversion avant la mort ──
+            const convChance = this.player.conversionChance || 0
+            if (convChance > 0 && !enemy._isAlly && enemy.life - dmg <= 0 && this._rollProc(convChance)) {
+              // Convertir au lieu de tuer
+              enemy.life = 1 // empêcher takeDamage de destroy
+              enemy.convertToAlly(15)
+            } else {
+              enemy.takeDamage(dmg)
+            }
+
+            // Déclencher les procs d'items du joueur (passer la position d'impact pour AoE)
+            this._triggerProcs(enemy, impactPos)
             proj.dispose()
             this.projectiles.splice(i, 1)
             projHit = true;
@@ -229,13 +253,19 @@ export class CollisionSystem {
       }
 
       for (let enemy of nearbyEnemies) {
-        if (!enemy.enemy) continue
-        // Intangibilité : le joueur traverse les ennemis pendant les i-frames
-        if (this.player.isInvulnerable) continue
+        if (!enemy.enemy || enemy._isAlly) continue
         if (enemy.enemy.intersectsMesh(this.player.mesh, false)) {
           const lastDamageTime = this.enemyDamageCooldown.get(enemy) || -Infinity
           if (this.currentTime - lastDamageTime >= this.DAMAGE_COOLDOWN) {
-            enemy.contact?.()
+            // Super Hot: le joueur inflige des dégâts de contact à l'ennemi
+            const contactDmg = this.player.contactDamage || 0
+            if (contactDmg > 0) {
+              enemy.takeDamage(contactDmg)
+            }
+            // L'ennemi inflige ses dégâts au joueur (sauf si invulnérable)
+            if (!this.player.isInvulnerable) {
+              enemy.contact?.()
+            }
             this.enemyDamageCooldown.set(enemy, this.currentTime)
           }
         }
@@ -243,15 +273,289 @@ export class CollisionSystem {
 
       // ── Effets de statut (brûlure, ralentissement) ──
       this._tickStatusEffects(deltaTime)
+
+      // ── Auras du joueur (Radioactivitée, Pression, Supersonic, Sabots) ──
+      this._tickPlayerAuras(deltaTime)
     }
 
-    /** Déclenche les procs des items équipés */
-    _triggerProcs(enemy) {
-      if (!this.inventory) return
-      
-      // Temporaire: avec la nouvelle db on gérera le rollProc et onProc différemment
-      // const procItems = this.inventory.getItems().map(e => e.item).filter(i => i.procChance)
-      // On le bypass pour l'instant car les items de on proc n'ont plus la fonction JS (c'est des modifiers purs pour l'instant)
+    /** Roll un proc: retourne true si l'effet se déclenche */
+    _rollProc(procChance) {
+      return procChance > 0 && Math.random() < procChance
+    }
+
+    /**
+     * Déclenche les procs des items équipés (lus depuis les modifiers bruts du joueur).
+     * Convention: pour chaque effet "xxx", la prob est lue depuis player.xxxProc.
+     * Si xxxProc n'existe pas, l'effet se déclenche à 100%.
+     */
+    _triggerProcs(enemy, impactPos) {
+      if (!this.player) return
+
+      // ── Module Ignis: brûlure DoT ──
+      const burnDmg = this.player.burnDamage || 0
+      if (burnDmg > 0 && this._rollProc(this.player.burnProc ?? 1)) {
+        enemy._burnTimer = Math.max(enemy._burnTimer || 0, 2)
+        enemy._burnDps = burnDmg
+      }
+
+      // ── Module Glacies: ralentissement ──
+      const slowVal = this.player.slowEffect || 0
+      if (slowVal > 0 && this._rollProc(this.player.slowProc ?? 1)) {
+        enemy._slowTimer = Math.max(enemy._slowTimer || 0, 3)
+        enemy._slowFactor = 1 - Math.min(slowVal, 0.9)
+      }
+
+      // ── Module Explosif: explosion AoE ──
+      const explRadius = this.player.explosionRadius || 0
+      const explDamage = this.player.explosionDamage || 0
+      if (explRadius > 0 && explDamage > 0 && impactPos && this._rollProc(this.player.explosionProc ?? 1)) {
+        this._explodeAtPoint(impactPos, explRadius, explDamage, enemy)
+      }
+
+      // ── Module Aero: knockback (recul) ──
+      const kb = this.player.knockback || 0
+      if (kb > 0 && enemy.enemy) {
+        const dir = enemy.enemy.position.subtract(impactPos)
+        dir.y = 0
+        const len = dir.length()
+        if (len > 0.001) {
+          dir.scaleInPlace(kb / len) // normalise puis scale par la force
+          enemy.enemy.position.addInPlace(dir)
+        }
+      }
+
+      // ── Tazer: chain lightning ──
+      const chainCount = this.player.chainDamageCount || 0
+      if (chainCount > 0 && enemy.enemy) {
+        this._chainLightning(enemy, chainCount, impactPos)
+      }
+    }
+
+    /**
+     * Inflige des dégâts AoE à tous les ennemis dans un rayon autour d'un point.
+     * @param {Vector3} center - point d'impact
+     * @param {number} radius - rayon d'explosion
+     * @param {number} damage - dégâts infligés
+     * @param {Enemy|null} alreadyHit - ennemi déjà touché par le projectile (éviter double-hit)
+     */
+    _explodeAtPoint(center, radius, damage, alreadyHit = null) {
+      const radiusSq = radius * radius
+      for (const enemy of this.enemies) {
+        if (!enemy.enemy || enemy === alreadyHit || enemy.life <= 0) continue
+        const dx = enemy.enemy.position.x - center.x
+        const dz = enemy.enemy.position.z - center.z
+        if (dx * dx + dz * dz <= radiusSq) {
+          enemy.takeDamage(damage)
+        }
+      }
+      // Feedback visuel
+      this._spawnExplosionVFX(center, radius)
+    }
+
+    /**
+     * Crée une sphère semi-transparente qui grandit puis disparaît (explosion VFX).
+     */
+    _spawnExplosionVFX(center, radius) {
+      const scene = this.player.mesh.getScene()
+
+      const sphere = MeshBuilder.CreateSphere("explosionVFX", { diameter: 1, segments: 10 }, scene)
+      sphere.position.copyFrom(center)
+      sphere.scaling.setAll(0.1)
+      sphere.isPickable = false
+
+      // Matériau partagé (créé une seule fois)
+      if (!CollisionSystem._explosionMat || CollisionSystem._explosionMat.getScene() !== scene) {
+        const mat = new StandardMaterial("explosionVFXMat", scene)
+        mat.diffuseColor = new Color3(1, 0.4, 0)
+        mat.emissiveColor = new Color3(1, 0.3, 0)
+        mat.alpha = 0.5
+        mat.disableLighting = true
+        mat.backFaceCulling = false
+        CollisionSystem._explosionMat = mat
+      }
+      sphere.material = CollisionSystem._explosionMat
+
+      // Animation: expand + fade out sur ~300ms
+      const targetDiameter = radius * 2
+      const duration = 0.3 // secondes
+      let elapsed = 0
+
+      const obs = scene.onBeforeRenderObservable.add(() => {
+        elapsed += scene.getEngine().getDeltaTime() / 1000
+        const t = Math.min(elapsed / duration, 1)
+
+        // Scale: ease-out (rapide au début, ralentit)
+        const scale = targetDiameter * (1 - Math.pow(1 - t, 2))
+        sphere.scaling.setAll(scale)
+
+        // Fade out
+        sphere.visibility = 1 - t
+
+        if (t >= 1) {
+          scene.onBeforeRenderObservable.remove(obs)
+          sphere.dispose()
+        }
+      })
+    }
+
+    /**
+     * Tazer: l'éclair rebondit sur N ennemis proches.
+     * Chaque rebond cherche l'ennemi non-touché le plus proche dans un rayon de 8.
+     * Dégâts décroissants: 50% des dégâts de base du joueur par rebond.
+     */
+    _chainLightning(sourceEnemy, maxBounces, impactPos) {
+      const chainRadius = 8
+      const chainRadiusSq = chainRadius * chainRadius
+      const baseDmg = (this.player.strength || 1) * 2 * 0.5 // 50% du dégât de base
+      const hit = new Set()
+      hit.add(sourceEnemy)
+
+      let current = sourceEnemy
+      const scene = this.player.mesh.getScene()
+
+      for (let bounce = 0; bounce < maxBounces; bounce++) {
+        let closest = null
+        let closestDistSq = chainRadiusSq
+
+        for (const enemy of this.enemies) {
+          if (!enemy.enemy || enemy.life <= 0 || hit.has(enemy) || enemy._isAlly) continue
+          const dx = enemy.enemy.position.x - current.enemy.position.x
+          const dz = enemy.enemy.position.z - current.enemy.position.z
+          const dSq = dx * dx + dz * dz
+          if (dSq < closestDistSq) {
+            closestDistSq = dSq
+            closest = enemy
+          }
+        }
+
+        if (!closest) break
+
+        hit.add(closest)
+        closest.takeDamage(baseDmg)
+
+        // VFX: ligne éclair entre les deux ennemis
+        this._spawnChainVFX(scene, current.enemy.position, closest.enemy.position)
+
+        current = closest
+      }
+    }
+
+    /**
+     * VFX éclair entre deux points (ligne cyan qui disparaît rapidement).
+     */
+    _spawnChainVFX(scene, from, to) {
+      const points = [from.clone(), to.clone()]
+      // Ajouter 1-2 points intermédiaires avec offset aléatoire pour simuler un éclair
+      const mid = Vector3.Lerp(from, to, 0.5)
+      mid.x += (Math.random() - 0.5) * 1.5
+      mid.y += (Math.random() - 0.5) * 0.5
+      mid.z += (Math.random() - 0.5) * 1.5
+      const lightningPoints = [from.clone(), mid, to.clone()]
+
+      const line = MeshBuilder.CreateLines("chainVFX", { points: lightningPoints, updatable: false }, scene)
+      line.color = new Color3(0.3, 0.8, 1) // cyan électrique
+      line.isPickable = false
+
+      // Disparaît après 200ms
+      let elapsed = 0
+      const obs = scene.onBeforeRenderObservable.add(() => {
+        elapsed += scene.getEngine().getDeltaTime() / 1000
+        if (elapsed >= 0.2) {
+          scene.onBeforeRenderObservable.remove(obs)
+          line.dispose()
+        }
+      })
+    }
+
+    /**
+     * Auras et effets de mouvement du joueur.
+     * Lit les modifiers bruts: dotDamage, enemySlowRadius, areaDamage, aoeDamage
+     */
+    _tickPlayerAuras(deltaTime) {
+      if (!this.player || !this.player.mesh) return
+      const pos = this.player.mesh.position
+
+      // ── Calcul de la distance parcourue cette frame ──
+      let frameDist = 0
+      if (this._lastPlayerPos) {
+        const dx = pos.x - this._lastPlayerPos.x
+        const dz = pos.z - this._lastPlayerPos.z
+        frameDist = Math.sqrt(dx * dx + dz * dz)
+        this._distanceTraveled += frameDist
+      }
+      if (!this._lastPlayerPos) this._lastPlayerPos = pos.clone()
+      else { this._lastPlayerPos.x = pos.x; this._lastPlayerPos.y = pos.y; this._lastPlayerPos.z = pos.z }
+
+      // Récupérer les ennemis proches via grille spatiale (réutilise la grille déjà construite)
+      const nearby = []
+      const cells = this._getAdjacentCells(pos)
+      for (const key of cells) {
+        const contents = this._spatialGrid.get(key)
+        if (!contents) continue
+        for (const entry of contents) {
+          if (entry.type === 'enemy' && entry.entity.enemy && entry.entity.life > 0) {
+            nearby.push(entry.entity)
+          }
+        }
+      }
+
+      // ── Radioactivitée: dégâts continus autour du joueur ──
+      const dotDmg = this.player.dotDamage || 0
+      if (dotDmg > 0) {
+        const dotRadius = 4
+        const dotRadiusSq = dotRadius * dotRadius
+        for (const enemy of nearby) {
+          const dx = enemy.enemy.position.x - pos.x
+          const dz = enemy.enemy.position.z - pos.z
+          if (dx * dx + dz * dz <= dotRadiusSq) {
+            enemy.takeDamage(dotDmg * deltaTime)
+          }
+        }
+      }
+
+      // ── Pression: ralentir les ennemis dans le rayon ──
+      const slowRadius = this.player.enemySlowRadius || 0
+      if (slowRadius > 0) {
+        const slowRadiusSq = slowRadius * slowRadius
+        for (const enemy of nearby) {
+          const dx = enemy.enemy.position.x - pos.x
+          const dz = enemy.enemy.position.z - pos.z
+          if (dx * dx + dz * dz <= slowRadiusSq) {
+            // Slow persistant tant qu'on est dans la zone (refresh chaque frame)
+            enemy._slowTimer = Math.max(enemy._slowTimer || 0, 0.3)
+            enemy._slowFactor = 0.4 // -60% vitesse dans l'aura
+          }
+        }
+      }
+
+      // ── Supersonic: dégâts proportionnels au mouvement ──
+      const areaDmg = this.player.areaDamage || 0
+      if (areaDmg > 0 && frameDist > 0.01) {
+        const sonicRadius = 3
+        const sonicRadiusSq = sonicRadius * sonicRadius
+        // Plus on bouge vite, plus ça fait mal
+        const dmg = areaDmg * frameDist
+        for (const enemy of nearby) {
+          const dx = enemy.enemy.position.x - pos.x
+          const dz = enemy.enemy.position.z - pos.z
+          if (dx * dx + dz * dz <= sonicRadiusSq) {
+            enemy.takeDamage(dmg)
+          }
+        }
+      }
+
+      // ── Sabots d'Acier: AoE tous les 10 unités de distance parcourue ──
+      const aoeDmg = this.player.aoeDamage || 0
+      if (aoeDmg > 0) {
+        this._sabotsCooldownDist += frameDist
+        const triggerDist = 10 // déclenche tous les 10 unités
+        if (this._sabotsCooldownDist >= triggerDist) {
+          this._sabotsCooldownDist -= triggerDist
+          // AoE stomp autour du joueur
+          const stompRadius = 5
+          this._explodeAtPoint(pos.clone(), stompRadius, aoeDmg)
+        }
+      }
     }
 
     /** Tick des effets de statut sur les ennemis */

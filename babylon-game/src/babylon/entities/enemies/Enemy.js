@@ -150,6 +150,63 @@ export class Enemy {
             useCollisions = true,
         } = options
 
+        // ── Allié converti: timer + ciblage ennemi ──
+        if (this._isAlly) {
+            this._allyTimer -= dt
+            if (this._allyTimer <= 0) {
+                this.life = 0
+                this.destroy()
+                return null
+            }
+            // Trouver l'ennemi non-allié le plus proche comme cible
+            let closestEnemy = null
+            let closestDist = Infinity
+            for (const other of enemies) {
+                if (!other || !other.enemy || other === this || other._isAlly || other.life <= 0) continue
+                const d = Vector3.Distance(this.enemy.position, other.enemy.position)
+                if (d < closestDist) { closestDist = d; closestEnemy = other }
+            }
+            // Utiliser la position de l'ennemi cible comme "playerMesh" pour la FSM
+            const allyTarget = closestEnemy ? closestEnemy.enemy : null
+            if (allyTarget) {
+                this.perception.canSee = true
+                if (this.perception.lastSeenPos) this.perception.lastSeenPos.copyFrom(allyTarget.position)
+                else this.perception.lastSeenPos = allyTarget.position.clone()
+                this.perception.lastSeenTime = 0
+                this._hasSeenPlayer = true
+
+                const action = this.fsm.getAction({
+                    health: this.life,
+                    maxHealth: this.maxLife,
+                    position: this.enemy.position,
+                    playerPos: allyTarget.position,
+                    targetPos: allyTarget.position,
+                })
+
+                const targetPos = action.targetPos
+                if (!targetPos || action.action === 'idle' || action.action === 'dead') {
+                    return { action, scaledMove: Vector3.Zero(), moved: false, dt }
+                }
+
+                const moveVec = this.pathfinding.getMovementVector(
+                    this.enemy.position, targetPos,
+                    action.speed * (this.speed || 1), [], separationDist, separationForce
+                )
+                const scaledMove = moveVec.scale(this._slow)
+
+                if (useCollisions) this.enemy.moveWithCollisions(scaledMove)
+                else this.enemy.position.addInPlace(scaledMove)
+
+                // Infliger des dégâts de contact à l'ennemi cible
+                if (closestDist < 2.5 && closestEnemy.life > 0) {
+                    closestEnemy.takeDamage(3 * dt) // 3 DPS au contact
+                }
+
+                return { action, scaledMove, moved: true, dt }
+            }
+            return { action: { action: 'idle' }, scaledMove: Vector3.Zero(), moved: false, dt }
+        }
+
         // ── 1. PERCEPTION ──
         const fovDistance = this.fsm.config.fovDistance || 25
         const fovAngle = this.fsm.config.fovAngle || 120
@@ -246,17 +303,38 @@ export class Enemy {
         }
 
         if (this.material) this.material.diffuseColor = new Color3(1, 0, 0)
-        this._hitTimer = 0.1 
+        this._hitTimer = 0.1
 
         // AGGRO IMMÉDIAT: être touché → forcer la poursuite du joueur
-        this._hasSeenPlayer = true
-        if (this.fsm) {
-            this.fsm.send({ type: 'PLAYER_SPOTTED' })
+        if (!this._isAlly) {
+            this._hasSeenPlayer = true
+            if (this.fsm) {
+                this.fsm.send({ type: 'PLAYER_SPOTTED' })
+            }
         }
-        
+
         if (this.life <= 0) {
             this.life = 0
             this.destroy()
+        }
+    }
+
+    /**
+     * Convertit l'ennemi en allié temporaire.
+     * L'allié cible les ennemis proches au lieu du joueur.
+     * @param {number} duration - durée en secondes (défaut: 15)
+     */
+    convertToAlly(duration = 15) {
+        this._isAlly = true
+        this._allyTimer = duration
+        this.life = Math.ceil(this.maxLife * 0.5)
+        this.contact = null // ne frappe plus le joueur au contact
+
+        // Teinte verte pour indiquer l'allié
+        if (this.material) {
+            this.material.diffuseColor = new Color3(0.2, 1, 0.3)
+            this.material.emissiveColor = new Color3(0, 0.4, 0.1)
+            this._originalDiffuseColor = new Color3(0.2, 1, 0.3)
         }
     }
     

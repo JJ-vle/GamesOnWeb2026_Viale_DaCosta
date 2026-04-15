@@ -132,7 +132,9 @@ export class ActiveAbilitySystem {
                 break
         }
 
-        this.cooldownRemaining = this.COOLDOWN
+        // Watercooling: réduire le cooldown effectif
+        const cdr = this.player.cooldownReduction || 0
+        this.cooldownRemaining = this.COOLDOWN * (1 - Math.min(cdr, 0.8))
         if (this.onAbilityUsed) this.onAbilityUsed()
     }
 

@@ -72,6 +72,11 @@ export class MainScene extends BaseScene {
       this.uiSystem.updateItems(this.playerEntry.inventory.getItems().map(i => i.item))
     }
 
+    this.playerEntry.inventory.onItemRemoved = (item) => {
+      this.uiSystem.showNotification(`${item.name} retiré!`, '#ff6666', 2000)
+      this.uiSystem.updateItems(this.playerEntry.inventory.getItems().map(i => i.item))
+    }
+
     // LevelUp → afficher l'écran de loot
     this.xpSystem.onLevelUp = (level) => {
       this.uiSystem.showNotification(`⬆ NIVEAU ${level} !`, '#ffcc00', 2000)
@@ -392,7 +397,31 @@ export class MainScene extends BaseScene {
       }
     }
 
-    // 4. help() pour voir comment utiliser les commandes
+    // 4. giveItem(itemId) pour se donner un item spécifique par son ID
+    window.giveItem = (itemId) => {
+      if (this.playerEntry && this.playerEntry.inventory) {
+        const success = this.playerEntry.inventory.addItem(itemId)
+        if (!success) {
+          console.warn(`[Cheat] Impossible d'ajouter l'item '${itemId}'. L'ID est peut-être incorrect ou le slot est plein.`)
+        }
+      } else {
+        console.warn("[Cheat] Inventaire du joueur introuvable.")
+      }
+    }
+
+    // 5. removeItem(itemId) pour retirer un item spécifique par son ID
+    window.removeItem = (itemId) => {
+      if (this.playerEntry && this.playerEntry.inventory) {
+        const success = this.playerEntry.inventory.removeItem(itemId)
+        if (!success) {
+          console.warn(`[Cheat] Impossible de retirer l'item '${itemId}'. L'ID est peut-être incorrect ou vous ne le possédez pas.`)
+        }
+      } else {
+        console.warn("[Cheat] Inventaire du joueur introuvable.")
+      }
+    }
+
+    // 6. help() pour voir comment utiliser les commandes
     window.help = () => {
       console.log(`
 %c🛠️ COMMANDES DE TRICHE (Menu Développeur) 🛠️
@@ -408,7 +437,13 @@ export class MainScene extends BaseScene {
 3. %cclearEnemies() %c- Lance une frappe orbitale qui tue INSTANTANÉMENT tous les ennemis sur la carte.
    (Tu gagnes tout de même l'XP et le Score pour chaque mort)
 
-4. %chelp() %c- Affiche ce menu.
+4. %cgiveItem(itemId) %c- Ajoute un item spécifique dans l'inventaire.
+   Ex: %cgiveItem('plume')%c        (Ajoute l'item 'plume')
+
+5. %cremoveItem(itemId) %c- Retire un item spécifique de l'inventaire.
+   Ex: %cremoveItem('plume')%c      (Enlève l'item 'plume')
+
+6. %chelp() %c- Affiche ce menu.
       `,
         "font-size: 14px; font-weight: bold; color: #ffcc00;", "",
         "color: #00ffaa; font-weight: bold;", "",
@@ -416,6 +451,10 @@ export class MainScene extends BaseScene {
         "color: #ff55bb;", "",
         "color: #00ffaa; font-weight: bold;", "",
         "color: #00ffaa; font-weight: bold;", "",
+        "color: #00ffaa; font-weight: bold;", "",
+        "color: #ff55bb;", "",
+        "color: #00ffaa; font-weight: bold;", "",
+        "color: #ff55bb;", "",
         "color: #00ffaa; font-weight: bold;", ""
       )
     }

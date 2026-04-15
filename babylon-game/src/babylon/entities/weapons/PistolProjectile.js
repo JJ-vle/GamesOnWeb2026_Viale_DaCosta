@@ -19,6 +19,7 @@ export class PistolProjectile extends Projectile {
     this.speed = options.speed ?? 18
     this.damage = options.damage ?? 2
     this.lifeTime = options.lifeTime ?? 2
+    this.player = options.player ?? null
 
     // mesh
     this.mesh = MeshBuilder.CreateBox(
