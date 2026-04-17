@@ -1,4 +1,4 @@
-import {
+﻿import {
     AdvancedDynamicTexture,
     Rectangle,
     TextBlock,
@@ -8,15 +8,15 @@ import {
 } from '@babylonjs/gui';
 
 /**
- * LootUI — Écran plein-écran de sélection d'item après chaque round.
+ * LootUI â€” Ã‰cran plein-Ã©cran de sÃ©lection d'item aprÃ¨s chaque round.
  *
- * Affiche 3 cartes d'items côte à côte. Le joueur clique sur une carte
- * pour l'équiper. L'écran disparaît ensuite.
+ * Affiche 3 cartes d'items cÃ´te Ã  cÃ´te. Le joueur clique sur une carte
+ * pour l'Ã©quiper. L'Ã©cran disparaÃ®t ensuite.
  *
  * Usage :
  *   const lootUI = new LootUI(scene)
  *   lootUI.show(pool, buildSystem, () => startNextRound())
- *   // pool = Item[] (3 items générés par LootSystem)
+ *   // pool = Item[] (3 items gÃ©nÃ©rÃ©s par LootSystem)
  */
 export class LootUI {
 
@@ -27,17 +27,17 @@ export class LootUI {
         this._overlay = null;
         this._visible = false;
         this._isClosing = false;
-        this._listeners = []; // ── MEMORY FIX: Store observable references for cleanup
+        this._listeners = []; // â”€â”€ MEMORY FIX: Store observable references for cleanup
     }
 
     get isVisible() { return this._visible; }
 
-    // ─────────────────────────────────────────────────────
-    // AFFICHER L'ÉCRAN DE LOOT
-    // ─────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // AFFICHER L'Ã‰CRAN DE LOOT
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     /**
-     * Affiche l'écran de sélection d'item.
+     * Affiche l'Ã©cran de sÃ©lection d'item.
      * @param {Object[]} pool      3 plain-objects depuis ItemDatabase
      * @param {Player} player      le joueur (pour player.inventory.addItem)
      * @param {function} onPick   callback quand un item est choisi
@@ -48,7 +48,7 @@ export class LootUI {
         this._visible = true;
         this._isClosing = false;
 
-        // ── Fond sombre semi-transparent ──
+        // â”€â”€ Fond sombre semi-transparent â”€â”€
         const overlay = new Rectangle('lootOverlay');
         overlay.width = '100%';
         overlay.height = '100%';
@@ -57,9 +57,9 @@ export class LootUI {
         this.ui.addControl(overlay);
         this._overlay = overlay;
 
-        // ── Titre ──
+        // â”€â”€ Titre â”€â”€
         const title = new TextBlock('lootTitle');
-        title.text = `⬆  NIVEAU ${level}  —  CHOISISSEZ UN MODULE`;
+        title.text = `â¬†  NIVEAU ${level}  â€”  CHOISISSEZ UN MODULE`;
         title.color = '#ffcc00';
         title.fontSize = 26;
         title.fontFamily = 'monospace';
@@ -70,7 +70,7 @@ export class LootUI {
         overlay.addControl(title);
 
         const subtitle = new TextBlock('lootSubtitle');
-        subtitle.text = 'Cliquez sur une carte pour équiper le module';
+        subtitle.text = 'Cliquez sur une carte pour Ã©quiper le module';
         subtitle.color = '#ffffff88';
         subtitle.fontSize = 14;
         subtitle.fontFamily = 'monospace';
@@ -79,7 +79,7 @@ export class LootUI {
         subtitle.height = "30px";
         overlay.addControl(subtitle);
 
-        // ── Conteneur des cartes ──
+        // â”€â”€ Conteneur des cartes â”€â”€
         const cardContainer = new Rectangle('cardContainer');
         cardContainer.width = '900px';
         cardContainer.height = '360px';
@@ -88,7 +88,7 @@ export class LootUI {
         cardContainer.verticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
         overlay.addControl(cardContainer);
 
-        // ── 3 Cartes ──
+        // â”€â”€ 3 Cartes â”€â”€
         const cardWidth = 260;
         const cardGap = 30;
         const totalWidth = pool.length * cardWidth + (pool.length - 1) * cardGap;
@@ -109,9 +109,9 @@ export class LootUI {
         });
     }
 
-    // ─────────────────────────────────────────────────────
-    // CRÉER UNE CARTE D'ITEM
-    // ─────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // CRÃ‰ER UNE CARTE D'ITEM
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     _buildCard(item, xOffset, parent, player, onPick, pool) {
         const color = LootUI._rarityColor(item.rarity);
@@ -127,7 +127,7 @@ export class LootUI {
         card.leftInPixels = xOffset;
         parent.addControl(card);
 
-        // ── Bandeau rareté (haut de la carte) ──
+        // â”€â”€ Bandeau raretÃ© (haut de la carte) â”€â”€
         const rarityBg = new Rectangle(`rarity_${item.id}`);
         rarityBg.width = '100%';
         rarityBg.height = '48px';
@@ -140,12 +140,12 @@ export class LootUI {
         rarityBg.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
         card.addControl(rarityBg);
 
-        // Afficher des étoiles en image plutôt qu'un emoji
-        // déterminer le nombre d'étoiles : item.rarity (number) ou item.rarityStars (string de ★)
+        // Afficher des Ã©toiles en image plutÃ´t qu'un emoji
+        // dÃ©terminer le nombre d'Ã©toiles : item.rarity (number) ou item.rarityStars (string de â˜…)
         let starCount = 0;
         if (typeof item.rarity === 'number') starCount = item.rarity;
         else if (typeof item.rarityStars === 'string') {
-            const m = item.rarityStars.match(/★/g);
+            const m = item.rarityStars.match(/â˜…/g);
             starCount = m ? m.length : 0;
         }
         if (starCount <= 0) starCount = 1;
@@ -166,16 +166,16 @@ export class LootUI {
             rarityBg.addControl(starImg);
         }
 
-        // ── Icône ──
-        // Icône de l'item (image) — remplace le grand emoji
-        const iconImg = new Image(`icon_${item.id}` , item.image || 'assets/items/floppydisk.png');
+        // â”€â”€ IcÃ´ne â”€â”€
+        // IcÃ´ne de l'item (image) â€” remplace le grand emoji
+        const iconImg = new Image(`icon_${item.id}` , item.sprite || item.image || 'assets/items/floppydisk.png');
         iconImg.width = '96px';
         iconImg.height = '96px';
         iconImg.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
         iconImg.topInPixels = 52; // slightly up to make room
         card.addControl(iconImg);
 
-        // ── Nom ──
+        // â”€â”€ Nom â”€â”€
         const nameText = new TextBlock(`name_${item.id}`);
         nameText.text = item.name;
         nameText.color = '#ffffff';
@@ -189,12 +189,12 @@ export class LootUI {
         nameText.width = '90%';
         card.addControl(nameText);
 
-        // ── Slot ──
+        // â”€â”€ Slot â”€â”€
         const slotText = new TextBlock(`slot_${item.id}`);
         const slotIcons = {
-            head: '🔧 Tête', body: '🔧 Corps',
-            arm: '🔧 Bras', leg: '🔧 Jambe', active: '⚡ Actif', none: '∞ Libre',
-            rightArm: '🔧 Bras D', leftArm: '🔧 Bras G', rightLeg: '🔧 Jambe D', leftLeg: '🔧 Jambe G',
+            head: 'ðŸ”§ TÃªte', body: 'ðŸ”§ Corps',
+            arm: 'ðŸ”§ Bras', leg: 'ðŸ”§ Jambe', active: 'âš¡ Actif', none: 'âˆž Libre',
+            rightArm: 'ðŸ”§ Bras D', leftArm: 'ðŸ”§ Bras G', rightLeg: 'ðŸ”§ Jambe D', leftLeg: 'ðŸ”§ Jambe G',
         };
         slotText.text = slotIcons[item.slot] ?? item.slot;
         slotText.color = '#ffffff55';
@@ -205,7 +205,7 @@ export class LootUI {
         slotText.height = "20px";
         card.addControl(slotText);
 
-        // ── Description ──
+        // â”€â”€ Description â”€â”€
         const descText = new TextBlock(`desc_${item.id}`);
         descText.text = item.extraInfo || item.bonus || item.description || '';
         descText.color = color;
@@ -218,8 +218,8 @@ export class LootUI {
         descText.width = '85%';
         card.addControl(descText);
 
-        // ── Bouton Choisir ──
-        const btn = Button.CreateSimpleButton(`btn_${item.id}`, 'ÉQUIPER');
+        // â”€â”€ Bouton Choisir â”€â”€
+        const btn = Button.CreateSimpleButton(`btn_${item.id}`, 'Ã‰QUIPER');
         btn.width = '85%';
         btn.height = '44px';
         btn.background = color + '22';
@@ -233,7 +233,7 @@ export class LootUI {
         btn.bottomInPixels = 14;
         card.addControl(btn);
 
-        // ── Hover effect ──
+        // â”€â”€ Hover effect â”€â”€
         card.onPointerEnterObservable.add(() => {
             card.background = '#1a1a2e';
             card.thickness = 3;
@@ -243,7 +243,7 @@ export class LootUI {
             card.thickness = 2;
         });
 
-        // ── Click : équiper l'item ──
+        // â”€â”€ Click : Ã©quiper l'item â”€â”€
         const pickItem = () => {
             if (this._isClosing) return;
             this._isClosing = true;
@@ -251,16 +251,16 @@ export class LootUI {
             this.hide(() => onPick(item));
         };
 
-        // ── MEMORY FIX: Store observer references for cleanup ──
+        // â”€â”€ MEMORY FIX: Store observer references for cleanup â”€â”€
         const btnClickObserver = btn.onPointerClickObservable.add(pickItem);
         const cardClickObserver = card.onPointerClickObservable.add(pickItem);
         this._listeners.push({ observable: btn.onPointerClickObservable, observer: btnClickObserver });
         this._listeners.push({ observable: card.onPointerClickObservable, observer: cardClickObserver });
     }
 
-    // ─────────────────────────────────────────────────────
-    // MASQUER L'ÉCRAN
-    // ─────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // MASQUER L'Ã‰CRAN
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     hide(onHidden = null) {
         this._visible = false;
@@ -281,7 +281,7 @@ export class LootUI {
     }
 
     _clearUI() {
-        // ── MEMORY FIX: Remove all observable listeners before disposing controls ──
+        // â”€â”€ MEMORY FIX: Remove all observable listeners before disposing controls â”€â”€
         for (const listener of this._listeners) {
             try {
                 listener.observable.remove(listener.observer);
@@ -298,7 +298,7 @@ export class LootUI {
         this._overlay = null;
     }
 
-    /** Couleur CSS associée à la rareté (remplace Item.rarityColor pour les plain-objects). */
+    /** Couleur CSS associÃ©e Ã  la raretÃ© (remplace Item.rarityColor pour les plain-objects). */
     static _rarityColor(rarity) {
         return { 1: '#aaaaaa', 2: '#44cc44', 3: '#4488ff', 4: '#ff9900' }[rarity] ?? '#ffffff';
     }

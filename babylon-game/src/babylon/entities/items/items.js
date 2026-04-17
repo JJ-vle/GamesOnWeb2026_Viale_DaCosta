@@ -2,6 +2,7 @@ export const ItemDatabase = {
   "plume": {
     type: "Passif",
     name: "Plume",
+    sprite: "",
     bonus: "Vitesse",
     modifiers: { speed: 0.1 },
     pool: "chest",
@@ -12,6 +13,7 @@ export const ItemDatabase = {
   "ingenieur": {
     type: "Passif",
     name: "Ingénieur",
+    sprite: "",
     bonus: "Dégats",
     modifiers: { damage: 0.2 },
     pool: "chest",
@@ -22,6 +24,7 @@ export const ItemDatabase = {
   "marteau": {
     type: "Passif",
     name: "Marteau",
+    sprite: "",
     bonus: "Dégats",
     modifiers: { damage: 0.2 },
     pool: "chest",
@@ -32,6 +35,7 @@ export const ItemDatabase = {
   "recharge": {
     type: "Passif",
     name: "Recharge",
+    sprite: "",
     bonus: "Cadence de tire",
     modifiers: { fireRate: 0.2 },
     pool: "chest",
@@ -42,6 +46,7 @@ export const ItemDatabase = {
   "pierre": {
     type: "Passif",
     name: "Pierre",
+    sprite: "",
     bonus: "Vitesse",
     modifiers: { damage: 0.5, speed: -0.2 },
     pool: "chest",
@@ -52,6 +57,7 @@ export const ItemDatabase = {
   "feuille": {
     type: "Passif",
     name: "Feuille",
+    sprite: "",
     bonus: "Dégâts",
     modifiers: { luck: 0.5, damage: -0.2 },
     pool: "chest",
@@ -62,6 +68,7 @@ export const ItemDatabase = {
   "ciseaux": {
     type: "Passif",
     name: "Ciseaux",
+    sprite: "",
     bonus: "Chance",
     modifiers: { speed: 0.5, luck: -0.2 },
     pool: "chest",
@@ -72,6 +79,7 @@ export const ItemDatabase = {
   "cable_d_acier": {
     type: "Passif",
     name: "Câble d'Acier",
+    sprite: "",
     bonus: "Dégats",
     modifiers: { damage: 0.2 },
     pool: "chest",
@@ -82,6 +90,7 @@ export const ItemDatabase = {
   "moteur_turbo": {
     type: "Passif",
     name: "Moteur Turbo",
+    sprite: "",
     bonus: "Vitesse",
     modifiers: { speed: 0.15 },
     pool: "chest",
@@ -92,6 +101,7 @@ export const ItemDatabase = {
   "puce_aleatoire": {
     type: "Passif",
     name: "Puce Aléatoire",
+    sprite: "",
     bonus: "Chance",
     modifiers: { luck: 0.2 },
     pool: "chest",
@@ -102,6 +112,7 @@ export const ItemDatabase = {
   "watercooling": {
     type: "Passif",
     name: "Watercooling",
+    sprite: "",
     bonus: "Cooldown",
     modifiers: { cooldownReduction: 0.05 },
     pool: "chest",
@@ -113,6 +124,7 @@ export const ItemDatabase = {
   "cd_douteux": {
     type: "Passif",
     name: "CD Douteux",
+    sprite: "",
     bonus: "Dégâts // Vitesse ",
     modifiers: { damage: 0.5, speed: -0.3 },
     pool: "chest",
@@ -125,6 +137,7 @@ export const ItemDatabase = {
   "chargeur_rapide": {
     type: "Passif",
     name: "Chargeur rapide",
+    sprite: "",
     bonus: "cadence de tire",
     modifiers: { fireRate: 0.2 },
     pool: "chest",
@@ -136,6 +149,7 @@ export const ItemDatabase = {
   "bottes_de_cowboy": {
     type: "Passif",
     name: "Bottes de Cowboy",
+    sprite: "",
     bonus: "Vitesse",
     modifiers: { speed: 0.1 },
     pool: "chest",
@@ -146,6 +160,7 @@ export const ItemDatabase = {
   "cle_a_molette": {
     type: "Passif",
     name: "Clé à molette",
+    sprite: "",
     bonus: "Cadence de tire",
     modifiers: { fireRate: 0.2 },
     pool: "chest",
@@ -156,6 +171,7 @@ export const ItemDatabase = {
   "reroll": {
     type: "Passif",
     name: "Reroll",
+    sprite: "",
     price: 50,
     bonus: "Reroll",
     modifiers: { rerollToken: 1 },
@@ -168,6 +184,7 @@ export const ItemDatabase = {
   "module_explosif": {
     type: "Passif",
     name: "Module Explosif",
+    sprite: "",
     bonus: "Explosion",
     modifiers: { explosionRadius: 3, explosionDamage: 7.5, explosionProc: 0.25 },
     pool: "chest",
@@ -179,6 +196,7 @@ export const ItemDatabase = {
   "defragmenteur": {
     type: "Passif",
     name: "Défragmenteur",
+    sprite: "",
     bonus: "Tire",
     modifiers: { additionalProjectiles: 1, fireRate: -0.1 },
     pool: "chest",
@@ -190,6 +208,7 @@ export const ItemDatabase = {
   "sabots_d_acier": {
     type: "Actif",
     name: "Sabots d'Acier",
+    sprite: "",
     modifiers: { aoeDamage: 5 },
     pool: "chest",
     cooldown: 10,
@@ -201,6 +220,7 @@ export const ItemDatabase = {
   "module_ignis": {
     type: "Passif",
     name: "Module Ignis",
+    sprite: "",
     bonus: "Brûlure",
     modifiers: { burnDamage: 2, burnProc: 0.2 },
     pool: "chest",
@@ -213,6 +233,7 @@ export const ItemDatabase = {
   "module_glacies": {
     type: "Passif",
     name: "Module Glacies",
+    sprite: "",
     bonus: "Ralentissement",
     modifiers: { slowEffect: 0.5, slowProc: 0.2 },
     pool: "chest",
@@ -224,6 +245,7 @@ export const ItemDatabase = {
   "module_aero": {
     type: "Passif",
     name: "Module Aero",
+    sprite: "",
     bonus: "Degats + KB",
     modifiers: { damage: 3, knockback: 1 },
     pool: "chest",
@@ -235,6 +257,7 @@ export const ItemDatabase = {
   "equivalence": {
     type: "Passif",
     name: "Equivalence",
+    sprite: "",
     bonus: "Emplacement",
     modifiers: {},
     pool: "shop",
@@ -246,6 +269,7 @@ export const ItemDatabase = {
   "huile": {
     type: "Passif",
     name: "Huile",
+    sprite: "",
     bonus: "Cadence",
     modifiers: { fireRate: 0.5 },
     pool: "chest",
@@ -256,6 +280,7 @@ export const ItemDatabase = {
   "potion": {
     type: "Passif",
     name: "Potion",
+    sprite: "",
     bonus: "Dégats",
     modifiers: { damage: 0.5 },
     pool: "chest",
@@ -266,6 +291,7 @@ export const ItemDatabase = {
   "etoile": {
     type: "Passif",
     name: "Étoile",
+    sprite: "",
     bonus: "Chance",
     modifiers: { luck: 0.5 },
     pool: "chest",
@@ -276,6 +302,7 @@ export const ItemDatabase = {
   "turbo": {
     type: "Passif",
     name: "Turbo",
+    sprite: "",
     bonus: "Vitesse",
     modifiers: { speed: 0.2 },
     pool: "chest",
@@ -286,6 +313,7 @@ export const ItemDatabase = {
   "egalite": {
     type: "Actif",
     name: "Égalité",
+    sprite: "assets/items/egalite.png",
     bonus: "Projectiles",
     modifiers: { orbitingProjectiles: 3 },
     pool: "fusion",
@@ -300,6 +328,7 @@ export const ItemDatabase = {
   "appropriation_mecanique": {
     type: "Passif",
     name: "Appropriation Mécanique",
+    sprite: "",
     modifiers: { conversionChance: 0.1 },
     pool: "chest",
     procChance: 0.1,
@@ -312,6 +341,7 @@ export const ItemDatabase = {
   "radioactivitee": {
     type: "Passif",
     name: "Radioactivitée",
+    sprite: "",
     bonus: "Dégats",
     modifiers: { dotDamage: 0.2 },
     pool: "chest",
@@ -324,6 +354,7 @@ export const ItemDatabase = {
   "sacrifice": {
     type: "Passif",
     name: "Sacrifice",
+    sprite: "",
     bonus: "Emplacement",
     modifiers: { damage: 1.5 },
     pool: "chest",
@@ -335,6 +366,7 @@ export const ItemDatabase = {
   "mise_a_jour": {
     type: "Passif",
     name: "Mise à jour",
+    sprite: "",
     bonus: "Refu de la mort",
     modifiers: { respawnCount: 1 },
     pool: "shop",
@@ -346,6 +378,7 @@ export const ItemDatabase = {
   "virus": {
     type: "Actif",
     name: "Virus",
+    sprite: "",
     bonus: "Berserk",
     modifiers: { damage: 0.5, speed: 0.2, fireRate: 0.2 },
     pool: "chest",
@@ -358,6 +391,7 @@ export const ItemDatabase = {
   "confiance": {
     type: "Passif",
     name: "Confiance",
+    sprite: "",
     bonus: "Dégats",
     modifiers: { damageMultiplier: 1.5, damageTakenMultiplier: 2 },
     pool: "chest",
@@ -368,6 +402,7 @@ export const ItemDatabase = {
   "ciblage": {
     type: "Passif",
     name: "Ciblage",
+    sprite: "",
     bonus: "Projectile",
     modifiers: { homingProjectiles: true },
     pool: "chest",
@@ -378,6 +413,7 @@ export const ItemDatabase = {
   "supersonic": {
     type: "Passif",
     name: "Supersonic",
+    sprite: "",
     bonus: "Dégats",
     modifiers: { areaDamage: 1 },
     pool: "chest",
@@ -388,6 +424,7 @@ export const ItemDatabase = {
   "immuable": {
     type: "Actif",
     name: "Immuable",
+    sprite: "",
     bonus: "Hp",
     modifiers: { invulnerable: true },
     pool: "shop",
@@ -400,6 +437,7 @@ export const ItemDatabase = {
   "super_hot": {
     type: "Passif",
     name: "Super Hot",
+    sprite: "",
     bonus: "Degat",
     modifiers: { contactDamage: 10, iframes: 0 },
     pool: "chest",
@@ -411,6 +449,7 @@ export const ItemDatabase = {
   "tazer": {
     type: "Passif",
     name: "Tazer",
+    sprite: "",
     bonus: "Degat",
     modifiers: { chainDamageCount: 5 },
     pool: "chest",
@@ -422,6 +461,7 @@ export const ItemDatabase = {
   "pression": {
     type: "Passif",
     name: "Pression",
+    sprite: "",
     bonus: "Vitesse",
     modifiers: { enemySlowRadius: 5 },
     pool: "chest",
@@ -432,6 +472,7 @@ export const ItemDatabase = {
   "reinitialisation": {
     type: "Actif",
     name: "Réinitialisation",
+    sprite: "",
     bonus: "Replay",
     modifiers: { restartWithItems: true },
     pool: "shop",
@@ -444,6 +485,7 @@ export const ItemDatabase = {
   "coeur_de_centaure": {
     type: "Passif",
     name: "Coeur de Centaure",
+    sprite: "assets/items/heart_centaure.png",
     bonus: "Régénération",
     modifiers: { healthRegen: 0.1 },
     pool: "chest",
@@ -455,6 +497,7 @@ export const ItemDatabase = {
   "surcharge_quantum": {
     type: "Passif",
     name: "Surcharge Quantum",
+    sprite: "assets/items/quantum_force.png",
     bonus: "Dégats",
     modifiers: { damage: 1 },
     pool: "chest",
@@ -465,6 +508,7 @@ export const ItemDatabase = {
   "processeur_fortune": {
     type: "Passif",
     name: "Processeur Fortune",
+    sprite: "",
     bonus: "Chance",
     modifiers: { luck: 5 },
     pool: "chest",
@@ -475,6 +519,7 @@ export const ItemDatabase = {
   "bras_modulaire": {
     type: "Passif",
     name: "Bras Modulaire",
+    sprite: "",
     bonus: "Emplacement",
     modifiers: { armSlots: 1 },
     pool: "chest",
@@ -485,6 +530,7 @@ export const ItemDatabase = {
   "solution_miracle": {
     type: "Passif",
     name: "Solution Miracle",
+    sprite: "assets/items/solution_miracle.png",
     modifiers: { poisonToHeal: true },
     pool: "chest",
     target: "self",
@@ -495,6 +541,7 @@ export const ItemDatabase = {
   "vaillance": {
     type: "Passif",
     name: "Vaillance",
+    sprite: "",
     modifiers: { itemEffectMultiplier: 2 },
     pool: "chest",
     procChance: 1,
@@ -507,6 +554,7 @@ export const ItemDatabase = {
   "richissime": {
     type: "Passif",
     name: "Richissime",
+    sprite: "",
     price: 500,
     bonus: "Emplacement",
     modifiers: { bodySlots: 1 },
@@ -519,6 +567,7 @@ export const ItemDatabase = {
   "jambe_modulaire": {
     type: "Passif",
     name: "Jambe Modulaire",
+    sprite: "",
     bonus: "Emplacement",
     modifiers: { legSlots: 1 },
     pool: "chest",
@@ -529,6 +578,7 @@ export const ItemDatabase = {
   "corp_modulaire": {
     type: "Passif",
     name: "Corp Modulaire",
+    sprite: "",
     bonus: "Emplacement",
     modifiers: { bodySlots: 1 },
     pool: "chest",
@@ -539,6 +589,7 @@ export const ItemDatabase = {
   "tete_modulaire": {
     type: "Passif",
     name: "Tête Modulaire",
+    sprite: "",
     bonus: "Emplacement",
     modifiers: { headSlots: 1 },
     pool: "chest",
@@ -549,6 +600,7 @@ export const ItemDatabase = {
   "ace": {
     type: "Passif",
     name: "Ace",
+    sprite: "",
     bonus: "Projectile",
     modifiers: { projectileMultiplier: 2 },
     pool: "chest",
@@ -559,6 +611,7 @@ export const ItemDatabase = {
   "wind_up": {
     type: "Passif",
     name: "Wind Up",
+    sprite: "",
     bonus: "Stats",
     modifiers: { preventStatDecrease: true },
     pool: "chest",
@@ -569,6 +622,7 @@ export const ItemDatabase = {
   "singularitee": {
     type: "Passif",
     name: "Singularitée",
+    sprite: "",
     bonus: "Dégats",
     modifiers: { damageMultiplier: 2 },
     pool: "chest",

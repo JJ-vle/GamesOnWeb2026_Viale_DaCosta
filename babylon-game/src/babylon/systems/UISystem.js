@@ -1,4 +1,4 @@
-import {
+﻿import {
     AdvancedDynamicTexture,
     TextBlock,
     Control,
@@ -9,9 +9,9 @@ import {
 } from "@babylonjs/gui";
 
 /**
- * UISystem — Interface cyberpunk pour le Roguelike Robotique
- * Contient les éléments HUD : barre de vie, round/timer, compteurs,
- * capacité active, liste d'items et notifications.
+ * UISystem â€” Interface cyberpunk pour le Roguelike Robotique
+ * Contient les Ã©lÃ©ments HUD : barre de vie, round/timer, compteurs,
+ * capacitÃ© active, liste d'items et notifications.
  */
 export class UISystem {
     constructor(scene) {
@@ -28,9 +28,9 @@ export class UISystem {
         this._buildStatsUI();
     }
 
-    // ─────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     // BARRE DE VIE (bas-gauche)
-    // ─────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     _buildLifeBar() {
         const container = new Rectangle("lifeContainer");
         container.width = "280px";
@@ -92,11 +92,11 @@ export class UISystem {
         lifeBg.addControl(this.lifeText);
     }
 
-    // ─────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     // UI ROUND (haut-gauche + haut-centre)
-    // ─────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     _buildRoundUI() {
-        // Round label — haut gauche
+        // Round label â€” haut gauche
         const roundBg = new Rectangle("roundBg");
         roundBg.width = "160px";
         roundBg.height = "36px";
@@ -118,7 +118,7 @@ export class UISystem {
         this.roundText.fontStyle = "bold";
         roundBg.addControl(this.roundText);
 
-        // Timer — haut centre
+        // Timer â€” haut centre
         const timerBg = new Rectangle("timerBg");
         timerBg.width = "140px";
         timerBg.height = "44px";
@@ -139,7 +139,7 @@ export class UISystem {
         this.roundTimer.fontStyle = "bold";
         timerBg.addControl(this.roundTimer);
 
-        // État du round — sous le timer
+        // Ã‰tat du round â€” sous le timer
         this.roundStateText = new TextBlock("roundStateText");
         this.roundStateText.text = "";
         this.roundStateText.color = "#ffaa00";
@@ -151,9 +151,9 @@ export class UISystem {
         this.ui.addControl(this.roundStateText);
     }
 
-    // ─────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     // COMPTEUR ENGRENAGES (haut-droite)
-    // ─────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     _buildGearCounter() {
         const bg = new Rectangle("gearBg");
         bg.width = "140px";
@@ -168,7 +168,7 @@ export class UISystem {
         bg.cornerRadius = 4;
         this.ui.addControl(bg);
 
-        // Icône image + compteur (alignés horizontalement)
+        // IcÃ´ne image + compteur (alignÃ©s horizontalement)
         const row = new StackPanel("gearRow");
         row.isVertical = false;
         row.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
@@ -184,13 +184,13 @@ export class UISystem {
 
         this.gearCount = new TextBlock("gearCount");
         this.gearCount.text = "0";
-        // Assurer visibilité : couleur contrastée et alignements explicites
+        // Assurer visibilitÃ© : couleur contrastÃ©e et alignements explicites
         this.gearCount.color = "#ffcc00";
         this.gearCount.fontSize = 16;
         this.gearCount.fontFamily = "monospace";
         this.gearCount.fontStyle = "bold";
         this.gearCount.paddingLeft = "8px";
-        // leave room for large numbers — fixed pixel width to avoid layout shifts
+        // leave room for large numbers â€” fixed pixel width to avoid layout shifts
         this.gearCount.width = "96px";
         this.gearCount.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
         this.gearCount.verticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
@@ -198,9 +198,9 @@ export class UISystem {
         row.addControl(this.gearCount);
     }
 
-    // ─────────────────────────────────────────────────────
-    // CAPACITÉ ACTIVE (bas-centre)
-    // ─────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // CAPACITÃ‰ ACTIVE (bas-centre)
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     _buildActiveAbilityUI() {
         const container = new Rectangle("abilityContainer");
         container.width = "72px";
@@ -224,7 +224,7 @@ export class UISystem {
         container.addControl(keyLabel);
 
         this.abilityIcon = new TextBlock("abilityIcon");
-        this.abilityIcon.text = "💊";
+        this.abilityIcon.text = "ðŸ’Š";
         this.abilityIcon.fontSize = 28;
         this.abilityIcon.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
         this.abilityIcon.top = "8px";
@@ -256,12 +256,12 @@ export class UISystem {
         container.addControl(this.abilityCooldownText);
     }
 
-    // ─────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     // COMPTEUR DE KILLS (bas-gauche, au-dessus de la vie)
-    // ─────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     _buildKillCounter() {
         this.killText = new TextBlock("killText");
-        this.killText.text = "☠ 0 kills";
+        this.killText.text = "â˜  0 kills";
         this.killText.color = "#ffffff66";
         this.killText.fontSize = 12;
         this.killText.fontFamily = "monospace";
@@ -272,9 +272,9 @@ export class UISystem {
         this.ui.addControl(this.killText);
     }
 
-    // ─────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     // BARRE XP (tout en bas, pleine largeur)
-    // ─────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     _buildXPBar() {
         // Fond
         const xpBg = new Rectangle("xpBg");
@@ -309,9 +309,9 @@ export class UISystem {
         this.ui.addControl(this.levelText);
     }
 
-    // ─────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     // LISTE DES ITEMS OBTENUS (droite)
-    // ─────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     _buildItemList() {
         const panel = new StackPanel("itemsPanel");
         panel.width = "220px";
@@ -322,7 +322,7 @@ export class UISystem {
         this.ui.addControl(panel);
         
         const title = new TextBlock("itemsTitle");
-        title.text = "MODULES RÉCUPÉRÉS";
+        title.text = "MODULES RÃ‰CUPÃ‰RÃ‰S";
         title.color = "#ffffff88";
         title.fontSize = 12;
         title.height = "24px";
@@ -334,9 +334,9 @@ export class UISystem {
         panel.addControl(this.itemsListPanel);
     }
 
-    // ─────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     // STATISTIQUES JOUEUR (gauche)
-    // ─────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     _buildStatsUI() {
         const panel = new StackPanel("statsPanel");
         panel.width = "180px";
@@ -366,9 +366,9 @@ export class UISystem {
         panel.addControl(this.statsText);
     }
 
-    // ─────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     // UPDATE METHODS
-    // ─────────────────────────────────────────────────────
+    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     updateLife(current, max) {
         const percent = Math.max(0, current / max);
@@ -387,7 +387,7 @@ export class UISystem {
         }
     }
 
-    /** Alias pour compatibilité avec l'ancienne API */
+    /** Alias pour compatibilitÃ© avec l'ancienne API */
     updateScore(score) {
         this.updateGears(score);
     }
@@ -404,12 +404,12 @@ export class UISystem {
     }
 
     updateKills(kills) {
-        this.killText.text = `☠ ${kills} kills`;
+        this.killText.text = `â˜  ${kills} kills`;
     }
 
     /**
-     * Met à jour la barre XP
-     * @param {number} progress  0→1 fraction vers le prochain niveau
+     * Met Ã  jour la barre XP
+     * @param {number} progress  0â†’1 fraction vers le prochain niveau
      * @param {number} level     niveau actuel
      */
     updateXP(progress, level) {
@@ -418,7 +418,7 @@ export class UISystem {
     }
 
     updateItems(items) {
-        // On recrée la liste (performance OK pour un tableau de < 50 items)
+        // On recrÃ©e la liste (performance OK pour un tableau de < 50 items)
         this.itemsListPanel.clearControls();
         items.forEach(item => {
             // Row: image + name
@@ -427,14 +427,14 @@ export class UISystem {
             row.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
             row.height = "28px";
 
-            const img = new Image(`itemImg_${item.id}_${Math.random()}`, item.image || "assets/items/floppydisk.png");
+            const img = new Image(`itemImg_${item.id}_${Math.random()}`, item.sprite || item.image || "assets/items/floppydisk.png");
             img.width = "40px";
             img.height = "40px";
             img.verticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
             img.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
             row.addControl(img);
 
-            const txt = new TextBlock(`item_${item.id}_${Math.random()}`); // random pour éviter conflit si items multiples
+            const txt = new TextBlock(`item_${item.id}_${Math.random()}`); // random pour Ã©viter conflit si items multiples
             txt.text = `${item.name} ${item.rarityStars || ''}`;
             txt.color = item.rarityColor || "#ffffff";
             txt.fontSize = 12;
@@ -455,7 +455,7 @@ export class UISystem {
             desc.fontFamily = "monospace";
             this.itemsListPanel.addControl(desc);
 
-            // Petit séparateur
+            // Petit sÃ©parateur
             const spacer = new Rectangle("spacer_" + Math.random());
             spacer.height = "8px";
             spacer.thickness = 0;
@@ -465,7 +465,7 @@ export class UISystem {
 
     updateStats(player) {
         let stats = "";
-        stats += `Dégâts : ${(player.strength || 1).toFixed(2)}\n`;
+        stats += `DÃ©gÃ¢ts : ${(player.strength || 1).toFixed(2)}\n`;
         stats += `Vitesse: ${(player.speed || 1).toFixed(2)}\n`;
         stats += `Cadence: ${(player.speedshot || 1).toFixed(2)}\n`;
         stats += `Chance : ${(player.luck || 1).toFixed(2)}\n`;
@@ -480,7 +480,7 @@ export class UISystem {
         if (state === "waiting") {
             this.roundTimer.color = "#ffaa00";
             this.roundTimer.text = `${Math.ceil(remaining)}s`;
-            this.roundStateText.text = "⚠ PRÉPAREZ-VOUS";
+            this.roundStateText.text = "âš  PRÃ‰PAREZ-VOUS";
             this.roundStateText.color = "#ffaa00";
         } else if (state === "running") {
             const secs = Math.ceil(remaining);
@@ -491,20 +491,20 @@ export class UISystem {
             this.roundTimer.color = secs <= 10 ? "#ff4444" : "#ffffff";
         } else if (state === "finished") {
             this.roundTimer.color = "#00ff88";
-            this.roundTimer.text = "✓ WIN";
-            this.roundStateText.text = "ROUND TERMINÉ";
+            this.roundTimer.text = "âœ“ WIN";
+            this.roundStateText.text = "ROUND TERMINÃ‰";
             this.roundStateText.color = "#00ff88";
         }
     }
 
     /**
-     * Met à jour le slot de capacité active
-     * @param {number} cooldownPercent  0 = prêt, 1 = vient d'être utilisé
+     * Met Ã  jour le slot de capacitÃ© active
+     * @param {number} cooldownPercent  0 = prÃªt, 1 = vient d'Ãªtre utilisÃ©
      * @param {'heal'|'grenade'|null} itemType
      * @param {number} cooldownRemaining  secondes restantes
      */
     updateActiveAbility(cooldownPercent, itemType, cooldownRemaining = 0) {
-        const icons = { heal: "💊", grenade: "💣" };
+        const icons = { heal: "ðŸ’Š", grenade: "ðŸ’£" };
         this._lastItemType = itemType;
 
         if (itemType == null) {
@@ -513,7 +513,7 @@ export class UISystem {
             this.abilityIconImage.isVisible = true;
             this.abilityIcon.isVisible = false;
         } else {
-            this.abilityIcon.text = icons[itemType] ?? "—";
+            this.abilityIcon.text = icons[itemType] ?? "â€”";
             this.abilityIcon.isVisible = true;
             if (this.abilityIconImage) this.abilityIconImage.isVisible = false;
         }
@@ -526,7 +526,7 @@ export class UISystem {
             : "";
     }
 
-    /** Alias générique pour la compatibilité avec secondaryActivable.updateCooldown */
+    /** Alias gÃ©nÃ©rique pour la compatibilitÃ© avec secondaryActivable.updateCooldown */
     updateCooldown(remaining, total) {
         // Redirige vers updateActiveAbility si disponible
         const percent = total > 0 ? remaining / total : 0;
@@ -534,7 +534,7 @@ export class UISystem {
     }
 
     /**
-     * Notification flash animée au centre de l'écran
+     * Notification flash animÃ©e au centre de l'Ã©cran
      * @param {string} text
      * @param {string} [color="#00ff88"]
      * @param {number} [duration=2500] ms
@@ -564,9 +564,9 @@ export class UISystem {
         });
     }
 
-    /** Affiche l'écran Game Over avec bouton de retour au menu */
+    /** Affiche l'Ã©cran Game Over avec bouton de retour au menu */
     showGameOver() {
-        if (this._gameOverPanel) return // déjà affiché
+        if (this._gameOverPanel) return // dÃ©jÃ  affichÃ©
 
         const overlay = new Rectangle("gameOverOverlay");
         overlay.width = "100%";
@@ -598,7 +598,7 @@ export class UISystem {
         panel.addControl(title);
 
         const subtitle = new TextBlock("gameOverSub");
-        subtitle.text = "Vous êtes mort.";
+        subtitle.text = "Vous Ãªtes mort.";
         subtitle.color = "#ffffffaa";
         subtitle.fontSize = 18;
         subtitle.top = "-5px";
@@ -614,7 +614,7 @@ export class UISystem {
         btn.cornerRadius = 10;
         btn.thickness = 0;
         btn.onPointerDownObservable.add(() => {
-            // Dispatch event global que App.vue peut écouter
+            // Dispatch event global que App.vue peut Ã©couter
             try {
                 window.dispatchEvent(new CustomEvent('returnToMenu'))
             } catch (e) {
