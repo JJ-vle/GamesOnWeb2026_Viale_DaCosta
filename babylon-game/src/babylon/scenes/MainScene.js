@@ -258,7 +258,7 @@ export class MainScene extends BaseScene {
     console.log('[MainScene] Node rounds:', node.nbrounds)
     if (this.spawnerSystem) {
       console.log('[MainScene] SpawnerSystem before load: isSpawning=', this.spawnerSystem.isSpawning, 'spawnedCount=', this.spawnerSystem.spawnedCount, 'maxSpawns=', this.spawnerSystem.maxSpawns)
-      try { this.spawnerSystem.stop() } catch (e) {}
+      try { this.spawnerSystem.stop() } catch (e) { }
       this.spawnerSystem.spawnedCount = 0
       this.spawnerSystem.maxSpawns = null
     }
@@ -300,7 +300,7 @@ export class MainScene extends BaseScene {
         this.playerEntry.mesh.position = new Vector3(0, 1, 0)
         // reset camera follow if available
         if (this.cameraManager && this.cameraManager.active && this.cameraManager.active.camera) {
-          try { this.scene.activeCamera = this.cameraManager.active.camera } catch (e) {}
+          try { this.scene.activeCamera = this.cameraManager.active.camera } catch (e) { }
         }
       }
     } catch (e) {
@@ -323,7 +323,7 @@ export class MainScene extends BaseScene {
 
       if (type === 1) {
         this.inputMap[key] = true
-        
+
         // ── PAUSE: Check for Escape key ──
         if (key === 'Escape' && !this._pauseSwitchLock) {
           this._pauseSwitchLock = true
@@ -342,7 +342,7 @@ export class MainScene extends BaseScene {
         }
       } else if (type === 2) {
         this.inputMap[key] = false
-        
+
         // ── PAUSE: Release lock ──
         if (key === 'Escape') {
           this._pauseSwitchLock = false
