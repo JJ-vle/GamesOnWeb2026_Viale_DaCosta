@@ -3,6 +3,7 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import BabylonScene from './components/BabylonScene.vue'
 import ZoneMapView from './components/ZoneMapView.vue'
 import InventoryView from './components/InventoryView.vue'
+import ModelViewer from './components/ModelViewer.vue'
 import { getGame } from './babylon/BabylonService'
 import { useGameMode } from './stores/useGameMode'
 
@@ -65,10 +66,53 @@ function returnToMenu() {
   }
   window.addEventListener('keydown', keyHandler)
 
+    // Background wheel-based parallax: use mouse wheel to move background
+    const bg = { y: 0 }
+    let maxBgY = 0
+    const factor = 0.5
+
+    // Work with the actual background image element so we can move it precisely.
+    const bgImgEl = document.querySelector('.home-bg-img')
+    const recalcMax = () => {
+      if (!bgImgEl || !bgImgEl.naturalWidth || !bgImgEl.naturalHeight) return
+      const scale = Math.max(window.innerWidth / bgImgEl.naturalWidth, window.innerHeight / bgImgEl.naturalHeight)
+      const displayedHeight = bgImgEl.naturalHeight * scale
+      maxBgY = Math.max(0, displayedHeight - window.innerHeight)
+      // clamp current value into new range
+      bg.y = Math.min(maxBgY, Math.max(0, bg.y))
+      if (bgImgEl) bgImgEl.style.transform = `translate(-50%, ${-bg.y}px)`
+    }
+
+    if (bgImgEl && bgImgEl.complete) recalcMax()
+    if (bgImgEl) bgImgEl.addEventListener('load', recalcMax)
+    window.addEventListener('resize', recalcMax)
+
+    const onWheel = (e) => {
+      if (gameStarted.value) return
+      e.preventDefault()
+      const delta = e.deltaY || 0
+      // wheel down -> reveal lower part -> increase bg.y
+      bg.y = Math.min(maxBgY, Math.max(0, bg.y + delta * factor))
+      if (bgImgEl) bgImgEl.style.transform = `translate(-50%, ${-bg.y}px)`
+    }
+
+    const homeEl = document.querySelector('.home-page')
+    if (homeEl && bgImgEl) {
+      homeEl.addEventListener('wheel', onWheel, { passive: false })
+    } else {
+      window.addEventListener('wheel', onWheel, { passive: false })
+    }
+
   onUnmounted(() => {
     window.removeEventListener('returnToMenu', handler)
     window.removeEventListener('openZoneMap', openMapHandler)
     window.removeEventListener('keydown', keyHandler)
+    // remove wheel listener from either home element or window and cleanup
+    const homeEl = document.querySelector('.home-page')
+    try { if (homeEl) homeEl.removeEventListener('wheel', onWheel) } catch(e) { /* ignore */ }
+    try { window.removeEventListener('wheel', onWheel) } catch(e) { /* ignore */ }
+    try { window.removeEventListener('resize', recalcMax) } catch(e) { /* ignore */ }
+    try { const bgImgEl = document.querySelector('.home-bg-img'); if (bgImgEl) bgImgEl.removeEventListener('load', recalcMax) } catch(e) { /* ignore */ }
   })
 })
 
@@ -83,12 +127,30 @@ function onSelectZone(id) {
   // close the map UI
   toggleMap(false)
 }
+
+const noop = () => { /* placeholder for future actions */ }
 </script>
 
 <template>
   <div v-if="!gameStarted" class="home-page">
-    <h1>Universe Need</h1>
-    <button @click="gameStarted = true" class="play-button">jouer</button>
+    <div class="home-bg">
+      <img src="/assets/background_skyline-b.png" class="home-bg-img" alt="background" />
+    </div>
+
+    <div class="top-left">
+      <img src="/assets/logo.png" alt="logo" class="logo" />
+    </div>
+
+    <div class="left-bottom">
+      <button @click="gameStarted = true" class="play-button">Jouer</button>
+      <button @click="noop" class="menu-button">Avancement</button>
+      <a href="https://github.com/JJ-vle/GamesOnWeb2026_Viale_DaCosta" target="_blank" rel="noopener" class="menu-link"><button class="menu-button">Github</button></a>
+      <button @click="noop" class="menu-button">Crédits</button>
+    </div>
+
+    <div class="right-frame">
+      <ModelViewer model-src="/assets/models/mecha01.glb" />
+    </div>
   </div>
 
   <template v-else>
@@ -115,15 +177,82 @@ function onSelectZone(id) {
     justify-content: center;
     align-items: center;
     gap: 30px;
-    background: linear-gradient(135deg, #1a1a2e 0%, #0f3460 100%);
+      /* background handled by .home-bg element */
     font-family: Arial, sans-serif;
+    color: #fff;
   }
 
-  .home-page h1 {
-    color: #ffffff;
-    font-size: 48px;
-    margin: 0;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+  .home-bg {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    z-index: -1;
+  }
+
+  .home-bg-img {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    transform: translate(-50%, 0px);
+    min-width: 100%;
+    min-height: 100%;
+    object-fit: cover;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: -o-crisp-edges;
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+    image-rendering: pixelated;
+  }
+
+  .logo {
+    width: 360px;
+    max-width: 60vw;
+    height: auto;
+    filter: drop-shadow(0 8px 18px rgba(0,0,0,0.7));
+    display: block;
+  }
+
+  .top-left {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    z-index: 60;
+  }
+
+  .left-bottom {
+    position: fixed;
+    left: 20px;
+    bottom: 140px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 60;
+  }
+
+  .right-frame {
+    position: fixed;
+    right: 160px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 420px;
+    height: 640px;
+    background: rgba(0,0,0,0.35);
+    border: 2px solid rgba(255,255,255,0.08);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 55;
+    backdrop-filter: blur(4px);
+  }
+
+  .frame-placeholder {
+    color: rgba(255,255,255,0.9);
+    text-align: center;
+    font-size: 18px;
+    line-height: 1.4;
   }
 
   .play-button {
@@ -138,6 +267,32 @@ function onSelectZone(id) {
     text-transform: uppercase;
     font-weight: bold;
   }
+
+  .menu-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .menu-button {
+    padding: 12px 34px;
+    font-size: 18px;
+    color: #ffffff;
+    background: rgba(0,0,0,0.25);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: transform 0.15s ease, background 0.15s ease;
+    text-transform: none;
+  }
+
+  .menu-button:hover, .menu-link:hover button {
+    transform: translateY(-3px);
+    background: rgba(255,255,255,0.06);
+  }
+
+  .menu-link button { background: transparent; }
 
   .play-button:hover {
     background: linear-gradient(135deg, #0f3460 0%, #16213e 100%);

@@ -427,7 +427,7 @@ export class UISystem {
             row.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
             row.height = "28px";
 
-            const img = new Image(`itemImg_${item.id}_${Math.random()}`, item.sprite || item.image || "assets/items/floppydisk.png");
+            const img = new Image(`itemImg_${item.id}_${Math.random()}`, item.sprite || item.image || "assets/items/disquette.png");
             img.width = "40px";
             img.height = "40px";
             img.verticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;

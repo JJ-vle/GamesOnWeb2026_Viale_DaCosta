@@ -1,4 +1,8 @@
 {
+  "scripts": {
+    "dev": "cd babylon-game && npm run dev",
+    "start": "cd babylon-game && npm run dev"
+  },
   "dependencies": {
     "xstate": "^5.28.0"
   }
