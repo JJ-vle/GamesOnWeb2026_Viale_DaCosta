@@ -168,7 +168,7 @@ export class LootUI {
 
         // ── Icône ──
         // Icône de l'item (image) — remplace le grand emoji
-        const iconImg = new Image(`icon_${item.id}` , item.sprite || item.image || 'assets/items/floppydisk.png');
+        const iconImg = new Image(`icon_${item.id}`, item.sprite || item.image || 'assets/items/floppydisk.png');
         iconImg.width = '96px';
         iconImg.height = '96px';
         iconImg.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
