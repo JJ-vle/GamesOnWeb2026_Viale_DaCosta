@@ -67,6 +67,16 @@ export class MainScene extends BaseScene {
     this._pauseSwitchLock = false  // ── PAUSE: Prevent spamming ──
     this._pendingLevelUpLootLevel = null
 
+    // --- DEBUG COMMAND: window.levelUp() ---
+    window.levelUp = () => {
+      console.log("[Debug] Forcing Level Up...");
+      const missingXP = this.xpSystem.xpToNextLevel > 0 ? this.xpSystem.xpToNextLevel : 50;
+      this.xpSystem.addXP(missingXP);
+      if (this.uiSystem) {
+        this.uiSystem.updateXP(this.xpSystem.progressToNext, this.xpSystem.level);
+      }
+    };
+
     this.playerEntry.inventory.onItemEquipped = (item) => {
       this.uiSystem.showNotification(`${item.name} équipé!`, '#ffcc00', 2000)
       this.uiSystem.updateItems(this.playerEntry.inventory.getItems().map(i => i.item))
