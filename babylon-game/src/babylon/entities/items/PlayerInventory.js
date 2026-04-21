@@ -223,26 +223,38 @@ export class PlayerInventory {
             const mapping = MODIFIER_MAP[mod];
 
             if (!mapping) {
+                // Vaillance: multiplier les valeurs numériques non mappées
+                const rawMult = this.player.itemEffectMultiplier || 1;
+                const scaledRaw = typeof value === 'number' ? value * rawMult : value;
                 // Wind Up: bloquer les modifiers négatifs si preventStatDecrease est actif
-                if (this.player.preventStatDecrease && typeof value === 'number' && value < 0) {
-                    console.info(`[PlayerInventory] Wind Up: modifier négatif "${mod}" (${value}) bloqué`);
+                if (this.player.preventStatDecrease && typeof scaledRaw === 'number' && scaledRaw < 0) {
+                    console.info(`[PlayerInventory] Wind Up: modifier négatif "${mod}" (${scaledRaw}) bloqué`);
                     continue;
                 }
                 // Modifier non mappé : stocké brut sur le joueur pour usage futur
-                this.player[mod] = (this.player[mod] ?? 0) + value;
-                console.info(`[PlayerInventory] Modifier non mappé "${mod}" stocké brut sur le joueur (valeur: ${value})`);
+                if (typeof scaledRaw === 'number') {
+                    this.player[mod] = (this.player[mod] ?? 0) + scaledRaw;
+                } else {
+                    this.player[mod] = scaledRaw;
+                }
+                console.info(`[PlayerInventory] Modifier non mappé "${mod}" stocké brut sur le joueur (valeur: ${scaledRaw})`);
                 continue;
             }
 
+            // Vaillance: multiplier les valeurs additives par itemEffectMultiplier
+            const effectMult = this.player.itemEffectMultiplier || 1;
+
             switch (mapping.type) {
-                case 'additive':
+                case 'additive': {
+                    const scaledValue = value * effectMult;
                     // Wind Up: bloquer les modifiers négatifs si preventStatDecrease est actif
-                    if (this.player.preventStatDecrease && value < 0) {
-                        console.info(`[PlayerInventory] Wind Up: stat decrease "${mapping.prop}" (${value}) bloquée`);
+                    if (this.player.preventStatDecrease && scaledValue < 0) {
+                        console.info(`[PlayerInventory] Wind Up: stat decrease "${mapping.prop}" (${scaledValue}) bloquée`);
                         break;
                     }
-                    this.player[mapping.prop] = (this.player[mapping.prop] ?? 0) + value;
+                    this.player[mapping.prop] = (this.player[mapping.prop] ?? 0) + scaledValue;
                     break;
+                }
 
                 case 'multiply':
                     // Multiplicateur persistant (appliqué au calcul, pas à la stat)

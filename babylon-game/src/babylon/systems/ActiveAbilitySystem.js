@@ -14,6 +14,7 @@
  *   abilitySystem.equip('heal') // ou 'grenade' ou null
  */
 import { Vector3, MeshBuilder, StandardMaterial, Color3, ParticleSystem, Texture } from '@babylonjs/core'
+import { ItemDatabase } from '../entities/items/items.js'
 
 export class ActiveAbilitySystem {
     /**
@@ -26,7 +27,7 @@ export class ActiveAbilitySystem {
         this.player = player
         this.enemies = enemies
 
-        // Slot d'item équipé : null | 'heal' | 'grenade'
+        // Slot d'item équipé : null | 'heal' | 'grenade' | itemId (ex: 'virus', 'immuable')
         this.equippedItem = 'heal' // par défaut : Heal pour le testing
 
         // Cooldown
@@ -36,9 +37,15 @@ export class ActiveAbilitySystem {
         // État de la touche pour éviter le repeat
         this._spaceLock = false
 
+        // ── Buff temporaire (Virus, Immuable, etc.) ──
+        this._activeBuff = null     // { itemId, modifiers, remaining }
+        this._buffApplied = false   // true si les modifiers sont actuellement appliqués
+
         // Callbacks optionnels
         this.onAbilityUsed = null    // () => void
         this.onItemChanged = null    // (itemType) => void
+        this.onBuffStart = null      // (itemId) => void
+        this.onBuffEnd = null        // (itemId) => void
 
         // Pool VFX — pré-créés et réutilisés
         this._healPool = this._createHealPool(8)
@@ -75,10 +82,21 @@ export class ActiveAbilitySystem {
      * @param {'heal'|'grenade'|null} itemType
      */
     equip(itemType) {
+        // Annuler le buff en cours s'il y en a un
+        if (this._activeBuff) this._endBuff()
+
         this.equippedItem = itemType
         this.cooldownRemaining = 0 // Reset cooldown au changement
+
+        // Si c'est un item data-driven, lire son cooldown
+        const itemDef = ItemDatabase[itemType]
+        if (itemDef && itemDef.cooldown) {
+            this.COOLDOWN = itemDef.cooldown
+        } else {
+            this.COOLDOWN = 10.0 // Défaut pour heal/grenade
+        }
+
         if (this.onItemChanged) this.onItemChanged(itemType)
-        // console.log('[ActiveAbilitySystem] Item équipé:', itemType)
     }
 
     /**
@@ -91,6 +109,14 @@ export class ActiveAbilitySystem {
         if (this.cooldownRemaining > 0) {
             this.cooldownRemaining -= deltaTime
             if (this.cooldownRemaining < 0) this.cooldownRemaining = 0
+        }
+
+        // ── Tick buff temporaire (Virus, Immuable, etc.) ──
+        if (this._activeBuff) {
+            this._activeBuff.remaining -= deltaTime
+            if (this._activeBuff.remaining <= 0) {
+                this._endBuff()
+            }
         }
 
         // Détection appui Espace
@@ -110,19 +136,29 @@ export class ActiveAbilitySystem {
         return this.cooldownRemaining / this.COOLDOWN
     }
 
+    /** Retourne le buff actif ou null (pour l'UI) */
+    getActiveBuff() {
+        return this._activeBuff
+    }
+
+    /** Retourne la fraction de durée restante du buff [0..1] */
+    getBuffPercent() {
+        if (!this._activeBuff) return 0
+        const itemDef = ItemDatabase[this._activeBuff.itemId]
+        if (!itemDef || !itemDef.duration) return 0
+        return this._activeBuff.remaining / itemDef.duration
+    }
+
     /**
      * Tente d'activer la capacité si possible
      */
     _tryActivate() {
-        if (!this.equippedItem) {
-            // console.log('[ActiveAbilitySystem] Pas d\'item équipé.')
-            return
-        }
-        if (this.cooldownRemaining > 0) {
-            // console.log(`[ActiveAbilitySystem] Cooldown: ${this.cooldownRemaining.toFixed(1)}s restant`)
-            return
-        }
+        if (!this.equippedItem) return
+        if (this.cooldownRemaining > 0) return
+        // Ne pas activer si un buff est déjà en cours
+        if (this._activeBuff) return
 
+        // Items legacy (heal/grenade)
         switch (this.equippedItem) {
             case 'heal':
                 this._useHeal()
@@ -130,12 +166,94 @@ export class ActiveAbilitySystem {
             case 'grenade':
                 this._useGrenade()
                 break
+            default:
+                // Item data-driven depuis ItemDatabase (virus, immuable, etc.)
+                this._useDataDrivenItem(this.equippedItem)
+                break
         }
 
         // Watercooling: réduire le cooldown effectif
         const cdr = this.player.cooldownReduction || 0
         this.cooldownRemaining = this.COOLDOWN * (1 - Math.min(cdr, 0.8))
         if (this.onAbilityUsed) this.onAbilityUsed()
+    }
+
+    /**
+     * Active un item data-driven : applique ses modifiers pendant `duration` secondes.
+     * Lit cooldown et duration directement depuis ItemDatabase.
+     */
+    _useDataDrivenItem(itemId) {
+        const itemDef = ItemDatabase[itemId]
+        if (!itemDef) {
+            console.warn(`[ActiveAbilitySystem] Item inconnu : "${itemId}"`)
+            return
+        }
+
+        const duration = itemDef.duration || 0
+        const cooldown = itemDef.cooldown || 10
+
+        // Mettre à jour le cooldown global depuis l'item
+        this.COOLDOWN = cooldown
+
+        if (duration <= 0 || duration === Infinity) {
+            // Pas de buff temporaire — effet instantané (ex: reinitialisation)
+            this._applyInstantEffect(itemId, itemDef)
+            return
+        }
+
+        // Appliquer les modifiers temporairement
+        const modifiers = itemDef.modifiers || {}
+        this._activeBuff = { itemId, modifiers, remaining: duration }
+        this._buffApplied = true
+
+        for (const [key, value] of Object.entries(modifiers)) {
+            if (typeof value === 'boolean') {
+                this.player[key] = true
+            } else if (typeof value === 'number') {
+                this.player[key] = (this.player[key] ?? 0) + value
+            }
+        }
+
+        console.log(`[ActiveAbilitySystem] Buff "${itemDef.name}" activé pour ${duration}s`)
+        if (this.onBuffStart) this.onBuffStart(itemId)
+    }
+
+    /**
+     * Retire les modifiers du buff temporaire actif.
+     */
+    _endBuff() {
+        if (!this._activeBuff || !this._buffApplied) return
+
+        const { itemId, modifiers } = this._activeBuff
+        const itemDef = ItemDatabase[itemId]
+
+        for (const [key, value] of Object.entries(modifiers)) {
+            if (typeof value === 'boolean') {
+                this.player[key] = false
+            } else if (typeof value === 'number') {
+                this.player[key] = (this.player[key] ?? 0) - value
+            }
+        }
+
+        console.log(`[ActiveAbilitySystem] Buff "${itemDef?.name || itemId}" terminé`)
+        if (this.onBuffEnd) this.onBuffEnd(itemId)
+
+        this._activeBuff = null
+        this._buffApplied = false
+    }
+
+    /**
+     * Effet instantané pour items sans durée (ex: réinitialisation).
+     */
+    _applyInstantEffect(itemId, itemDef) {
+        // Pour l'instant, applique juste les modifiers comme des flags permanents
+        const modifiers = itemDef.modifiers || {}
+        for (const [key, value] of Object.entries(modifiers)) {
+            if (typeof value === 'boolean') {
+                this.player[key] = value
+            }
+        }
+        console.log(`[ActiveAbilitySystem] Effet instantané "${itemDef.name}"`)
     }
 
     /**

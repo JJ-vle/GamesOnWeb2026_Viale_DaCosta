@@ -51,6 +51,9 @@ export class Player {
         this._orbitAngle = 0;
         this._orbitMeshes = [];
         this._orbitDamageCD = new Map(); // enemy → lastHitTime
+
+        // ── Poison DoT ──
+        this._poisonStacks = []; // [{ dps, remaining }]
     }
 
     async _loadCharacter() {
@@ -279,6 +282,9 @@ export class Player {
             }
         }
 
+        // ── Poison DoT tick ──
+        this._updatePoison(dt);
+
         // ── I-frames : invulnérabilité temporaire ──
         if (this.isInvulnerable) {
             this.invulnerabilityTimer -= dt;
@@ -450,6 +456,45 @@ export class Player {
         this.life += amount;
         if (this.life > this.maxLife) {
             this.life = this.maxLife;
+        }
+    }
+
+    /**
+     * Applique un stack de poison sur le joueur.
+     * @param {number} dps - dégâts par seconde
+     * @param {number} duration - durée en secondes
+     */
+    applyPoison(dps, duration) {
+        this._poisonStacks.push({ dps, remaining: duration });
+    }
+
+    /**
+     * Tick tous les stacks de poison actifs.
+     * Si poisonToHeal est true (Solution Miracle), convertit en soin.
+     */
+    _updatePoison(dt) {
+        if (this._poisonStacks.length === 0) return;
+
+        let totalDps = 0;
+        for (let i = this._poisonStacks.length - 1; i >= 0; i--) {
+            const stack = this._poisonStacks[i];
+            totalDps += stack.dps;
+            stack.remaining -= dt;
+            if (stack.remaining <= 0) {
+                this._poisonStacks.splice(i, 1);
+            }
+        }
+
+        const tickDamage = totalDps * dt;
+        if (tickDamage <= 0) return;
+
+        if (this.poisonToHeal) {
+            // Solution Miracle : convertit le poison en soin
+            this.heal(tickDamage);
+        } else {
+            // Dégâts de poison (ignore i-frames et armor)
+            this.life -= tickDamage;
+            if (this.life < 0) this.life = 0;
         }
     }
 }
