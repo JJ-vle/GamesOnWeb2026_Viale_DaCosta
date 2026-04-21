@@ -59,7 +59,7 @@ export class LootUI {
 
         // ── Titre ──
         const title = new TextBlock('lootTitle');
-        title.text = `â¬†  NIVEAU ${level}  —  CHOISISSEZ UN MODULE`;
+        title.text = `⬆  NIVEAU ${level}  —  CHOISISSEZ UN MODULE`;
         title.color = '#ffcc00';
         title.fontSize = 26;
         title.fontFamily = 'monospace';
@@ -168,7 +168,7 @@ export class LootUI {
 
         // ── Icône ──
         // Icône de l'item (image) — remplace le grand emoji
-        const iconImg = new Image(`icon_${item.id}` , item.sprite || item.image || 'assets/items/floppydisk.png');
+        const iconImg = new Image(`icon_${item.id}`, item.sprite || item.image || 'assets/items/floppydisk.png');
         iconImg.width = '96px';
         iconImg.height = '96px';
         iconImg.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
@@ -192,9 +192,9 @@ export class LootUI {
         // ── Slot ──
         const slotText = new TextBlock(`slot_${item.id}`);
         const slotIcons = {
-            head: 'ðŸ”§ Tête', body: 'ðŸ”§ Corps',
-            arm: 'ðŸ”§ Bras', leg: 'ðŸ”§ Jambe', active: 'âš¡ Actif', none: 'âˆž Libre',
-            rightArm: 'ðŸ”§ Bras D', leftArm: 'ðŸ”§ Bras G', rightLeg: 'ðŸ”§ Jambe D', leftLeg: 'ðŸ”§ Jambe G',
+            head: '🔧 Tête', body: '🔧 Corps',
+            arm: '🔧 Bras', leg: '🔧 Jambe', active: '⚡ Actif', none: '∞ Libre',
+            rightArm: '🔧 Bras D', leftArm: '🔧 Bras G', rightLeg: '🔧 Jambe D', leftLeg: '🔧 Jambe G',
         };
         slotText.text = slotIcons[item.slot] ?? item.slot;
         slotText.color = '#ffffff55';
