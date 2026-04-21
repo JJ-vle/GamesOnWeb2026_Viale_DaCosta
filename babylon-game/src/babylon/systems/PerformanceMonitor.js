@@ -36,7 +36,7 @@ export class PerformanceMonitor {
     // Si pas de document (SSR), skip
     if (typeof document === 'undefined') return;
 
-    // Supprime l'ancien s'il existe pour Ã©viter les doublons
+    // Supprime l'ancien s'il existe pour éviter les doublons
     const oldContainer = document.getElementById('performance-monitor');
     if (oldContainer) {
       oldContainer.remove();

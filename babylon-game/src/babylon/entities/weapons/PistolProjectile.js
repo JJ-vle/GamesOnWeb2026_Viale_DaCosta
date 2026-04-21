@@ -28,7 +28,7 @@ export class PistolProjectile extends Projectile {
       scene
     )
 
-    // â”€â”€ OPTIMISATION: RÃ©utiliser le mÃªme matÃ©riau â”€â”€
+    // ── OPTIMISATION: Réutiliser le même matériau ──
     if (!_sharedPistolMat || _sharedPistolMat.getScene() !== scene || !scene.materials.includes(_sharedPistolMat)) {
       _sharedPistolMat = new StandardMaterial("pistolBulletMat_shared", scene)
       _sharedPistolMat.diffuseColor = new Color3(1, 0.8, 0) // Jaune
