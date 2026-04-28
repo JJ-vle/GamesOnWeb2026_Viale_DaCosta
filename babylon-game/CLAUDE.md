@@ -1,149 +1,14 @@
 # CLAUDE.md — Babylon Game (GamesOnWeb 2026)
 
 ## Projet
-Jeu 3D type twin-stick shooter / roguelite en Babylon.js (v8). Le joueur controle un mecha-robot, affronte des vagues d'ennemis par rounds, monte de niveau et choisit des items entre les rounds.
+Jeu 3D type twin-stick shooter / roguelite en Babylon.js v8. Le joueur contrôle un mecha-robot, affronte des vagues d'ennemis par rounds, monte de niveau et choisit des items entre les rounds.
 
 ## Stack
 - **Engine** : Babylon.js 8 (`@babylonjs/core`, `@babylonjs/gui`, `@babylonjs/loaders`)
+- **UI & App** : Vue 3 (Composition API)
 - **Build** : Vite (`npm run dev` / `npm run build`)
-- **Langage** : JavaScript ES modules (pas de TypeScript)
-- **Modeles 3D** : GLB (mecha01_idle.glb, mecha01_run.glb, etc.) dans `public/assets/models/`
-- **Map** : `public/assets/map_1.glb` (~50MB, gros fichier, necessite Blender pour optimiser)
-
-## Architecture src/babylon/
-
-```
-Game.js              — Point d'entree, boucle principale
-BabylonService.js    — Initialisation engine/scene Babylon
-Round.js             — Gestion d'un round (spawns, timer)
-Zone.js / ZoneTree.js — Zones de la map
-
-scenes/
-  BaseScene.js       — Scene de base
-  MainScene.js       — Scene principale (gameplay, rounds, loot, collisions)
-
-entities/
-  Player.js          — Joueur (mecha robot, mouvement, rotation souris, stats)
-  Coin.js            — Pieces ramassables
-  items/
-    Item.js           — Classe de base item (rarity, slot, equip/remove/proc)
-  weapons/
-    Weapon.js / LaserWeapon.js / PistolWeapon.js — Armes du joueur
-    Projectile.js / LaserProjectile.js / PistolProjectile.js
-    Activable.js / ActivableWeapon.js / GrenadeActivable.js / HealActivable.js
-    EnemyProjectile.js — Projectiles ennemis
-  enemies/
-    Enemy.js          — CLASSE DE BASE (NavGrid AI, FSM, perception, pathfinding A*)
-    SimpleEnemy.js    — Ennemi basique (sphere blanche, 10HP)
-    HeavyEnemy.js     — Tank lent (cube rouge, 25HP, 2 dmg)
-    MetroidEnemy.js   — Flottant zigzag (15HP)
-    SupportEnemy.js   — Healer (pathfinding custom, NON migre vers NavGrid)
-    new/              — Ennemis avances (tous sur NavGrid AI) :
-      VoltStriker.js    — Reference NavGrid (GLB, lean animation)
-      BoltSentry.js     — Tourelle tire des projectiles (attackRange: 15)
-      PyroCaster.js     — Tire des projectiles feu (attackRange: 12)
-      IronBulwark.js    — Bouclier bloquant les degats de face
-      DashTrigger.js    — Dash charge vers le joueur (FSM: APPROACH/CHARGING/DASHING/COOLDOWN)
-      TitanRam.js       — Ram charge massive (FSM: IDLE/LOCKING/RAMMING/STUNNED)
-      NeonVector.js     — Strafing erratique additif
-      DroneSwarm.js     — Orbite en essaim (forte separation)
-      CoreSpawner.js    — Spawne des VoltStrikers
-      EchoWraith.js     — Blink/invisibilite periodique
-      BastionRed.js     — Tank lent simple
-      NitroHusk.js      — Kamikaze explosion (ne recule jamais)
-      SludgePhrax.js    — Distance keeper
-      LinkCommander.js  — Buff les allies proches (aura)
-      JammerUnit.js     — Brouilleur (ring wave + jamming)
-      ToxicWasp.js      — Poison + zigzag
-      BlastZone.js      — AOE zone (FSM: APPROACH/WARNING/EXPLODING/COOLDOWN)
-
-systems/
-  NavGrid.js            — Grille de navigation (A* pathfinding avec binary heap)
-  EnemyAIFSM.js         — Machine a etats (idle/patrol/alert/investigate/chase/attack/retreat/dead)
-  PerceptionSystem.js   — Line-of-sight raycasts avec cache
-  PathfindingHelper.js  — Vecteur de mouvement A* + separation/flocking
-  CollisionSystem.js    — Collisions projectiles/ennemis/joueur
-  RoundSystem.js        — Orchestration des rounds
-  SpawnerSystem.js      — Spawn des ennemis
-  EnemyPool.js          — Object pooling ennemis
-  LootSystem.js         — Generation de pools d'items (rarete ponderee, auto-ban slots)
-  BuildSystem.js        — Gestion des slots equipement du robot
-  WeaponSystem.js       — Gestion des armes
-  ActiveAbilitySystem.js
-  XPSystem.js           — Experience et niveaux
-  UISystem.js           — HUD en jeu
-  XRaySystem.js         — Vision X-Ray
-  LoadingScreen.js      — Ecran de chargement
-  PerformanceMonitor.js — FPS/perf
-
-cameras/
-  CameraManager.js / TpsCamera.js / IsoCamera.js
-
-ui/
-  LootUI.js    — Ecran selection d'item (3 cartes, animation fade)
-  PauseUI.js   — Menu pause
-```
-
-## Systeme d'IA des ennemis (NavGrid)
-
-Refactorise depuis VoltStriker vers la classe de base `Enemy.js`. Architecture en composition :
-
-### 3 building blocks dans Enemy.js
-1. **`updateHitFlash()`** — Flash visuel quand touche
-2. **`updateNavGridAI(playerMesh, enemies, options)`** — Pipeline complet :
-   - Perception (line-of-sight ou distance)
-   - FSM → action (idle/chase/attack/retreat)
-   - Pathfinding A* + separation/flocking
-   - Mouvement via `moveWithCollisions()`
-   - Retourne `{ action, scaledMove, moved, dt }`
-3. **`applyRotation(moveVec, lerpFactor)`** — Rotation lissee vers la direction de mouvement
-
-### Pattern d'utilisation dans les subclasses
-```js
-// Simple (chase pur) :
-update(playerMesh, projectiles, enemies) {
-    this.updateHitFlash()
-    const result = this.updateNavGridAI(playerMesh, enemies)
-    if (result) this.applyRotation(result.scaledMove)
-}
-
-// Avec mouvement additif (zigzag, orbit, strafe) :
-const result = this.updateNavGridAI(playerMesh, enemies)
-if (result?.moved) {
-    // Ajouter mouvement special par-dessus
-    this.enemy.position.addInPlace(lateralOffset)
-    this.applyRotation(result.scaledMove)
-}
-
-// Avec FSM custom (DashTrigger, TitanRam, BlastZone) :
-if (this.state === 'APPROACH') {
-    const result = this.updateNavGridAI(playerMesh, enemies)
-    // ...
-} else if (this.state === 'DASHING') {
-    // Logique specifique, pas de NavGrid
-}
-```
-
-## Systeme d'equipement
-
-### Classification
-- **Standard (1-2 etoiles)** : Consommables, pas de limite. Stockes dans `BuildSystem.consumables[]`
-- **Chassis (3-4 etoiles)** : Un seul item par slot corporel. Stockes dans `BuildSystem.chassisSlots{}`
-
-### 6 Slots corporels
-`head`, `body`, `rightArm`, `leftArm`, `rightLeg`, `leftLeg`
-
-### Auto-ban
-Quand un slot chassis est occupe, les items 3-4 etoiles pour ce slot sont exclus du pool de loot (`LootSystem.generatePool()` recoit `occupiedSlots` depuis `BuildSystem.getOccupiedSlots()`).
-
-### Item.js
-- `isChassis` : getter → `rarity >= 3`
-- `equip(player)` / `remove(player)` : applique/retire les effets
-- `rollProc(luck)` : chance de proc (modules elementaires)
-- `rarityColor` : couleur CSS par rarete
-
-### Stats du joueur (Player.js)
-`strength`, `speed`, `speedshot`, `luck`, `regen`, `lifesteal`, `armor`
+- **Langage** : JavaScript ES modules — pas de TypeScript
+- **Assets** : GLB dans `public/assets/models/`, map dans `public/assets/map_1.glb` (~50MB, goulot de performance)
 
 ## Commandes
 ```bash
@@ -152,8 +17,93 @@ npm run build    # Build production
 npm run preview  # Preview build
 ```
 
-## Notes importantes
-- `SupportEnemy.js` a son propre pathfinding custom, NON migre vers NavGrid
-- Les vitesses des ennemis ont ete ajustees lors de la migration NavGrid (ex: HeavyEnemy 0.028→0.5, MetroidEnemy 0.055→1.0) car NavGrid multiplie `action.speed * this.speed`
-- La rotation joueur utilise `Math.atan2(-dx, -dz)` (fix inversion souris)
-- Le fichier `map_1.glb` (~50MB) est un goulot de performance a optimiser dans Blender
+## Architecture
+```
+src/
+  App.vue / main.js          — Racine Vue
+  components/                — BabylonScene.vue, InventoryView.vue, ZoneMapView.vue
+  stores/useGameMode.js      — Mode actif (combat / map)
+
+src/babylon/
+  Game.js                    — Point d'entrée, boucle principale
+  BabylonService.js          — Init engine/scene
+  Round.js                   — Gestion d'un round
+  Zone.js / ZoneTree.js      — Zones de la map
+  scenes/
+    GameConfig.js            — TOUTES les constantes du jeu (MAP, LIGHTS, etc.) — modifier ici, pas inline
+    MainScene.js             — Scène principale (gameplay, rounds, loot, collisions)
+    WorldBuilder.js          — Construction du monde
+    RoundOrchestrator.js     — Orchestration des rounds
+    EnemySpawnHandler.js     — Spawn des ennemis
+  entities/
+    Player.js                — Joueur (mouvement, rotation souris, stats)
+    enemies/
+      Enemy.js               — Classe de base (NavGrid AI, FSM, perception, pathfinding A*)
+      new/                   — Ennemis avancés (tous sur NavGrid AI)
+    items/
+      items.js               — Définitions de tous les items
+      Item.js                — Classe de base item
+    weapons/                 — Armes joueur + projectiles
+  systems/                   — NavGrid, EnemyAIFSM, CollisionSystem, LootSystem, BuildSystem,
+                               XPSystem, UISystem, WeaponSystem, ActiveAbilitySystem, etc.
+  cameras/                   — CameraManager, TpsCamera, IsoCamera
+  ui/                        — LootUI, PauseUI
+```
+
+## État actuel
+- **Terminé** : IA ennemis (NavGrid + FSM), système d'équipement, loot/items, XP/levelup, armes
+- **WIP** : Écran d'accueil (`6898056`)
+- **À faire** : *(à compléter)*
+- **Fichier à ignorer** : `MainScene_backup.js` — ancienne version
+
+## Système d'IA ennemis (NavGrid)
+
+Toute la logique est dans `Enemy.js` via 3 méthodes composables :
+
+1. **`updateHitFlash()`** — flash visuel quand touché
+2. **`updateNavGridAI(playerMesh, enemies, options)`** — pipeline complet (perception → FSM → A* → mouvement)
+3. **`applyRotation(moveVec, lerpFactor)`** — rotation lissée vers la direction de mouvement
+
+**Patterns d'utilisation :**
+```js
+// Chase pur (minimal)
+update(playerMesh, projectiles, enemies) {
+    this.updateHitFlash()
+    const result = this.updateNavGridAI(playerMesh, enemies)
+    if (result) this.applyRotation(result.scaledMove)
+}
+
+// Mouvement additif (zigzag, orbit, strafe)
+const result = this.updateNavGridAI(playerMesh, enemies)
+if (result?.moved) {
+    this.enemy.position.addInPlace(lateralOffset)
+    this.applyRotation(result.scaledMove)
+}
+
+// FSM custom (DashTrigger, TitanRam, BlastZone)
+if (this.state === 'APPROACH') {
+    const result = this.updateNavGridAI(playerMesh, enemies)
+} else if (this.state === 'DASHING') {
+    // Logique custom, pas de NavGrid
+}
+```
+
+**Template pour nouvel ennemi** : voir `entities/enemies/QUICKSTART_Templates.js`
+
+**Attention vitesses** : NavGrid multiplie `action.speed * this.speed` — les vitesses ne sont PAS les mêmes qu'avant la migration. Ex : HeavyEnemy `0.028 → 0.5`, MetroidEnemy `0.055 → 1.0`.
+
+**Exception** : `SupportEnemy.js` a son propre pathfinding custom, NON migré vers NavGrid.
+
+## Système d'équipement
+
+- **Standard (1-2 étoiles)** : consommables, pas de limite → `BuildSystem.consumables[]`
+- **Chassis (3-4 étoiles)** : un par slot corporel → `BuildSystem.chassisSlots{}`
+- **6 slots** : `head`, `body`, `rightArm`, `leftArm`, `rightLeg`, `leftLeg`
+- **Auto-ban** : quand un slot est occupé, les items chassis pour ce slot sont exclus du pool (`LootSystem.generatePool()` reçoit `occupiedSlots` depuis `BuildSystem.getOccupiedSlots()`)
+
+**Stats joueur** : `strength`, `speed`, `speedshot`, `luck`, `regen`, `lifesteal`, `armor`
+
+## Pièges connus
+- La rotation joueur utilise `Math.atan2(-dx, -dz)` — l'inversion est intentionnelle (fix souris)
+- `map_1.glb` (~50MB) est le principal goulot de perf — optimiser dans Blender
+- Toutes les constantes de gameplay sont dans `GameConfig.js` — ne pas les mettre inline
