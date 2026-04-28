@@ -38,8 +38,8 @@ export class LoadingScreen {
       alignItems: 'center',
       zIndex: 99999,
       fontFamily: 'monospace',
-      color: '#00ff00',
-      textShadow: '0 0 10px rgba(0, 255, 0, 0.5)'
+      color: '#4dbfff',
+      textShadow: '0 0 10px rgba(77, 191, 255, 0.5)'
     });
 
     // Title
@@ -59,8 +59,8 @@ export class LoadingScreen {
     Object.assign(spinner.style, {
       width: '60px',
       height: '60px',
-      border: '4px solid rgba(0, 255, 0, 0.3)',
-      borderTop: '4px solid #00ff00',
+      border: '4px solid rgba(77, 191, 255, 0.3)',
+      borderTop: '4px solid #4dbfff',
       borderRadius: '50%',
       marginBottom: '40px',
       animation: 'spin 1s linear infinite'
@@ -71,8 +71,8 @@ export class LoadingScreen {
     Object.assign(progressContainer.style, {
       width: '300px',
       height: '20px',
-      backgroundColor: 'rgba(0, 255, 0, 0.1)',
-      border: '2px solid #00ff00',
+      backgroundColor: 'rgba(77, 191, 255, 0.1)',
+      border: '2px solid #4dbfff',
       borderRadius: '10px',
       overflow: 'hidden',
       marginBottom: '20px'
@@ -83,9 +83,9 @@ export class LoadingScreen {
     Object.assign(this._progressBar.style, {
       width: '0%',
       height: '100%',
-      backgroundColor: '#00ff00',
+      backgroundColor: '#4dbfff',
       transition: 'width 0.3s ease',
-      boxShadow: '0 0 10px rgba(0, 255, 0, 0.8)'
+      boxShadow: '0 0 10px rgba(77, 191, 255, 0.8)'
     });
     progressContainer.appendChild(this._progressBar);
 
@@ -126,8 +126,8 @@ export class LoadingScreen {
         to { transform: rotate(360deg); }
       }
       @keyframes glow {
-        0%, 100% { text-shadow: 0 0 10px rgba(0, 255, 0, 0.5); }
-        50% { text-shadow: 0 0 20px rgba(0, 255, 0, 0.9); }
+        0%, 100% { text-shadow: 0 0 10px rgba(77, 191, 255, 0.5); }
+        50% { text-shadow: 0 0 20px rgba(77, 191, 255, 0.9); }
       }
     `;
     document.head.appendChild(style);

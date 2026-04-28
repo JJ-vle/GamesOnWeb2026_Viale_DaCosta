@@ -3,6 +3,7 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import BabylonScene from './components/BabylonScene.vue'
 import ZoneMapView from './components/ZoneMapView.vue'
 import InventoryView from './components/InventoryView.vue'
+import DialogueView from './components/DialogueView.vue'
 import ModelViewer from './components/ModelViewer.vue'
 import { getGame } from './babylon/BabylonService'
 import { useGameMode } from './stores/useGameMode'
@@ -13,6 +14,13 @@ const playerNodeId = ref(null)
 // Inventory overlay
 const showInventory = ref(false)
 const inventoryData = ref(null)
+// Dialogue system
+const showDialogue = ref(false)
+const currentDialogue = ref({
+  characterName: 'Système',
+  dialogueText: 'Bienvenue voyageur...',
+  characterImage: '/assets/items/disquette/disquette.png'
+})
 
 const { mode, setMode, toggleMap } = useGameMode()
 
@@ -129,6 +137,31 @@ function onSelectZone(id) {
 }
 
 const noop = () => { /* placeholder for future actions */ }
+
+// Dialogue system functions
+function showDialogueBox(characterName = 'Système', dialogueText = 'Dialogue...', characterImage = '/assets/items/disquette/disquette.png') {
+  currentDialogue.value = {
+    characterName,
+    dialogueText,
+    characterImage
+  }
+  showDialogue.value = true
+}
+
+function hideDialogueBox() {
+  showDialogue.value = false
+}
+
+function handleDialogueNext() {
+  // Peut être complété pour gérer les dialogues multi-répliques
+  console.log('Dialogue suivant')
+}
+
+// Exposer les fonctions au contexte global pour pouvoir les appeler depuis Babylon
+if (typeof window !== 'undefined') {
+  window.showDialogueBox = showDialogueBox
+  window.hideDialogueBox = hideDialogueBox
+}
 </script>
 
 <template>
@@ -159,6 +192,14 @@ const noop = () => { /* placeholder for future actions */ }
       <BabylonScene />
       <ZoneMapView v-if="mode === 'map'" :playerNodeId="playerNodeId" @selectZone="onSelectZone" @close="setMode('combat')" />
       <InventoryView v-if="showInventory && inventoryData" :inventory="inventoryData" @close="showInventory = false" />
+      <DialogueView 
+        :isVisible="showDialogue"
+        :characterName="currentDialogue.characterName"
+        :dialogueText="currentDialogue.dialogueText"
+        :characterImage="currentDialogue.characterImage"
+        @close="hideDialogueBox"
+        @next="handleDialogueNext"
+      />
     </div>
   </template>
 </template>
@@ -227,7 +268,7 @@ const noop = () => { /* placeholder for future actions */ }
     bottom: 140px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 25px;
     z-index: 60;
   }
 
@@ -239,13 +280,22 @@ const noop = () => { /* placeholder for future actions */ }
     width: 420px;
     height: 640px;
     background: rgba(0,0,0,0.35);
-    border: 2px solid rgba(255,255,255,0.08);
-    border-radius: 10px;
+    border: 3px solid rgba(255,255,255,0.08);
+    border-radius: 0px;
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 55;
     backdrop-filter: blur(4px);
+    box-shadow: 
+      3px 0 0 0 rgba(255,255,255,0.08),
+      -3px 0 0 0 rgba(255,255,255,0.08),
+      0 3px 0 0 rgba(255,255,255,0.08),
+      0 -3px 0 0 rgba(255,255,255,0.08),
+      3px 3px 0 0 rgba(255,255,255,0.08),
+      -3px 3px 0 0 rgba(255,255,255,0.08),
+      3px -3px 0 0 rgba(255,255,255,0.08),
+      -3px -3px 0 0 rgba(255,255,255,0.08);
   }
 
   .frame-placeholder {
@@ -256,16 +306,28 @@ const noop = () => { /* placeholder for future actions */ }
   }
 
   .play-button {
-    padding: 15px 40px;
+    width: 200px;
+    padding: 15px 30px;
     font-size: 24px;
-    color: #ffffff;
-    background: linear-gradient(135deg, #16213e 0%, #0f3460 100%);
-    border: 2px solid #ffffff;
-    border-radius: 8px;
+    color: #000000;
+    background: #ffffff;
+    border: 3px solid #ffffff;
+    border-radius: 0px;
     cursor: pointer;
     transition: all 0.3s ease;
     text-transform: uppercase;
     font-weight: bold;
+    text-align: center;
+    box-sizing: border-box;
+    box-shadow: 
+      8px 0 0 -4px #ffffff,
+      -8px 0 0 -4px #ffffff,
+      0 8px 0 -4px #ffffff,
+      0 -8px 0 -4px #ffffff,
+      8px 8px 0 -4px #ffffff,
+      -8px 8px 0 -4px #ffffff,
+      8px -8px 0 -4px #ffffff,
+      -8px -8px 0 -4px #ffffff;
   }
 
   .menu-buttons {
@@ -276,15 +338,27 @@ const noop = () => { /* placeholder for future actions */ }
   }
 
   .menu-button {
-    padding: 12px 34px;
-    font-size: 18px;
+    width: 200px;
+    padding: 15px 30px;
+    font-size: 24px;
     color: #ffffff;
     background: rgba(0,0,0,0.25);
-    border: 1px solid rgba(255,255,255,0.15);
-    border-radius: 6px;
+    border: 3px solid rgba(255,255,255,0.15);
+    border-radius: 0px;
     cursor: pointer;
     transition: transform 0.15s ease, background 0.15s ease;
     text-transform: none;
+    text-align: center;
+    box-sizing: border-box;
+    box-shadow: 
+      8px 0 0 -4px rgba(255,255,255,0.15),
+      -8px 0 0 -4px rgba(255,255,255,0.15),
+      0 8px 0 -4px rgba(255,255,255,0.15),
+      0 -8px 0 -4px rgba(255,255,255,0.15),
+      8px 8px 0 -4px rgba(255,255,255,0.15),
+      -8px 8px 0 -4px rgba(255,255,255,0.15),
+      8px -8px 0 -4px rgba(255,255,255,0.15),
+      -8px -8px 0 -4px rgba(255,255,255,0.15);
   }
 
   .menu-button:hover, .menu-link:hover button {
@@ -295,9 +369,17 @@ const noop = () => { /* placeholder for future actions */ }
   .menu-link button { background: transparent; }
 
   .play-button:hover {
-    background: linear-gradient(135deg, #0f3460 0%, #16213e 100%);
-    transform: scale(1.05);
-    box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+    background: #f0f0f0;
+    box-shadow: 
+      8px 0 0 -4px #ffffff,
+      -8px 0 0 -4px #ffffff,
+      0 8px 0 -4px #ffffff,
+      0 -8px 0 -4px #ffffff,
+      8px 8px 0 -4px #ffffff,
+      -8px 8px 0 -4px #ffffff,
+      8px -8px 0 -4px #ffffff,
+      -8px -8px 0 -4px #ffffff,
+      0 0 30px 3px rgba(255, 255, 255, 0.6);
   }
 
   .play-button:active {
