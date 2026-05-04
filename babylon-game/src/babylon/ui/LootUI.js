@@ -82,7 +82,7 @@ export class LootUI {
         // ── Conteneur des cartes ──
         const cardContainer = new Rectangle('cardContainer');
         cardContainer.width = '900px';
-        cardContainer.height = '360px';
+        cardContainer.height = '460px';
         cardContainer.thickness = 0;
         cardContainer.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
         cardContainer.verticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
@@ -117,7 +117,7 @@ export class LootUI {
         const color = LootUI._rarityColor(item.rarity);
         const card = new Rectangle(`card_${item.id}`);
         card.width = '260px';
-        card.height = '340px';
+        card.height = '440px';
         card.background = '#0d0d1e';
         card.color = color;
         card.thickness = 2;
@@ -205,18 +205,34 @@ export class LootUI {
         slotText.height = "20px";
         card.addControl(slotText);
 
-        // ── Description ──
-        const descText = new TextBlock(`desc_${item.id}`);
-        descText.text = item.extraInfo || item.bonus || item.description || '';
-        descText.color = color;
-        descText.fontSize = 14;
-        descText.fontFamily = 'monospace';
-        descText.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
-        descText.topInPixels = 220;
-        descText.height = "60px";
-        descText.textWrapping = true;
-        descText.width = '85%';
-        card.addControl(descText);
+        // ── Modificateurs de stats ──
+        const modText = new TextBlock(`mod_${item.id}`);
+        modText.text = LootUI._formatModifiers(item.modifiers) || item.bonus || item.description || '';
+        modText.color = color;
+        modText.fontSize = 12;
+        modText.fontFamily = 'monospace';
+        modText.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+        modText.topInPixels = 218;
+        modText.height = '110px';
+        modText.textWrapping = true;
+        modText.width = '88%';
+        card.addControl(modText);
+
+        // ── ExtraInfo (mécanique spéciale) ──
+        if (item.extraInfo) {
+            const extraText = new TextBlock(`extra_${item.id}`);
+            extraText.text = item.extraInfo;
+            extraText.color = '#ffffff88';
+            extraText.fontSize = 11;
+            extraText.fontFamily = 'monospace';
+            extraText.fontStyle = 'italic';
+            extraText.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+            extraText.topInPixels = 330;
+            extraText.height = '50px';
+            extraText.textWrapping = true;
+            extraText.width = '88%';
+            card.addControl(extraText);
+        }
 
         // ── Bouton Choisir ──
         const btn = Button.CreateSimpleButton(`btn_${item.id}`, 'ÉQUIPER');
@@ -296,6 +312,52 @@ export class LootUI {
             try { c.dispose(); } catch (e) { /* ignore */ }
         });
         this._overlay = null;
+    }
+
+    /** Formate les modifiers d'un item en texte lisible (ex: "+20% Dégâts\n+10% Vitesse"). */
+    static _formatModifiers(modifiers) {
+        if (!modifiers) return '';
+        const entries = Object.entries(modifiers);
+        if (entries.length === 0) return '';
+
+        const LABELS = {
+            damage: 'Dégâts', speed: 'Vitesse', fireRate: 'Cadence de tir',
+            luck: 'Chance', armor: 'Armure', regen: 'Regen', lifesteal: 'Vol de vie',
+            strength: 'Force', cooldownReduction: 'Rechargement',
+            damageMultiplier: 'Dégâts', damageTakenMultiplier: 'Dégâts subis',
+            projectileMultiplier: 'Projectiles', itemEffectMultiplier: 'Effets items',
+            additionalProjectiles: 'Projectile bonus', orbitingProjectiles: 'Projectiles orbitants',
+            explosionRadius: 'Rayon explosion', explosionDamage: 'Dégâts explosion',
+            explosionProc: 'Chance explosion', aoeDamage: 'Dégâts zone', areaDamage: 'Dégâts zone',
+            burnDamage: 'Dégâts feu', burnProc: 'Chance feu',
+            slowEffect: 'Ralentissement', slowProc: 'Chance ralenti',
+            knockback: 'Recul', dotDamage: 'Dégâts continus',
+            conversionChance: 'Chance conversion', chainDamageCount: 'Chaînes',
+            contactDamage: 'Dégâts contact', iframes: 'Invincibilité',
+            enemySlowRadius: 'Rayon ralenti', healthRegen: 'Régénération',
+            homingProjectiles: 'Projectiles guidés', poisonToHeal: 'Poison→Soin',
+            preventStatDecrease: 'Stats protégées', invulnerable: 'Invulnérable',
+            restartWithItems: 'Restart avec items', rerollToken: 'Reroll',
+            respawnCount: 'Résurrection', armSlots: 'Slot bras', bodySlots: 'Slot corps',
+            headSlots: 'Slot tête', legSlots: 'Slot jambes',
+        };
+
+        // Clés dont la valeur est une probabilité (0-1 = 0%-100%)
+        const PROC_KEYS = new Set(['burnProc', 'slowProc', 'explosionProc', 'conversionChance']);
+
+        return entries.map(([key, val]) => {
+            const label = LABELS[key] ?? key;
+            if (typeof val === 'boolean') return val ? `✓ ${label}` : `✗ ${label}`;
+            if (key.endsWith('Multiplier')) return `×${val} ${label}`;
+            if (PROC_KEYS.has(key)) {
+                const pct = Math.round(val * 100);
+                return `${pct >= 0 ? '+' : ''}${pct}% ${label}`;
+            }
+            // Valeur flat : afficher telle quelle
+            const sign = val >= 0 ? '+' : '';
+            const display = Number.isInteger(val) ? val : Math.round(val * 100) / 100;
+            return `${sign}${display} ${label}`;
+        }).join('\n');
     }
 
     /** Couleur CSS associée à la rareté (remplace Item.rarityColor pour les plain-objects). */

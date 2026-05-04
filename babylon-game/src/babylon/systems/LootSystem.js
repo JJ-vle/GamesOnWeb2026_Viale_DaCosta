@@ -55,6 +55,7 @@ export class LootSystem {
             const candidates = this.catalog.filter(i => {
                 if (i.rarity !== rarity) return false;
                 if (usedIds.has(i.id)) return false;
+                if (i.pool !== 'chest') return false;
                 // Auto-ban : exclure les items châssis (3-4★) dont le slot est occupé
                 if (i.rarity >= 3 && occupiedSlots.has(i.slot)) return false;
                 return true;
