@@ -74,53 +74,10 @@ function returnToMenu() {
   }
   window.addEventListener('keydown', keyHandler)
 
-    // Background wheel-based parallax: use mouse wheel to move background
-    const bg = { y: 0 }
-    let maxBgY = 0
-    const factor = 0.5
-
-    // Work with the actual background image element so we can move it precisely.
-    const bgImgEl = document.querySelector('.home-bg-img')
-    const recalcMax = () => {
-      if (!bgImgEl || !bgImgEl.naturalWidth || !bgImgEl.naturalHeight) return
-      const scale = Math.max(window.innerWidth / bgImgEl.naturalWidth, window.innerHeight / bgImgEl.naturalHeight)
-      const displayedHeight = bgImgEl.naturalHeight * scale
-      maxBgY = Math.max(0, displayedHeight - window.innerHeight)
-      // clamp current value into new range
-      bg.y = Math.min(maxBgY, Math.max(0, bg.y))
-      if (bgImgEl) bgImgEl.style.transform = `translate(-50%, ${-bg.y}px)`
-    }
-
-    if (bgImgEl && bgImgEl.complete) recalcMax()
-    if (bgImgEl) bgImgEl.addEventListener('load', recalcMax)
-    window.addEventListener('resize', recalcMax)
-
-    const onWheel = (e) => {
-      if (gameStarted.value) return
-      e.preventDefault()
-      const delta = e.deltaY || 0
-      // wheel down -> reveal lower part -> increase bg.y
-      bg.y = Math.min(maxBgY, Math.max(0, bg.y + delta * factor))
-      if (bgImgEl) bgImgEl.style.transform = `translate(-50%, ${-bg.y}px)`
-    }
-
-    const homeEl = document.querySelector('.home-page')
-    if (homeEl && bgImgEl) {
-      homeEl.addEventListener('wheel', onWheel, { passive: false })
-    } else {
-      window.addEventListener('wheel', onWheel, { passive: false })
-    }
-
   onUnmounted(() => {
     window.removeEventListener('returnToMenu', handler)
     window.removeEventListener('openZoneMap', openMapHandler)
     window.removeEventListener('keydown', keyHandler)
-    // remove wheel listener from either home element or window and cleanup
-    const homeEl = document.querySelector('.home-page')
-    try { if (homeEl) homeEl.removeEventListener('wheel', onWheel) } catch(e) { /* ignore */ }
-    try { window.removeEventListener('wheel', onWheel) } catch(e) { /* ignore */ }
-    try { window.removeEventListener('resize', recalcMax) } catch(e) { /* ignore */ }
-    try { const bgImgEl = document.querySelector('.home-bg-img'); if (bgImgEl) bgImgEl.removeEventListener('load', recalcMax) } catch(e) { /* ignore */ }
   })
 })
 
@@ -234,17 +191,27 @@ if (typeof window !== 'undefined') {
 
   .home-bg-img {
     position: absolute;
-    left: 50%;
+    left: 0;
     top: 0;
-    transform: translate(-50%, 0px);
-    min-width: 100%;
-    min-height: 100%;
+    width: 100%;
+    height: 100%;
     object-fit: cover;
+    object-position: center 0%;
+    animation: slideBgToMiddle 8s ease-in-out forwards;
     image-rendering: -moz-crisp-edges;
     image-rendering: -o-crisp-edges;
     image-rendering: -webkit-optimize-contrast;
     image-rendering: crisp-edges;
     image-rendering: pixelated;
+  }
+
+  @keyframes slideBgToMiddle {
+    0% {
+      object-position: center 0%;
+    }
+    100% {
+      object-position: center 68%;
+    }
   }
 
   .logo {

@@ -66,6 +66,10 @@ onMounted(() => {
       })
       const center = new Vector3((min.x+max.x)/2, (min.y+max.y)/2, (min.z+max.z)/2)
       const size = Math.max(max.x-min.x, max.y-min.y, max.z-min.z)
+      
+      // On décale la cible de la caméra vers le haut pour que le modèle apparaisse plus bas dans la vue
+      center.y += size * 0.5; 
+      
       camera.setTarget(center)
       camera.alpha = Math.PI/2
       camera.beta = Math.PI/2.8
