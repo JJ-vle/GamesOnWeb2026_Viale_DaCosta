@@ -98,6 +98,31 @@ export class WorldBuilder {
     loadingScreen.setProgress(80, 'Initializing player...')
     const playerEntry = new Player(this.scene)
     this.scene.clearColor = new Color3(...MAP.CLEAR_COLOR)
+
+    // ── Rayon de lumière visible (cône semi-transparent émissif) ──
+    const beamH = LIGHTS.PLAYER_BEAM_HEIGHT
+    const beamMat = new StandardMaterial('playerBeamMat', this.scene)
+    beamMat.emissiveColor = new Color3(...LIGHTS.PLAYER_BEAM_COLOR)
+    beamMat.diffuseColor = new Color3(0, 0, 0)
+    beamMat.alpha = LIGHTS.PLAYER_BEAM_ALPHA
+    beamMat.backFaceCulling = false
+    beamMat.disableLighting = true
+
+    const beam = MeshBuilder.CreateCylinder('playerBeam', {
+      height: beamH,
+      diameterTop: LIGHTS.PLAYER_BEAM_TOP_DIAM,
+      diameterBottom: LIGHTS.PLAYER_BEAM_BOT_DIAM,
+      tessellation: 12,
+      cap: 0
+    }, this.scene)
+    beam.material = beamMat
+    beam.isPickable = false
+
+    this.scene.onBeforeRenderObservable.add(() => {
+      const p = playerEntry.mesh.position
+      beam.position.set(p.x, p.y + beamH / 2, p.z)
+    })
+
     loadingScreen.setProgress(85, 'Setting up callbacks...')
 
     return { playerEntry, navGrid: this.navGrid }

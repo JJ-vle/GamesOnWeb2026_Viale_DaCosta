@@ -77,6 +77,21 @@ export class MainScene extends BaseScene {
       }
     };
 
+    window.godMode = (enable) => {
+      const player = this.playerEntry;
+      const on = enable === undefined ? !player._godMode : Boolean(enable);
+      player._godMode = on;
+      if (on) {
+        player._origTakeDamage = player.takeDamage.bind(player);
+        player.takeDamage = () => {};
+        player.life = player.maxLife;
+        console.log("[Debug] God Mode ON — invincible, HP full");
+      } else {
+        if (player._origTakeDamage) player.takeDamage = player._origTakeDamage;
+        console.log("[Debug] God Mode OFF");
+      }
+    };
+
     this.playerEntry.inventory.onItemEquipped = (item) => {
       this.uiSystem.showNotification(`${item.name} équipé!`, '#ffcc00', 2000)
       this.uiSystem.updateItems(this.playerEntry.inventory.getItems().map(i => i.item))
@@ -186,19 +201,15 @@ export class MainScene extends BaseScene {
     // Injecter l'inventory dans le collisionSystem pour les procs
     this.collisionSystem.inventory = this.playerEntry.inventory
 
-    // ── ActiveAbilitySystem (Espace) ──
+    // ── ActiveAbilitySystem (A = item actif, Espace = dash) ──
     this.activeAbilitySystem = new ActiveAbilitySystem(
       this.scene,
       this.playerEntry,
       this.enemies
     )
-    this.activeAbilitySystem.equip('heal') // Item de départ
 
     this.activeAbilitySystem.onAbilityUsed = () => {
-      const item = this.activeAbilitySystem.equippedItem
-      if (item === 'heal') {
-        this.uiSystem.showNotification('+5 HP', '#00ff88', 1200)
-      } else if (item === 'grenade') {
+      if (this.activeAbilitySystem.equippedItem === 'grenade') {
         this.uiSystem.showNotification('💥 GRENADE !', '#ff8800', 1200)
       }
     }

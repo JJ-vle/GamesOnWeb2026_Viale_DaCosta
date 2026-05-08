@@ -23,26 +23,34 @@ import { CoreSpawner } from '../entities/enemies/new/CoreSpawner.js'
 
 const CAT1 = [VoltStriker, NeonVector, BastionRed]
 const CAT2 = [DashTrigger, BoltSentry, SludgePhrax, BlastZone, IronBulwark, DroneSwarm, ToxicWasp, PyroCaster, JammerUnit, NitroHusk]
-const CAT3 = [EchoWraith, TitanRam, LinkCommander, CoreSpawner]
+const CAT3 = [EchoWraith, TitanRam, LinkCommander, CoreSpawner] //  ennemis spéciaux, 1 seul par round
 
-const pickRandom = (arr, count) => [...arr].sort(() => 0.5 - Math.random()).slice(0, Math.min(count, arr.length))
+const pickRandom = (arr, count) => [...arr].sort(() => 0.5 - Math.random()).slice(0, Math.min(count, arr.length)) // Mélange l'array et prend les "count" premiers éléments
 
 /**
  * Peuple un Round avec des mobs selon la progression (index de round r, départ à 0).
  */
 function populateRound(round, r) {
   const totalMobs = ROUND.MOBS_BASE + r * ROUND.MOBS_STEP
-  const types1 = pickRandom(CAT1, 2)
+
+  // Stage 2+ : tous les types de CAT1
+  const types1 = pickRandom(CAT1, CAT1.length)
   const c1 = Math.ceil(totalMobs * ROUND.FRAC_CAT1 / Math.max(1, types1.length))
   types1.forEach(T => round.addMob({ type: T, count: c1, spawnInterval: ROUND.INTERVAL_CAT1 }))
 
+  // Stage 3+ (r>=1) : CAT2
   if (r >= 1) {
     const types2 = pickRandom(CAT2, 2)
     const c2 = Math.ceil(totalMobs * ROUND.FRAC_CAT2 / Math.max(1, types2.length))
     types2.forEach(T => round.addMob({ type: T, count: c2, spawnInterval: ROUND.INTERVAL_CAT2 }))
   }
+
+  // Stage 5+ (r>=3) : CAT3, de 1 à 5 ennemis selon l'avancement
   if (r >= 3) {
-    pickRandom(CAT3, 1).forEach(T => round.addMob({ type: T, count: 1, spawnInterval: ROUND.INTERVAL_CAT3 }))
+    const cat3Total = Math.min(5, r - 2)
+    const types3 = pickRandom(CAT3, Math.min(cat3Total, CAT3.length))
+    const c3 = Math.ceil(cat3Total / types3.length)
+    types3.forEach(T => round.addMob({ type: T, count: c3, spawnInterval: ROUND.INTERVAL_CAT3 }))
   }
 }
 
