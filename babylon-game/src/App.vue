@@ -19,7 +19,7 @@ const showDialogue = ref(false)
 const currentDialogue = ref({
   characterName: 'Système',
   dialogueText: 'Bienvenue voyageur...',
-  characterImage: '/assets/items/disquette/disquette.png'
+  characterImage: '/assets/items/disquette/disquette_blanc.png'
 })
 
 const { mode, setMode, toggleMap } = useGameMode()
@@ -56,6 +56,10 @@ function returnToMenu() {
       } else {
         setMode('combat')
       }
+    }
+    if (e.key && e.key.toLowerCase() === 'p') {
+      e.preventDefault()
+      showDialogue.value = !showDialogue.value
     }
     if (e.key && (e.key.toLowerCase() === 'i' || e.key === 'Tab')) {
       e.preventDefault()
@@ -96,7 +100,7 @@ function onSelectZone(id) {
 const noop = () => { /* placeholder for future actions */ }
 
 // Dialogue system functions
-function showDialogueBox(characterName = 'Système', dialogueText = 'Dialogue...', characterImage = '/assets/items/disquette/disquette.png') {
+function showDialogueBox(characterName = 'Système', dialogueText = 'Dialogue...', characterImage = '/assets/items/disquette/disquette_blanc.png') {
   currentDialogue.value = {
     characterName,
     dialogueText,

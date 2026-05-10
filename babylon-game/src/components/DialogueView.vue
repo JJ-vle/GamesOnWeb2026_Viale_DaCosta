@@ -149,6 +149,8 @@ const handleClose = () => {
   max-width: 90%;
   max-height: 95%;
   object-fit: contain;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
   filter: drop-shadow(0 0 10px rgba(0, 255, 255, 0.6));
 }
 
