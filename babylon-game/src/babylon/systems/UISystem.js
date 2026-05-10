@@ -17,6 +17,7 @@ export class UISystem {
     constructor(scene) {
         this.scene = scene;
         this.ui = AdvancedDynamicTexture.CreateFullscreenUI("UI");
+        this._uiObservers = [];
 
         this._buildLifeBar();
         this._buildRoundUI();
@@ -33,35 +34,90 @@ export class UISystem {
     // ─────────────────────────────────────────────────────
     _buildLifeBar() {
         const container = new Rectangle("lifeContainer");
-        container.width = "280px";
-        container.height = "56px";
+        container.width = "300px";
+        container.height = "82px";
         container.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
         container.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
         container.leftInPixels = 20;
-        container.bottomInPixels = 24;
+        container.bottomInPixels = 40;
         container.thickness = 0;
         this.ui.addControl(container);
 
+        const lifeGlow = new Rectangle("lifeGlow");
+        lifeGlow.width = "100%";
+        lifeGlow.height = "100%";
+        lifeGlow.background = "#68f0ff10";
+        lifeGlow.color = "#68f0ff33";
+        lifeGlow.thickness = 1;
+        lifeGlow.cornerRadius = 4;
+        container.addControl(lifeGlow);
+
+        const lifeCornerTL = new Rectangle("lifeCornerTL");
+        lifeCornerTL.width = "14px";
+        lifeCornerTL.height = "14px";
+        lifeCornerTL.left = "-2px";
+        lifeCornerTL.top = "-2px";
+        lifeCornerTL.thickness = 2;
+        lifeCornerTL.color = "#68f0ff";
+        lifeCornerTL.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+        lifeCornerTL.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+        lifeCornerTL.isHitTestVisible = false;
+        container.addControl(lifeCornerTL);
+
+        const lifeCornerBR = new Rectangle("lifeCornerBR");
+        lifeCornerBR.width = "14px";
+        lifeCornerBR.height = "14px";
+        lifeCornerBR.right = "-2px";
+        lifeCornerBR.bottom = "-2px";
+        lifeCornerBR.thickness = 2;
+        lifeCornerBR.color = "#ff7ac8";
+        lifeCornerBR.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
+        lifeCornerBR.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
+        lifeCornerBR.isHitTestVisible = false;
+        container.addControl(lifeCornerBR);
+
         const hpLabel = new TextBlock("hpLabel");
         hpLabel.text = "HP";
-        hpLabel.color = "#00ffcc";
-        hpLabel.fontSize = 11;
+        hpLabel.color = "#f4cc69";
+        hpLabel.fontSize = 12;
         hpLabel.fontFamily = "monospace";
         hpLabel.fontStyle = "bold";
         hpLabel.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
         hpLabel.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
-        hpLabel.top = "-2px";
+        hpLabel.left = "8px";
+        hpLabel.top = "6px";
         container.addControl(hpLabel);
 
         const lifeBg = new Rectangle("lifeBg");
         lifeBg.width = "280px";
-        lifeBg.height = "24px";
-        lifeBg.background = "#0a0a1a";
-        lifeBg.color = "#00ffcc44";
-        lifeBg.thickness = 1;
-        lifeBg.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
-        lifeBg.cornerRadius = 3;
+        lifeBg.height = "28px";
+        lifeBg.background = "#0a0a14ee";
+        lifeBg.color = "#68f0ff66";
+        lifeBg.thickness = 2;
+        lifeBg.verticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
+        lifeBg.cornerRadius = 4;
         container.addControl(lifeBg);
+
+        const lifeSweep = new Rectangle("lifeSweep");
+        lifeSweep.width = "120%";
+        lifeSweep.height = "10px";
+        lifeSweep.left = "-70%";
+        lifeSweep.top = "-6px";
+        lifeSweep.background = "#68f0ff";
+        lifeSweep.alpha = 0.12;
+        lifeSweep.thickness = 0;
+        lifeSweep.isHitTestVisible = false;
+        lifeBg.addControl(lifeSweep);
+
+        const lifeSweepObs = this.scene.onBeforeRenderObservable.add(() => {
+            if (!lifeSweep || !lifeSweep.parent || !lifeSweep._host) return;
+            const phase = (performance.now() % 1700) / 1700;
+            const pulse = 0.5 + Math.sin(performance.now() / 180) * 0.5;
+            lifeSweep.left = `${-70 + phase * 140}%`;
+            lifeSweep.alpha = 0.06 + pulse * 0.08;
+            lifeGlow.alpha = 0.58 + pulse * 0.18;
+        });
+        this._uiObservers.push(lifeSweepObs);
 
         this.lifeFill = new Rectangle("lifeFill");
         this.lifeFill.width = "100%";
@@ -203,39 +259,101 @@ export class UISystem {
     // ─────────────────────────────────────────────────────
     _buildActiveAbilityUI() {
         const container = new Rectangle("abilityContainer");
-        container.width = "72px";
-        container.height = "72px";
+        container.width = "116px";
+        container.height = "116px";
         container.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
         container.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
-        container.bottomInPixels = 20;
-        container.background = "#0a0a1acc";
-        container.color = "#ffffff44";
+        container.bottomInPixels = 16;
+        container.background = "#0a0a14ee";
+        container.color = "#f2ead833";
         container.thickness = 2;
-        container.cornerRadius = 8;
+        container.cornerRadius = 4;
         this.ui.addControl(container);
+
+        const glow = new Rectangle("abilityGlow");
+        glow.width = "100%";
+        glow.height = "100%";
+        glow.background = "#68f0ff10";
+        glow.color = "#68f0ff33";
+        glow.thickness = 1;
+        glow.cornerRadius = 4;
+        container.addControl(glow);
+
+        const cornerTL = new Rectangle("abilityCornerTL");
+        cornerTL.width = "14px";
+        cornerTL.height = "14px";
+        cornerTL.left = "-2px";
+        cornerTL.top = "-2px";
+        cornerTL.thickness = 2;
+        cornerTL.color = "#68f0ff";
+        cornerTL.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+        cornerTL.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+        cornerTL.isHitTestVisible = false;
+        container.addControl(cornerTL);
+
+        const cornerBR = new Rectangle("abilityCornerBR");
+        cornerBR.width = "14px";
+        cornerBR.height = "14px";
+        cornerBR.right = "-2px";
+        cornerBR.bottom = "-2px";
+        cornerBR.thickness = 2;
+        cornerBR.color = "#ff7ac8";
+        cornerBR.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
+        cornerBR.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
+        cornerBR.isHitTestVisible = false;
+        container.addControl(cornerBR);
+
+        const sweep = new Rectangle("abilitySweep");
+        sweep.width = "120%";
+        sweep.height = "14px";
+        sweep.left = "-70%";
+        sweep.top = "18px";
+        sweep.background = "#68f0ff";
+        sweep.alpha = 0.18;
+        sweep.thickness = 0;
+        sweep.isHitTestVisible = false;
+        container.addControl(sweep);
+
+        const sweepObs = this.scene.onBeforeRenderObservable.add(() => {
+            if (!sweep || sweep.isDisposed?.()) return;
+            const phase = (performance.now() % 1800) / 1800;
+            sweep.left = `${-70 + phase * 140}%`;
+            sweep.alpha = 0.08 + Math.sin(performance.now() / 160) * 0.03;
+        });
+        this._uiObservers.push(sweepObs);
 
         const keyLabel = new TextBlock("keyLabel");
         keyLabel.text = "SPACE";
-        keyLabel.color = "#ffffff88";
-        keyLabel.fontSize = 9;
+        keyLabel.color = "#f4cc69";
+        keyLabel.fontSize = 10;
         keyLabel.fontFamily = "monospace";
-        keyLabel.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
-        keyLabel.top = "-4px";
+        keyLabel.fontStyle = "bold";
+        keyLabel.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+        keyLabel.top = "8px";
         container.addControl(keyLabel);
+
+        this.activeLabel = new TextBlock("activeLabel");
+        this.activeLabel.text = "ACTIVABLE";
+        this.activeLabel.color = "#ffffff99";
+        this.activeLabel.fontSize = 9;
+        this.activeLabel.fontFamily = "monospace";
+        this.activeLabel.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+        this.activeLabel.top = "24px";
+        container.addControl(this.activeLabel);
 
         this.abilityIcon = new TextBlock("abilityIcon");
         this.abilityIcon.text = "ðŸ’Š";
-        this.abilityIcon.fontSize = 28;
+        this.abilityIcon.fontSize = 32;
         this.abilityIcon.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
-        this.abilityIcon.top = "8px";
+        this.abilityIcon.top = "44px";
         container.addControl(this.abilityIcon);
 
         // Large image shown when no emoji item is present (uses placeholder floppydisk)
-        this.abilityIconImage = new Image("abilityIconImage", "assets/items/floppydisk.png");
-        this.abilityIconImage.width = "56px";
-        this.abilityIconImage.height = "56px";
+        this.abilityIconImage = new Image("abilityIconImage", "/assets/items/disquette/disquette_gris.png");
+        this.abilityIconImage.width = "52px";
+        this.abilityIconImage.height = "52px";
         this.abilityIconImage.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
-        this.abilityIconImage.top = "6px";
+        this.abilityIconImage.top = "44px";
         this.abilityIconImage.isVisible = false;
         container.addControl(this.abilityIconImage);
 
@@ -249,10 +367,14 @@ export class UISystem {
 
         this.abilityCooldownText = new TextBlock("abilityCooldownText");
         this.abilityCooldownText.text = "";
-        this.abilityCooldownText.color = "#ffffff";
-        this.abilityCooldownText.fontSize = 14;
+        this.abilityCooldownText.color = "#f4cc69";
+        this.abilityCooldownText.fontSize = 16;
         this.abilityCooldownText.fontFamily = "monospace";
         this.abilityCooldownText.fontStyle = "bold";
+        this.abilityCooldownText.outlineColor = "#000000";
+        this.abilityCooldownText.outlineWidth = 3;
+        this.abilityCooldownText.verticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
+        this.abilityCooldownText.top = "12px";
         container.addControl(this.abilityCooldownText);
     }
 
@@ -509,7 +631,7 @@ export class UISystem {
 
         if (itemType == null) {
             // show image when there's no emoji-type item
-            try { this.abilityIconImage.source = "assets/items/floppydisk.png"; } catch (e) { /* ignore */ }
+            try { this.abilityIconImage.source = "/assets/items/disquette/disquette_gris.png"; } catch (e) { /* ignore */ }
             this.abilityIconImage.isVisible = true;
             this.abilityIcon.isVisible = false;
         } else {
@@ -520,10 +642,22 @@ export class UISystem {
 
         const overlayHeight = Math.round(cooldownPercent * 100);
         this.abilityCooldownOverlay.height = overlayHeight + "%";
+        this.abilityCooldownOverlay.background = cooldownPercent > 0.5 ? "#ff7ac844" : "#68f0ff33";
 
-        this.abilityCooldownText.text = cooldownRemaining > 0.1
-            ? Math.ceil(cooldownRemaining).toString()
-            : "";
+        const onCooldown = cooldownRemaining > 0.05 || cooldownPercent > 0.01;
+        if (onCooldown) {
+            const hasSeconds = cooldownRemaining > 0.05;
+            const display = hasSeconds
+                ? `${Math.max(1, Math.ceil(cooldownRemaining))}s`
+                : `${Math.max(1, Math.ceil(cooldownPercent * 100))}%`;
+            this.activeLabel.text = display;
+            this.activeLabel.color = "#f4cc69";
+            this.abilityCooldownText.text = display;
+        } else {
+            this.activeLabel.text = "ACTIVABLE";
+            this.activeLabel.color = "#ffffff99";
+            this.abilityCooldownText.text = "";
+        }
     }
 
     /** Alias générique pour la compatibilité avec secondaryActivable.updateCooldown */
@@ -625,6 +759,16 @@ export class UISystem {
         panel.addControl(btn);
 
         this._gameOverPanel = overlay;
+    }
+
+    dispose() {
+        for (const obs of this._uiObservers) {
+            try {
+                this.scene.onBeforeRenderObservable.remove(obs);
+            } catch (e) { /* ignore */ }
+        }
+        this._uiObservers = [];
+        try { this.ui.dispose(); } catch (e) { /* ignore */ }
     }
 
     hideGameOver() {

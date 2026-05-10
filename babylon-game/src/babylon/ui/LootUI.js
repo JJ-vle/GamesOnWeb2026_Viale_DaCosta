@@ -118,14 +118,16 @@ export class LootUI {
         const card = new Rectangle(`card_${item.id}`);
         card.width = '260px';
         card.height = '440px';
-        card.background = '#0d0d1e';
+        card.background = '#0a0a14';
         card.color = color;
         card.thickness = 2;
-        card.cornerRadius = 12;
+        card.cornerRadius = 4;
         card.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
         card.verticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
         card.leftInPixels = xOffset;
         parent.addControl(card);
+
+        LootUI._addNeonCardContours(this.scene, card, color, this._listeners);
 
         // ── Bandeau rareté (haut de la carte) ──
         const rarityBg = new Rectangle(`rarity_${item.id}`);
@@ -134,9 +136,9 @@ export class LootUI {
         // align left so leftInPixels on children is relative to left edge
         rarityBg.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
         rarityBg.leftInPixels = 0;
-        rarityBg.background = color + '33';
+        rarityBg.background = color + '26';
         rarityBg.thickness = 0;
-        rarityBg.cornerRadius = 10;
+        rarityBg.cornerRadius = 4;
         rarityBg.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
         card.addControl(rarityBg);
 
@@ -238,10 +240,10 @@ export class LootUI {
         const btn = Button.CreateSimpleButton(`btn_${item.id}`, 'ÉQUIPER');
         btn.width = '85%';
         btn.height = '44px';
-        btn.background = color + '22';
+        btn.background = '#0f1020';
         btn.color = color;
-        btn.thickness = 1;
-        btn.cornerRadius = 8;
+        btn.thickness = 2;
+        btn.cornerRadius = 4;
         btn.fontSize = 14;
         btn.fontFamily = 'monospace';
         btn.fontStyle = 'bold';
@@ -249,13 +251,32 @@ export class LootUI {
         btn.bottomInPixels = 14;
         card.addControl(btn);
 
+        const btnGlow = new Rectangle(`btnGlow_${item.id}`);
+        btnGlow.width = '120%';
+        btnGlow.height = '10px';
+        btnGlow.left = '-70%';
+        btnGlow.top = '10px';
+        btnGlow.background = color;
+        btnGlow.alpha = 0.12;
+        btnGlow.thickness = 0;
+        btnGlow.isHitTestVisible = false;
+        btn.addControl(btnGlow);
+
+        const btnObserver = this.scene.onBeforeRenderObservable.add(() => {
+            if (!btn || !btn.parent || !btn._host) return;
+            const phase = (performance.now() % 1600) / 1600;
+            btnGlow.left = `${-70 + phase * 140}%`;
+            btnGlow.alpha = 0.08 + Math.sin(performance.now() / 240) * 0.02 + (btn.isPointerOver ? 0.08 : 0);
+        });
+        this._listeners.push({ cleanup: () => this.scene.onBeforeRenderObservable.remove(btnObserver) });
+
         // ── Hover effect ──
         card.onPointerEnterObservable.add(() => {
-            card.background = '#1a1a2e';
+            card.background = '#111126';
             card.thickness = 3;
         });
         card.onPointerOutObservable.add(() => {
-            card.background = '#0d0d1e';
+            card.background = '#0a0a14';
             card.thickness = 2;
         });
 
@@ -300,7 +321,11 @@ export class LootUI {
         // ── MEMORY FIX: Remove all observable listeners before disposing controls ──
         for (const listener of this._listeners) {
             try {
-                listener.observable.remove(listener.observer);
+                if (listener.cleanup) {
+                    listener.cleanup();
+                } else {
+                    listener.observable.remove(listener.observer);
+                }
             } catch (e) { /* ignore */ }
         }
         this._listeners = [];
@@ -313,7 +338,141 @@ export class LootUI {
         });
         this._overlay = null;
     }
+    static _mixHex(hexA, hexB, t) {
+        const a = parseInt((hexA || '#ffffff').replace('#', ''), 16);
+        const b = parseInt((hexB || '#000000').replace('#', ''), 16);
+        const ar = (a >> 16) & 255, ag = (a >> 8) & 255, ab = a & 255;
+        const br = (b >> 16) & 255, bg = (b >> 8) & 255, bb = b & 255;
+        const k = Math.max(0, Math.min(1, t));
+        const rr = Math.round(ar + (br - ar) * k);
+        const rg = Math.round(ag + (bg - ag) * k);
+        const rb = Math.round(ab + (bb - ab) * k);
+        const n = (rr << 16) | (rg << 8) | rb;
+        return `#${n.toString(16).padStart(6, '0')}`;
+    }
 
+    static _addNeonCardContours(scene, card, accentColor, listeners) {
+        const darkTone = LootUI._mixHex(accentColor, '#0a0a14', 0.42);
+        const brightTone = LootUI._mixHex(accentColor, '#ffffff', 0.34);
+
+        const auraOuter = new Rectangle(`${card.name}_auraOuter`);
+        auraOuter.width = '100%';
+        auraOuter.height = '100%';
+        auraOuter.thickness = 2;
+        auraOuter.color = darkTone;
+        auraOuter.background = '#00000000';
+        auraOuter.cornerRadius = 4;
+        auraOuter.alpha = 0.7;
+        auraOuter.isHitTestVisible = false;
+        card.addControl(auraOuter);
+
+        const auraInner = new Rectangle(`${card.name}_auraInner`);
+        auraInner.width = '98%';
+        auraInner.height = '98%';
+        auraInner.thickness = 1;
+        auraInner.color = brightTone;
+        auraInner.background = '#00000000';
+        auraInner.cornerRadius = 3;
+        auraInner.alpha = 0.82;
+        auraInner.isHitTestVisible = false;
+        card.addControl(auraInner);
+
+        const addCorner = (suffix, horizontalPos, verticalPos) => {
+            const hOuter = new Rectangle(`${card.name}_${suffix}_ho`);
+            hOuter.width = '26px';
+            hOuter.height = '2px';
+            hOuter.background = darkTone;
+            hOuter.thickness = 0;
+            hOuter.alpha = 0.86;
+            hOuter.isHitTestVisible = false;
+            hOuter.horizontalAlignment = horizontalPos === 'left' ? Control.HORIZONTAL_ALIGNMENT_LEFT : Control.HORIZONTAL_ALIGNMENT_RIGHT;
+            hOuter.verticalAlignment = verticalPos === 'top' ? Control.VERTICAL_ALIGNMENT_TOP : Control.VERTICAL_ALIGNMENT_BOTTOM;
+            hOuter[horizontalPos] = '8px';
+            hOuter[verticalPos] = '8px';
+            card.addControl(hOuter);
+
+            const hInner = new Rectangle(`${card.name}_${suffix}_hi`);
+            hInner.width = '18px';
+            hInner.height = '2px';
+            hInner.background = brightTone;
+            hInner.thickness = 0;
+            hInner.alpha = 0.98;
+            hInner.isHitTestVisible = false;
+            hInner.horizontalAlignment = hOuter.horizontalAlignment;
+            hInner.verticalAlignment = hOuter.verticalAlignment;
+            hInner[horizontalPos] = '9px';
+            hInner[verticalPos] = '9px';
+            card.addControl(hInner);
+
+            const vOuter = new Rectangle(`${card.name}_${suffix}_vo`);
+            vOuter.width = '2px';
+            vOuter.height = '26px';
+            vOuter.background = darkTone;
+            vOuter.thickness = 0;
+            vOuter.alpha = 0.86;
+            vOuter.isHitTestVisible = false;
+            vOuter.horizontalAlignment = hOuter.horizontalAlignment;
+            vOuter.verticalAlignment = hOuter.verticalAlignment;
+            vOuter[horizontalPos] = '8px';
+            vOuter[verticalPos] = '8px';
+            card.addControl(vOuter);
+
+            const vInner = new Rectangle(`${card.name}_${suffix}_vi`);
+            vInner.width = '2px';
+            vInner.height = '18px';
+            vInner.background = brightTone;
+            vInner.thickness = 0;
+            vInner.alpha = 0.98;
+            vInner.isHitTestVisible = false;
+            vInner.horizontalAlignment = hOuter.horizontalAlignment;
+            vInner.verticalAlignment = hOuter.verticalAlignment;
+            vInner[horizontalPos] = '9px';
+            vInner[verticalPos] = '9px';
+            card.addControl(vInner);
+        };
+
+        addCorner('tl', 'left', 'top');
+        addCorner('tr', 'right', 'top');
+        addCorner('bl', 'left', 'bottom');
+        addCorner('br', 'right', 'bottom');
+
+        const sweepDark = new Rectangle(`${card.name}_sweepDark`);
+        sweepDark.width = '130%';
+        sweepDark.height = '12px';
+        sweepDark.left = '-75%';
+        sweepDark.top = '22px';
+        sweepDark.background = darkTone;
+        sweepDark.alpha = 0.08;
+        sweepDark.thickness = 0;
+        sweepDark.isHitTestVisible = false;
+        card.addControl(sweepDark);
+
+        const sweepBright = new Rectangle(`${card.name}_sweepBright`);
+        sweepBright.width = '90%';
+        sweepBright.height = '8px';
+        sweepBright.left = '-60%';
+        sweepBright.top = '24px';
+        sweepBright.background = brightTone;
+        sweepBright.alpha = 0.14;
+        sweepBright.thickness = 0;
+        sweepBright.isHitTestVisible = false;
+        card.addControl(sweepBright);
+
+        const observer = scene.onBeforeRenderObservable.add(() => {
+            if (!card || !card.parent || !card._host) return;
+            const now = performance.now();
+            const phase = (now % 1800) / 1800;
+            sweepDark.left = `${-75 + phase * 150}%`;
+            sweepBright.left = `${-60 + phase * 130}%`;
+            const pulse = 0.5 + Math.sin(now / 210) * 0.5;
+            auraOuter.alpha = 0.56 + pulse * 0.18 + (card.isPointerOver ? 0.2 : 0);
+            auraInner.alpha = 0.72 + pulse * 0.16 + (card.isPointerOver ? 0.2 : 0);
+            sweepDark.alpha = 0.05 + pulse * 0.04 + (card.isPointerOver ? 0.04 : 0);
+            sweepBright.alpha = 0.08 + pulse * 0.08 + (card.isPointerOver ? 0.06 : 0);
+        });
+
+        listeners.push({ cleanup: () => scene.onBeforeRenderObservable.remove(observer) });
+    }
     /** Formate les modifiers d'un item en texte lisible (ex: "+20% Dégâts\n+10% Vitesse"). */
     static _formatModifiers(modifiers) {
         if (!modifiers) return '';

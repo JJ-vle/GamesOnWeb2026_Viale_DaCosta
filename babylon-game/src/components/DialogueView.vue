@@ -118,6 +118,7 @@ const handleClose = () => {
   gap: 20px;
   pointer-events: all;
   animation: slideUp 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  image-rendering: pixelated;
 }
 
 /* Character sprite area (left side) */
@@ -141,8 +142,14 @@ const handleClose = () => {
   border-image: linear-gradient(135deg, #00ffff, #ff00ff) 1;
   border-bottom: 3px solid #00ffff;
   box-shadow: 
-    0 0 20px rgba(0, 255, 255, 0.3),
-    inset 0 0 20px rgba(0, 255, 255, 0.1);
+    4px 0 0 0 rgba(0, 255, 255, 0.24),
+    -4px 0 0 0 rgba(255, 0, 255, 0.18),
+    0 4px 0 0 rgba(0, 255, 255, 0.2),
+    0 -4px 0 0 rgba(255, 255, 255, 0.08),
+    8px 8px 0 -4px rgba(0, 255, 255, 0.16),
+    -8px 8px 0 -4px rgba(255, 0, 255, 0.12),
+    0 0 0 1px rgba(242, 234, 216, 0.08);
+  image-rendering: pixelated;
 }
 
 .character-sprite {
@@ -151,7 +158,7 @@ const handleClose = () => {
   object-fit: contain;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
-  filter: drop-shadow(0 0 10px rgba(0, 255, 255, 0.6));
+  filter: drop-shadow(0 0 8px rgba(0, 255, 255, 0.45));
 }
 
 /* Main dialogue box */
@@ -164,14 +171,19 @@ const handleClose = () => {
   padding: 25px 30px;
   position: relative;
   box-shadow: 
-    0 0 40px rgba(0, 255, 255, 0.4),
-    inset 0 0 30px rgba(0, 255, 255, 0.1),
+    4px 0 0 0 rgba(0, 255, 255, 0.22),
+    -4px 0 0 0 rgba(255, 0, 255, 0.18),
+    0 4px 0 0 rgba(0, 255, 255, 0.16),
+    0 -4px 0 0 rgba(255, 255, 255, 0.08),
+    10px 10px 0 -4px rgba(0, 255, 255, 0.14),
+    -10px 10px 0 -4px rgba(255, 0, 255, 0.12),
     0 20px 60px rgba(0, 0, 0, 0.6);
   min-height: 200px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   margin-bottom: 15px;
+  image-rendering: pixelated;
 }
 
 /* Glitch background effect */
@@ -200,6 +212,7 @@ const handleClose = () => {
   height: 20px;
   border: 2px solid #00ffff;
   pointer-events: none;
+  image-rendering: pixelated;
 }
 
 .top-left {
@@ -251,13 +264,14 @@ const handleClose = () => {
   text-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
   letter-spacing: 2px;
   font-family: 'Courier New', monospace;
+  image-rendering: pixelated;
 }
 
 .name-underline {
   flex: 1;
   height: 2px;
   background: linear-gradient(to right, #00ffff, #ff00ff, transparent);
-  box-shadow: 0 0 8px rgba(0, 255, 255, 0.6);
+  box-shadow: 4px 0 0 0 rgba(0, 255, 255, 0.26);
 }
 
 /* Dialogue text */
@@ -272,6 +286,7 @@ const handleClose = () => {
   max-height: 120px;
   overflow-y: auto;
   padding-right: 10px;
+  text-rendering: geometricPrecision;
 }
 
 .dialogue-text::-webkit-scrollbar {
@@ -299,6 +314,7 @@ const handleClose = () => {
   z-index: 2;
   font-family: 'Courier New', monospace;
   letter-spacing: 1px;
+  text-rendering: geometricPrecision;
 }
 
 /* Action buttons */
@@ -308,6 +324,7 @@ const handleClose = () => {
   justify-content: flex-end;
   position: relative;
   z-index: 2;
+  image-rendering: pixelated;
 }
 
 .btn-next,
@@ -322,9 +339,14 @@ const handleClose = () => {
   font-size: 0.9rem;
   letter-spacing: 1px;
   transition: all 0.3s ease;
-  box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);
+  box-shadow: 
+    4px 0 0 0 rgba(0, 255, 255, 0.24),
+    -4px 0 0 0 rgba(255, 0, 255, 0.16),
+    0 4px 0 0 rgba(0, 255, 255, 0.16),
+    0 -4px 0 0 rgba(255, 255, 255, 0.08);
   position: relative;
   overflow: hidden;
+  image-rendering: pixelated;
 }
 
 .btn-next::before,
@@ -348,8 +370,11 @@ const handleClose = () => {
 .btn-next:hover,
 .btn-close:hover {
   box-shadow: 
-    0 0 20px rgba(0, 255, 255, 0.8),
-    inset 0 0 10px rgba(0, 255, 255, 0.3);
+    6px 0 0 0 rgba(0, 255, 255, 0.34),
+    -6px 0 0 0 rgba(255, 0, 255, 0.22),
+    0 6px 0 0 rgba(0, 255, 255, 0.2),
+    0 -6px 0 0 rgba(255, 255, 255, 0.12),
+    0 0 18px rgba(0, 255, 255, 0.38);
   transform: scale(1.05);
 }
 
@@ -357,7 +382,11 @@ const handleClose = () => {
   border-color: #ff6b9d;
   color: #ff6b9d;
   background: rgba(255, 107, 157, 0.1);
-  box-shadow: 0 0 10px rgba(255, 107, 157, 0.3);
+  box-shadow: 
+    4px 0 0 0 rgba(255, 107, 157, 0.24),
+    -4px 0 0 0 rgba(0, 255, 255, 0.16),
+    0 4px 0 0 rgba(255, 107, 157, 0.16),
+    0 -4px 0 0 rgba(255, 255, 255, 0.08);
 }
 
 .btn-close::before {
@@ -366,8 +395,11 @@ const handleClose = () => {
 
 .btn-close:hover {
   box-shadow: 
-    0 0 20px rgba(255, 107, 157, 0.8),
-    inset 0 0 10px rgba(255, 107, 157, 0.3);
+    6px 0 0 0 rgba(255, 107, 157, 0.34),
+    -6px 0 0 0 rgba(0, 255, 255, 0.18),
+    0 6px 0 0 rgba(255, 107, 157, 0.2),
+    0 -6px 0 0 rgba(255, 255, 255, 0.12),
+    0 0 18px rgba(255, 107, 157, 0.38);
 }
 
 /* Animations */

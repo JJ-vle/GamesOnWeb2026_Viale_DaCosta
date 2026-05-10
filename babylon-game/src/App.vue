@@ -16,6 +16,7 @@ const showInventory = ref(false)
 const inventoryData = ref(null)
 // Dialogue system
 const showDialogue = ref(false)
+const dialoguePausedGame = ref(false)
 const currentDialogue = ref({
   characterName: 'Système',
   dialogueText: 'Bienvenue voyageur...',
@@ -59,7 +60,7 @@ function returnToMenu() {
     }
     if (e.key && e.key.toLowerCase() === 'p') {
       e.preventDefault()
-      showDialogue.value = !showDialogue.value
+      setDialogueVisible(!showDialogue.value)
     }
     if (e.key && (e.key.toLowerCase() === 'i' || e.key === 'Tab')) {
       e.preventDefault()
@@ -99,6 +100,27 @@ function onSelectZone(id) {
 
 const noop = () => { /* placeholder for future actions */ }
 
+function setDialogueVisible(isVisible) {
+  const game = getGame()
+
+  if (isVisible) {
+    if (game?.scene && !game.scene._isGamePaused) {
+      game.scene._isGamePaused = true
+      dialoguePausedGame.value = true
+    } else {
+      dialoguePausedGame.value = false
+    }
+    showDialogue.value = true
+    return
+  }
+
+  showDialogue.value = false
+  if (dialoguePausedGame.value && game?.scene && game.scene._isGamePaused) {
+    game.scene._isGamePaused = false
+  }
+  dialoguePausedGame.value = false
+}
+
 // Dialogue system functions
 function showDialogueBox(characterName = 'Système', dialogueText = 'Dialogue...', characterImage = '/assets/items/disquette/disquette_blanc.png') {
   currentDialogue.value = {
@@ -106,11 +128,11 @@ function showDialogueBox(characterName = 'Système', dialogueText = 'Dialogue...
     dialogueText,
     characterImage
   }
-  showDialogue.value = true
+  setDialogueVisible(true)
 }
 
 function hideDialogueBox() {
-  showDialogue.value = false
+  setDialogueVisible(false)
 }
 
 function handleDialogueNext() {

@@ -7,6 +7,73 @@ import {
     Slider
 } from '@babylonjs/gui';
 
+const THEME = {
+    ink: '#f2ead8',
+    inkSoft: '#cfc3ab',
+    panel: '#101219ee',
+    panelStrong: '#181b24f5',
+    panelEdge: '#f2ead82e',
+    cyan: '#68f0ff',
+    pink: '#ff7ac8',
+    gold: '#f4cc69',
+    shadowCyan: 'rgba(104, 240, 255, 0.22)',
+    shadowPink: 'rgba(255, 122, 200, 0.2)',
+    shadowGold: 'rgba(244, 204, 105, 0.16)'
+};
+
+function addNeonSweep(scene, button, buttonName, accentColor, idleShadow, hoverShadow, listeners) {
+    button.thickness = 2;
+    button.shadowColor = idleShadow;
+    button.shadowBlur = 14;
+
+    const sweep = new Rectangle(`${buttonName}_sweep`);
+    sweep.width = '90%';
+    sweep.height = '26%';
+    sweep.left = '-65%';
+    sweep.top = '-6%';
+    sweep.thickness = 0;
+    sweep.alpha = 0.18;
+    sweep.background = accentColor;
+    sweep.isHitTestVisible = false;
+    button.addControl(sweep);
+
+    const sheen = new Rectangle(`${buttonName}_sheen`);
+    sheen.width = '120%';
+    sheen.height = '18%';
+    sheen.left = '-80%';
+    sheen.top = '18%';
+    sheen.thickness = 0;
+    sheen.alpha = 0.08;
+    sheen.background = accentColor;
+    sheen.isHitTestVisible = false;
+    button.addControl(sheen);
+
+    const observer = scene.onBeforeRenderObservable.add(() => {
+        if (!button || !button.parent || !button._host) return;
+
+        const time = performance.now();
+        const sweepPhase = (time % 2200) / 2200;
+        const pulse = 0.5 + Math.sin(time / 170) * 0.5;
+
+        sweep.left = `${-65 + sweepPhase * 130}%`;
+        sheen.left = `${-80 + sweepPhase * 170}%`;
+        sweep.alpha = 0.10 + pulse * 0.08 + (button.isPointerOver ? 0.12 : 0);
+        sheen.alpha = 0.05 + pulse * 0.04 + (button.isPointerOver ? 0.08 : 0);
+        button.shadowColor = button.isPointerOver ? hoverShadow : idleShadow;
+        button.shadowBlur = button.isPointerOver ? 22 : 14;
+    });
+
+    listeners.push({ cleanup: () => scene.onBeforeRenderObservable.remove(observer) });
+
+    button.onPointerEnterObservable.add(() => {
+        button.color = accentColor;
+    });
+
+    button.onPointerOutObservable.add(() => {
+        button.color = THEME.ink;
+    });
+}
+
 /**
  * PauseUI — Écran de pause affichée avec Échap
  * 
@@ -39,7 +106,7 @@ export class PauseUI {
         const overlay = new Rectangle('pauseOverlay');
         overlay.width = '100%';
         overlay.height = '100%';
-        overlay.background = '#000000dd';
+        overlay.background = '#05060add';
         overlay.thickness = 0;
         this.ui.addControl(overlay);
         this._overlay = overlay;
@@ -47,19 +114,19 @@ export class PauseUI {
         // ── Titre ──
         const title = new TextBlock('pauseTitle');
         title.text = '⏸ PAUSE';
-        title.color = '#ffcc00';
+        title.color = THEME.gold;
         title.fontSize = 48;
         title.fontFamily = 'monospace';
         title.fontStyle = 'bold';
         title.verticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
-        title.topInPixels = -100;
+        title.topInPixels = -150;
         title.height = "60px";
         overlay.addControl(title);
 
         // ── Conteneur des boutons ──
         const buttonContainer = new Rectangle('buttonContainer');
         buttonContainer.width = '400px';
-        buttonContainer.height = '350px';
+        buttonContainer.height = '440px';
         buttonContainer.thickness = 0;
         buttonContainer.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
         buttonContainer.verticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
@@ -69,14 +136,15 @@ export class PauseUI {
         const resumeBtn = Button.CreateSimpleButton('resumeBtn', '▶ Resume');
         resumeBtn.width = '300px';
         resumeBtn.height = '60px';
-        resumeBtn.top = '-40px';
+        resumeBtn.top = '-20px';
         resumeBtn.cornerRadius = 8;
-        resumeBtn.background = '#1a4d7f';
-        resumeBtn.color = '#ffffff';
+        resumeBtn.background = THEME.panelStrong;
+        resumeBtn.color = THEME.ink;
         resumeBtn.fontSize = 24;
         resumeBtn.fontFamily = 'monospace';
         resumeBtn.fontStyle = 'bold';
         resumeBtn.paddingInPixels = 10;
+        addNeonSweep(this.scene, resumeBtn, 'resumeBtn', THEME.cyan, THEME.shadowCyan, THEME.shadowPink, this._listeners);
         buttonContainer.addControl(resumeBtn);
 
         const resumeObserver = resumeBtn.onPointerClickObservable.add(() => {
@@ -84,26 +152,19 @@ export class PauseUI {
         });
         this._listeners.push({ observable: resumeBtn.onPointerClickObservable, observer: resumeObserver });
 
-        // Hover effect Resume
-        resumeBtn.onPointerEnterObservable.add(() => {
-            resumeBtn.background = '#2a6daf';
-        });
-        resumeBtn.onPointerOutObservable.add(() => {
-            resumeBtn.background = '#1a4d7f';
-        });
-
         // ── Bouton Settings (placeholder) ──
         const settingsBtn = Button.CreateSimpleButton('settingsBtn', '⚙ Settings');
         settingsBtn.width = '300px';
         settingsBtn.height = '60px';
-        settingsBtn.top = '50px';
+        settingsBtn.top = '80px';
         settingsBtn.cornerRadius = 8;
-        settingsBtn.background = '#4a3f35';
-        settingsBtn.color = '#ffffff';
+        settingsBtn.background = THEME.panelStrong;
+        settingsBtn.color = THEME.ink;
         settingsBtn.fontSize = 24;
         settingsBtn.fontFamily = 'monospace';
         settingsBtn.fontStyle = 'bold';
         settingsBtn.paddingInPixels = 10;
+        addNeonSweep(this.scene, settingsBtn, 'settingsBtn', THEME.pink, THEME.shadowPink, THEME.shadowCyan, this._listeners);
         buttonContainer.addControl(settingsBtn);
 
         // Placeholder click
@@ -112,19 +173,11 @@ export class PauseUI {
         });
         this._listeners.push({ observable: settingsBtn.onPointerClickObservable, observer: settingsObserver });
 
-        // Hover effect Settings
-        settingsBtn.onPointerEnterObservable.add(() => {
-            settingsBtn.background = '#6a5f55';
-        });
-        settingsBtn.onPointerOutObservable.add(() => {
-            settingsBtn.background = '#4a3f35';
-        });
-
         // ── Slider Luminosité ──
         const brightnessPanel = new Rectangle('brightnessPanel');
         brightnessPanel.width = '300px';
         brightnessPanel.height = '80px';
-        brightnessPanel.top = '140px';
+        brightnessPanel.top = '180px';
         brightnessPanel.thickness = 0;
         buttonContainer.addControl(brightnessPanel);
 
@@ -135,7 +188,7 @@ export class PauseUI {
 
         const brightnessLabel = new TextBlock('brightnessLabel');
         brightnessLabel.text = `Luminosité: ${Math.round(this.scene.metadata.brightnessMultiplier * 100)}%`;
-        brightnessLabel.color = '#ffffff';
+        brightnessLabel.color = THEME.inkSoft;
         brightnessLabel.fontSize = 18;
         brightnessLabel.fontFamily = 'monospace';
         brightnessLabel.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
@@ -148,8 +201,8 @@ export class PauseUI {
         brightnessSlider.value = this.scene.metadata.brightnessMultiplier;
         brightnessSlider.height = '20px';
         brightnessSlider.width = '280px';
-        brightnessSlider.color = '#ffcc00';
-        brightnessSlider.background = '#333333';
+        brightnessSlider.color = THEME.cyan;
+        brightnessSlider.background = '#2a2d36';
         brightnessSlider.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
         brightnessPanel.addControl(brightnessSlider);
 
@@ -214,7 +267,11 @@ export class PauseUI {
         // ── MEMORY FIX: Remove all observable listeners before disposing ──
         for (const listener of this._listeners) {
             try {
-                listener.observable.remove(listener.observer);
+                if (listener.cleanup) {
+                    listener.cleanup();
+                } else {
+                    listener.observable.remove(listener.observer);
+                }
             } catch (e) { /* ignore */ }
         }
         this._listeners = [];
