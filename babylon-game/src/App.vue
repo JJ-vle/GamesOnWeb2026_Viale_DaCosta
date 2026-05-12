@@ -136,8 +136,13 @@ function hideDialogueBox() {
 }
 
 function handleDialogueNext() {
-  // Peut être complété pour gérer les dialogues multi-répliques
-  console.log('Dialogue suivant')
+  // Si le ScenarioSystem expose un handler global, l'appeler pour avancer
+  if (typeof window !== 'undefined' && typeof window.scenarioNext === 'function') {
+    window.scenarioNext()
+    return
+  }
+  // fallback: cacher la boîte
+  hideDialogueBox()
 }
 
 // Exposer les fonctions au contexte global pour pouvoir les appeler depuis Babylon

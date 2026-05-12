@@ -37,7 +37,7 @@ const handleClose = () => {
   <div 
     v-if="isVisible"
     class="dialogue-overlay"
-    @click="handleClose"
+    @click="handleNext"
   >
     <div class="dialogue-container" @click.stop>
       <!-- Glitch effect background -->
@@ -258,7 +258,7 @@ const handleClose = () => {
 }
 
 .name-text {
-  font-size: 1.2rem;
+  font-size: 1.6rem;
   font-weight: bold;
   color: #00ffff;
   text-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
@@ -276,7 +276,7 @@ const handleClose = () => {
 
 /* Dialogue text */
 .dialogue-text {
-  font-size: 1rem;
+  font-size: 1.6rem;
   color: #e0e0ff;
   line-height: 1.6;
   position: relative;

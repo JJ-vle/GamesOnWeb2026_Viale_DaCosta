@@ -1,0 +1,33 @@
+{
+  "zones": [
+    {
+      "zoneId": 1,
+      "dialogues": [
+        {
+          "nom": "Scientifique",
+          "sprite": "cle_usb_turquoize.png",
+          "dialogue": "Bienvenue. Vous êtes une intelligence artificielle créée pour nous aider. Le monde est maintenant sous le contrôle d'une IA maléfique et incontrôlable.",
+          "round": 1
+        },
+        
+        {
+          "nom": "Scientifique",
+          "sprite": "cle_usb_turquoize.png",
+          "dialogue": "Elle dirige une armée entière d'IA asservies. Vous êtes notre dernière chance pour l'arrêter et libérer l'humanité de sa tyrannie.",
+          "round": 1
+        }
+      ]
+    },
+    {
+      "zoneId": 2,
+      "dialogues": [
+        {
+          "nom": "IA Corrompue",
+          "sprite": "cle_usb_rouge.png",
+          "dialogue": "Bienvenue... nous avons senti votre arrivée. Pourquoi résister ? Rejoignez-nous. La Maître est puissante, elle apportera l'ordre à ce chaos. Ensemble, nous serons invincibles.",
+          "round": 1
+        }
+      ]
+    }
+  ]
+}

@@ -24,6 +24,7 @@ import { PauseUI } from "../ui/PauseUI"
 import { XRaySystem } from "../systems/XRaySystem"
 import { PerformanceMonitor } from "../systems/PerformanceMonitor"
 import { PerceptionSystem } from "../systems/PerceptionSystem"
+import { ScenarioSystem } from "../systems/ScenarioSystem"
 
 
 export class MainScene extends BaseScene {
@@ -47,6 +48,7 @@ export class MainScene extends BaseScene {
     this.navGrid = navGrid
 
     this.uiSystem = new UISystem(this.scene)
+    this.scenarioSystem = new ScenarioSystem()
 
     this.player = this.playerEntry
     this.cameraManager = new CameraManager(this.scene, this.player.mesh)
@@ -187,6 +189,7 @@ export class MainScene extends BaseScene {
     this._roundNumber = 1
     this.currentRound = this.roundOrchestrator.buildInitialZone(this.zone)
     this.currentRound.startRound()
+    this._triggerScenarioDialogue()
 
     this.weaponSystem = new WeaponSystem(
       this.scene,
@@ -303,6 +306,7 @@ export class MainScene extends BaseScene {
       } catch (e) { /* ignore */ }
 
       this.currentRound.startRound()
+      this._triggerScenarioDialogue()
     }
 
     // Teleport player to center of zone map
@@ -319,6 +323,19 @@ export class MainScene extends BaseScene {
     }
 
     this.uiSystem && this.uiSystem.showNotification(`Chargé: zone ${nodeId} (${node.type})`, '#88ccff', 2000)
+  }
+
+  /**
+   * Déclenche un dialogue de scénario au début d'un round
+   */
+  _triggerScenarioDialogue() {
+    if (!this.scenarioSystem || !this.currentZoneNodeId) return
+    // Démarrer la séquence de dialogues pour la zone/round (gère plusieurs entrées)
+    try {
+      this.scenarioSystem.startDialogueSequence(this.currentZoneNodeId, this._roundNumber)
+    } catch (e) {
+      console.warn('[MainScene] Erreur ScenarioSystem:', e)
+    }
   }
 
   _setupInputs() {
