@@ -2,6 +2,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import BabylonScene from './components/BabylonScene.vue'
 import ZoneMapView from './components/ZoneMapView.vue'
+import ShopView from './components/ShopView.vue'
 import InventoryView from './components/InventoryView.vue'
 import DialogueView from './components/DialogueView.vue'
 import ModelViewer from './components/ModelViewer.vue'
@@ -11,6 +12,9 @@ import { useGameMode } from './stores/useGameMode'
 const gameStarted = ref(false)
 // current player node id to pass to ZoneMapView
 const playerNodeId = ref(null)
+const currentSelectedNodeId = ref(null)  // Pour tracker le nœud sélectionné
+// Shop overlay
+const showShop = ref(false)
 // Inventory overlay
 const showInventory = ref(false)
 const inventoryData = ref(null)
@@ -76,6 +80,10 @@ function returnToMenu() {
         showInventory.value = false
       }
     }
+    // DEBUG: Touche pour ouvrir le shop (Shift+O)
+    if (e.shiftKey && (e.key === 'O' || e.key === 'o')) {
+      showShop.value = !showShop.value
+    }
   }
   window.addEventListener('keydown', keyHandler)
 
@@ -87,8 +95,19 @@ function returnToMenu() {
 })
 
 function onSelectZone(id) {
-  // ask the running Game/MainScene to load the selected zone node
+  // Check if selected node is a Shop
   const g = getGame()
+  if (g?.scene?.zone?.tree) {
+    const node = g.scene.zone.tree.nodes.find(n => n.id === id)
+    if (node && node.type && node.type.toLowerCase().includes('shop')) {
+      // Show the shop instead of loading the zone
+      currentSelectedNodeId.value = id
+      showShop.value = true
+      return
+    }
+  }
+
+  // Otherwise load the zone normally
   if (g && g.scene && typeof g.scene.loadZoneByNodeId === 'function') {
     g.scene.loadZoneByNodeId(id)
   } else {
@@ -96,6 +115,16 @@ function onSelectZone(id) {
   }
   // close the map UI
   toggleMap(false)
+}
+
+function onShopClose() {
+  // Close shop and return to map
+  showShop.value = false
+  // Return to map showing the current node
+  if (currentSelectedNodeId.value != null) {
+    playerNodeId.value = currentSelectedNodeId.value
+    setMode('map')
+  }
 }
 
 const noop = () => { /* placeholder for future actions */ }
@@ -179,6 +208,7 @@ if (typeof window !== 'undefined') {
     <div class="game-root">
       <BabylonScene />
       <ZoneMapView v-if="mode === 'map'" :playerNodeId="playerNodeId" @selectZone="onSelectZone" @close="setMode('combat')" />
+      <ShopView v-if="showShop" @close="onShopClose" />
       <InventoryView v-if="showInventory && inventoryData" :inventory="inventoryData" @close="showInventory = false" />
       <DialogueView 
         :isVisible="showDialogue"

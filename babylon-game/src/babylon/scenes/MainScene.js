@@ -22,6 +22,7 @@ import { XPSystem } from "../systems/XPSystem"
 import { LootUI } from "../ui/LootUI"
 import { PauseUI } from "../ui/PauseUI"
 import { XRaySystem } from "../systems/XRaySystem"
+import { ShopSystem } from "../systems/ShopSystem"
 import { PerformanceMonitor } from "../systems/PerformanceMonitor"
 import { PerceptionSystem } from "../systems/PerceptionSystem"
 import { ScenarioSystem } from "../systems/ScenarioSystem"
@@ -53,6 +54,7 @@ export class MainScene extends BaseScene {
     this.player = this.playerEntry
     this.cameraManager = new CameraManager(this.scene, this.player.mesh)
     this.score = 0
+    this.playerEntry.money = 0  // Synchroniser avec score
     this.kills = 0
     this.projectiles = []
 
@@ -61,6 +63,7 @@ export class MainScene extends BaseScene {
     // ── Build System ──
     //this.buildSystem = new BuildSystem(this.playerEntry) OLD
     this.lootSystem = new LootSystem()
+    this.shopSystem = new ShopSystem()
     this.xpSystem = new XPSystem()
     this.lootUI = new LootUI(this.scene)
     this.pauseUI = new PauseUI(this.scene)
@@ -92,6 +95,17 @@ export class MainScene extends BaseScene {
         if (player._origTakeDamage) player.takeDamage = player._origTakeDamage;
         console.log("[Debug] God Mode OFF");
       }
+    };
+
+    window.openShop = () => {
+      console.log("[Debug] Open shop from Vue (Shift+O)");
+    };
+
+    window.addMoney = (amount = 500) => {
+      this.playerEntry.money = (this.playerEntry.money || 0) + amount;
+      this.uiSystem.showNotification(`+${amount} pièces!`, '#ffcc00', 2000);
+      if (this.uiSystem) this.uiSystem.updateGears(this.playerEntry.money);
+      console.log(`[Debug] Added ${amount} pièces. Total: ${this.playerEntry.money}`);
     };
 
     this.playerEntry.inventory.onItemEquipped = (item) => {
@@ -167,6 +181,7 @@ export class MainScene extends BaseScene {
         this.kills++
         this.xpSystem.addXP(enemy.xpValue)
         this.score += enemy.coinValue
+        this.playerEntry.money = this.score  // Garder en sync
         this.uiSystem?.updateKills(this.kills)
         this.uiSystem?.updateGears(this.score)
         this.uiSystem?.updateXP(this.xpSystem.progressToNext, this.xpSystem.level)

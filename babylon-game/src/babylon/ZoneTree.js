@@ -259,6 +259,18 @@ export function generateZoneTree(options = {}) {
   const occurrences = {}
   Object.values(nodes).forEach(n => n.next.forEach(t => occurrences[t] = (occurrences[t] || 0) + 1))
 
+  // ══════════════════════════════════════════════
+  // Ensure at least one Shop at depth 3
+  // ══════════════════════════════════════════════
+  const depth3Nodes = nodesByDepth[3] || []
+  const hasShopAt3 = depth3Nodes.some(n => n.type === 'Shop')
+  if (!hasShopAt3 && depth3Nodes.length > 0 && depth >= 3) {
+    const randomShopNode = depth3Nodes[Math.floor(Math.random() * depth3Nodes.length)]
+    randomShopNode.type = 'Shop'
+    randomShopNode.corrupted = false
+    randomShopNode.effect = 'none'
+  }
+
   Object.values(nodes).forEach(parent => {
     for (let i = 0; i < parent.next.length; i++) {
       const tid = parent.next[i]

@@ -31,6 +31,7 @@ export class Player {
         this.regen = 0;     // HP/s régénération passive (0 = désactivé)
         this.lifesteal = 0; // réservé
         this.armor = 0;     // réduction de dégâts plate (ex: armor=2 → -2 dégâts reçus)
+        this.money = 0;     // Monnaie du joueur (pour le shop)
 
         this._regenAccum = 0; // accumulateur regen (évite les micro-heals chaque frame)
         this.inventory = new PlayerInventory(this);

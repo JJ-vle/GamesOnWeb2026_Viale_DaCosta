@@ -260,7 +260,7 @@ watch(grouped, async () => {
 .zone-map-root {
   position: fixed;
   inset: 0;
-  background-image: linear-gradient(180deg, rgba(7,16,37,0.72) 0%, rgba(11,26,43,0.45) 60%, rgba(7,16,37,0.72) 100%), url('/assets/background_city_night.png');
+  background-image: linear-gradient(180deg, rgba(7,16,37,0.25) 0%, rgba(11,26,43,0.15) 60%, rgba(7,16,37,0.25) 100%), url('/assets/background_city-night.png');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
