@@ -83,12 +83,13 @@ export class RoundOrchestrator {
       const idx = rounds.indexOf(round)
       const isLast = idx >= 0 ? idx === rounds.length - 1 : true
 
-      if (isLast && this.zone && !this.zone.allowInfiniteRounds) {
+      // Si dernier round, passer une callback pour ouvrir la carte APRÈS le choix de l'item
+      const onItemPicked = isLast && this.zone && !this.zone.allowInfiniteRounds ? () => {
         try { window.dispatchEvent(new CustomEvent('openZoneMap', { detail: { nodeId: this.currentZoneNodeId } })) } catch (e) {}
-      }
+      } : undefined
 
       const shouldStartNext = !isLast || (this.zone?.allowInfiniteRounds ?? false)
-      setTimeout(() => showLootScreen({ startNextRoundAfterPick: shouldStartNext }), 800)
+      setTimeout(() => showLootScreen({ startNextRoundAfterPick: shouldStartNext, onItemPicked }), 800)
     }
   }
 

@@ -616,7 +616,7 @@ export class MainScene extends BaseScene {
    */
   _showLootScreen(level, options = {}) {
     if (this.lootUI.isVisible) return // déjà ouvert
-    const { startNextRoundAfterPick = false } = options
+    const { startNextRoundAfterPick = false, onItemPicked = null } = options
 
     this._isGamePausedForLoot = true
     const occupiedSlots = this.playerEntry.inventory.getOccupiedSlots()
@@ -624,6 +624,7 @@ export class MainScene extends BaseScene {
     this.lootUI.show(pool, this.playerEntry, (item) => {
       // console.log(`[MainScene] Item choisi: ${item.name}`)
       this._isGamePausedForLoot = false
+      if (onItemPicked) onItemPicked()
       if (startNextRoundAfterPick) {
         this._startNextRound()
       }
