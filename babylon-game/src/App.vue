@@ -276,10 +276,14 @@ if (typeof window !== 'undefined') {
   }
 
   .logo {
-    width: 360px;
-    max-width: 60vw;
+    width: 450px;
+    max-width: 75vw;
     height: auto;
-    filter: drop-shadow(0 8px 18px rgba(0,0,0,0.7));
+
+    filter:
+      drop-shadow(0 0 12px rgba(237, 246, 255, 0.35))
+      drop-shadow(0 8px 18px rgba(0,0,0,0.7));
+
     display: block;
   }
 
@@ -288,12 +292,43 @@ if (typeof window !== 'undefined') {
     top: 20px;
     left: 20px;
     z-index: 60;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .top-left::before {
+    content: '';
+    position: absolute;
+
+    width: 420px;
+    height: 420px;
+
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+
+    border-radius: 50%;
+
+    background:
+      radial-gradient(
+        circle,
+        rgba(120, 180, 255, 0.45) 0%,
+        rgba(120, 180, 255, 0.18) 45%,
+        rgba(120, 180, 255, 0.06) 70%,
+        transparent 100%
+      );
+
+    filter: blur(55px);
+
+    z-index: -1;
+    pointer-events: none;
   }
 
   .left-bottom {
     position: fixed;
     left: 20px;
-    bottom: 140px;
+    bottom: 80px;
     display: flex;
     flex-direction: column;
     gap: 25px;

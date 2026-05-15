@@ -95,7 +95,7 @@ const getRarityStars = (rarity) => {
       <div class="merchant-area">
         <div class="merchant-card">
           <img src="/assets/items/usb/cle_usb_orange.png" alt="Marchand" class="merchant-sprite" />
-          <div class="merchant-label">🤖 MARCHAND</div>
+          <div class="merchant-label">MARCHAND</div>
         </div>
       </div>
 
