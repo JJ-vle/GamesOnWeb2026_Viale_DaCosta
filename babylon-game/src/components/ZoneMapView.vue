@@ -171,7 +171,7 @@ function updateLinks() {
   contentSize.value = { w: contentEl.scrollWidth, h: contentEl.scrollHeight }
   links.value = out
 
-  // center on player node on first render if provided
+  // center on player node
   if (currentPlayerId.value != null && nodeRefs[currentPlayerId.value]) {
     // center vertically in container where possible
     const c = container.value
@@ -195,7 +195,34 @@ function selectNode(id) {
 function reachableHas(id) { return reachableSet.value && reachableSet.value.has && reachableSet.value.has(id) }
 function successorsOfPlayerHas(id) { return successorsSet.value && successorsSet.value.has && successorsSet.value.has(id) }
 
+// treat shop/store nodes specially to avoid re-triggering the shop UI
+function isShop(node) {
+  return ((node && node.type) || '').toLowerCase().includes('shop')
+}
+
+// clickable when it's a successor of the player, but prevent clicking the
+// player's current shop node (to avoid re-triggering the UI)
+function isClickable(node) {
+  if (!node) return false
+  // if node is a successor of the player and not the current player's shop node
+  const successor = successorsOfPlayerHas(node.id)
+  const isCurrentPlayerShop = (currentPlayerId.value != null && node.id === currentPlayerId.value && isShop(node))
+  return !!successor && !isCurrentPlayerShop
+}
+
+function handleNodeClick(node) {
+  if (!isClickable(node)) return
+  
+  selectNode(node.id)
+}
+
 watch(grouped, async () => {
+  await nextTick()
+  requestAnimationFrame(() => requestAnimationFrame(updateLinks))
+})
+
+// Recalculate links when player position changes (after shop visit)
+watch(currentPlayerId, async () => {
   await nextTick()
   requestAnimationFrame(() => requestAnimationFrame(updateLinks))
 })
@@ -237,9 +264,10 @@ watch(grouped, async () => {
                   v-for="node in grouped[d] || []"
                   :key="node.id"
                   class="node-card"
-                  :class="[node.type.replace(/\s+/g, '-'), node.aura ? 'aura-' + node.aura : '', (currentPlayerId === node.id) ? 'player' : '', (!reachableHas(node.id) ? 'disabled' : ''), (successorsOfPlayerHas(node.id) ? 'clickable' : '')]"
+                  :class="[node.type.replace(/\s+/g, '-'), node.aura ? 'aura-' + node.aura : '', (currentPlayerId === node.id) ? 'player' : '', (!reachableHas(node.id) ? 'disabled' : ''), (isClickable(node) ? 'clickable' : '')]"
+                  :title="isClickable(node) ? 'Cliquez pour avancer' : ''"
                   :ref="el => setNodeRef(node.id, el)"
-                  @click="successorsOfPlayerHas(node.id) ? selectNode(node.id) : null"
+                  @click="handleNodeClick(node)"
                 >
                   <div class="zone-img-container">
                     <img :src="currentPlayerId === node.id ? '/assets/zones/zone_player.png' : getImageFor(node)" class="zone-img" :alt="node.type" />
@@ -260,7 +288,7 @@ watch(grouped, async () => {
 .zone-map-root {
   position: fixed;
   inset: 0;
-  background-image: linear-gradient(180deg, rgba(7,16,37,0.25) 0%, rgba(11,26,43,0.15) 60%, rgba(7,16,37,0.25) 100%), url('/assets/background_city-night.png');
+  background-image: linear-gradient(180deg, rgba(7,16,37,0.25) 0%, rgba(11,26,43,0.15) 60%, rgba(7,16,37,0.25) 100%), url('/assets/background_city_night.png');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -356,8 +384,9 @@ watch(grouped, async () => {
   z-index: 10;
 }
 
-.node-card.disabled { pointer-events: none; opacity: 0.5; }
-.node-card.clickable { cursor: pointer; }
+  .node-card.disabled { pointer-events: none; opacity: 0.5; }
+  /* ensure clickable class can re-enable pointer events for successors */
+  .node-card.clickable { cursor: pointer; pointer-events: auto; }
 
 .player .zone-img-container::before {
   box-shadow: 0 0 18px 6px rgba(255,255,255,0.95);

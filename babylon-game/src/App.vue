@@ -2,6 +2,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import BabylonScene from './components/BabylonScene.vue'
 import ZoneMapView from './components/ZoneMapView.vue'
+import GameEndView from './components/GameEndView.vue'
 import ShopView from './components/ShopView.vue'
 import InventoryView from './components/InventoryView.vue'
 import DialogueView from './components/DialogueView.vue'
@@ -10,6 +11,7 @@ import { getGame } from './babylon/BabylonService'
 import { useGameMode } from './stores/useGameMode'
 
 const gameStarted = ref(false)
+const gameEnded = ref(false)
 // current player node id to pass to ZoneMapView
 const playerNodeId = ref(null)
 const currentSelectedNodeId = ref(null)  // Pour tracker le nœud sélectionné
@@ -31,6 +33,7 @@ const { mode, setMode, toggleMap } = useGameMode()
 
 function returnToMenu() {
   gameStarted.value = false
+  gameEnded.value = false
   setMode('combat')
 }
 
@@ -40,7 +43,22 @@ function returnToMenu() {
 
   // Écouter les demandes d'ouverture de la zone map depuis la scène (MainScene)
   const openMapHandler = (e) => {
-    const id = e && e.detail && typeof e.detail.nodeId !== 'undefined' ? e.detail.nodeId : null
+    const detail = e && e.detail ? e.detail : {}
+    const id = typeof detail.nodeId !== 'undefined' ? detail.nodeId : null
+    const completed = !!detail.completed
+
+    // If this open request comes from a completed zone, and it's the final boss node,
+    // show the game end screen instead of opening the map.
+    if (completed && id != null) {
+      const g = getGame()
+      const node = g?.scene?.zone?.tree?.nodes?.find(n => n.id === id)
+      const isFinalBoss = node && node.type && node.type.toLowerCase().includes('boss') && node.depth === g?.scene?.zone?.tree?.depth
+      if (isFinalBoss) {
+        gameEnded.value = true
+        return
+      }
+    }
+
     if (mode.value !== 'map') {
       if (id != null) playerNodeId.value = id
       setMode('map')
@@ -127,6 +145,10 @@ function onShopClose() {
   }
 }
 
+function onReturnToMenuFromEnd() {
+  returnToMenu()
+}
+
 const noop = () => { /* placeholder for future actions */ }
 
 function setDialogueVisible(isVisible) {
@@ -207,7 +229,8 @@ if (typeof window !== 'undefined') {
     <!-- Keep Babylon canvas mounted persistently. Show the map as an overlay when mode === 'map'. -->
     <div class="game-root">
       <BabylonScene />
-      <ZoneMapView v-if="mode === 'map'" :playerNodeId="playerNodeId" @selectZone="onSelectZone" @close="setMode('combat')" />
+      <GameEndView v-if="gameEnded" @returnToMenu="onReturnToMenuFromEnd" />
+      <ZoneMapView v-if="mode === 'map' && !gameEnded" :playerNodeId="playerNodeId" @selectZone="onSelectZone" @close="setMode('combat')" />
       <ShopView v-if="showShop" @close="onShopClose" />
       <InventoryView v-if="showInventory && inventoryData" :inventory="inventoryData" @close="showInventory = false" />
       <DialogueView 

@@ -85,7 +85,13 @@ export class RoundOrchestrator {
 
       // Si dernier round, passer une callback pour ouvrir la carte APRÈS le choix de l'item
       const onItemPicked = isLast && this.zone && !this.zone.allowInfiniteRounds ? () => {
-        try { window.dispatchEvent(new CustomEvent('openZoneMap', { detail: { nodeId: this.currentZoneNodeId } })) } catch (e) {}
+        try {
+          // If this node is the final node in the tree, mark the open as coming from a completed zone
+          const tree = this.zone?.tree
+          const node = tree?.nodes?.find(n => n.id === this.currentZoneNodeId)
+          const isFinalNode = node && tree && node.depth === tree.depth
+          window.dispatchEvent(new CustomEvent('openZoneMap', { detail: { nodeId: this.currentZoneNodeId, completed: !!isFinalNode } }))
+        } catch (e) {}
       } : undefined
 
       const shouldStartNext = !isLast || (this.zone?.allowInfiniteRounds ?? false)
@@ -154,7 +160,12 @@ export class RoundOrchestrator {
 
     if (!this.zone.allowInfiniteRounds) {
       uiSystem.showNotification('Zone terminée — appuie sur M pour ouvrir la carte', '#88ff88', 3000)
-      try { window.dispatchEvent(new CustomEvent('openZoneMap', { detail: { nodeId: currentZoneNodeId } })) } catch (e) {}
+      try {
+        const tree = this.zone?.tree
+        const node = tree?.nodes?.find(n => n.id === currentZoneNodeId)
+        const isFinalNode = node && tree && node.depth === tree.depth
+        window.dispatchEvent(new CustomEvent('openZoneMap', { detail: { nodeId: currentZoneNodeId, completed: !!isFinalNode } }))
+      } catch (e) {}
       return
     }
 
