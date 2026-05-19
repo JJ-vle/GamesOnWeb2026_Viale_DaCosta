@@ -6,12 +6,15 @@ import GameEndView from './components/GameEndView.vue'
 import ShopView from './components/ShopView.vue'
 import InventoryView from './components/InventoryView.vue'
 import DialogueView from './components/DialogueView.vue'
+import StoryIntroView from './components/StoryIntroView.vue'
 import ModelViewer from './components/ModelViewer.vue'
 import { getGame } from './babylon/BabylonService'
 import { useGameMode } from './stores/useGameMode'
 
 const gameStarted = ref(false)
 const gameEnded = ref(false)
+// Vrai quand l'intro histoire est terminée et le gameplay peut démarrer
+const storyIntroComplete = ref(false)
 // current player node id to pass to ZoneMapView
 const playerNodeId = ref(null)
 const currentSelectedNodeId = ref(null)  // Pour tracker le nœud sélectionné
@@ -29,12 +32,28 @@ const currentDialogue = ref({
   characterImage: '/assets/items/disquette/disquette_blanc.png'
 })
 
-const { mode, setMode, toggleMap } = useGameMode()
+const { mode, setMode, toggleMap, gameplayMode, setGameplayMode } = useGameMode()
+
+function startGame(selectedMode) {
+  setGameplayMode(selectedMode)
+  gameStarted.value = true
+}
 
 function returnToMenu() {
   gameStarted.value = false
   gameEnded.value = false
+  storyIntroComplete.value = false
   setMode('combat')
+  setGameplayMode(null)
+}
+
+function onIntroComplete() {
+  storyIntroComplete.value = true
+  // Babylon était déjà en train de charger en arrière-plan; on démarre maintenant les rounds
+  const g = getGame()
+  if (g?.scene?.startStoryGameplay) {
+    g.scene.startStoryGameplay()
+  }
 }
 
   onMounted(() => {
@@ -68,6 +87,8 @@ function returnToMenu() {
 
   const keyHandler = (e) => {
     if (!gameStarted.value) return
+    // Bloquer les raccourcis in-game pendant l'intro histoire
+    if (gameplayMode.value === 'story' && !storyIntroComplete.value) return
     if (e.key && e.key.toLowerCase() === 'm') {
       // Toggle map open/close on 'm'
       if (mode.value !== 'map') {
@@ -214,7 +235,8 @@ if (typeof window !== 'undefined') {
     </div>
 
     <div class="left-bottom">
-      <button @click="gameStarted = true" class="play-button">Jouer</button>
+      <button @click="startGame('story')" class="play-button play-button--story">Mode Histoire</button>
+      <button @click="startGame('arcade')" class="play-button">Mode Arcade</button>
       <button @click="noop" class="menu-button">Avancement</button>
       <a href="https://github.com/JJ-vle/GamesOnWeb2026_Viale_DaCosta" target="_blank" rel="noopener" class="menu-link"><button class="menu-button">Github</button></a>
       <button @click="noop" class="menu-button">Crédits</button>
@@ -226,14 +248,32 @@ if (typeof window !== 'undefined') {
   </div>
 
   <template v-else>
-    <!-- Keep Babylon canvas mounted persistently. Show the map as an overlay when mode === 'map'. -->
     <div class="game-root">
-      <BabylonScene />
+      <!--
+        BabylonScene est toujours monté dès que le jeu démarre.
+        En mode Histoire, il reste invisible (visibility:hidden) pendant l'intro
+        afin de précharger la map en arrière-plan. Il devient visible dès que
+        storyIntroComplete passe à true.
+      -->
+      <div
+        class="babylon-layer"
+        :class="{ 'babylon-hidden': gameplayMode === 'story' && !storyIntroComplete }"
+      >
+        <BabylonScene :gameplayMode="gameplayMode" />
+      </div>
+
+      <!-- Intro cinématique du Mode Histoire -->
+      <StoryIntroView
+        v-if="gameplayMode === 'story' && !storyIntroComplete"
+        @introComplete="onIntroComplete"
+      />
+
+      <!-- Overlays in-game (disponibles une fois le gameplay lancé) -->
       <GameEndView v-if="gameEnded" @returnToMenu="onReturnToMenuFromEnd" />
       <ZoneMapView v-if="mode === 'map' && !gameEnded" :playerNodeId="playerNodeId" @selectZone="onSelectZone" @close="setMode('combat')" />
       <ShopView v-if="showShop" @close="onShopClose" />
       <InventoryView v-if="showInventory && inventoryData" :inventory="inventoryData" @close="showInventory = false" />
-      <DialogueView 
+      <DialogueView
         :isVisible="showDialogue"
         :characterName="currentDialogue.characterName"
         :dialogueText="currentDialogue.dialogueText"
@@ -249,6 +289,19 @@ if (typeof window !== 'undefined') {
   body {
     margin: 0;
     overflow: hidden;
+  }
+
+  .babylon-layer {
+    position: fixed;
+    inset: 0;
+  }
+
+  /*
+   * visibility:hidden (et non display:none) pour que le canvas conserve ses
+   * dimensions réelles et que Babylon puisse s'initialiser correctement.
+   */
+  .babylon-hidden {
+    visibility: hidden;
   }
 
   .home-page {
@@ -470,5 +523,15 @@ if (typeof window !== 'undefined') {
 
   .play-button:active {
     transform: scale(0.98);
+  }
+
+  .play-button--story {
+    color: #ffffff;
+    background: rgba(0, 0, 0, 0.45);
+    border-color: rgba(255, 255, 255, 0.4);
+  }
+
+  .play-button--story:hover {
+    background: rgba(255, 255, 255, 0.08);
   }
 </style>

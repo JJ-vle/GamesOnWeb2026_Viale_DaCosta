@@ -8,12 +8,12 @@ const state = {
   _resizeHandler: null
 }
 
-export function initBabylon(canvas) {
+export function initBabylon(canvas, gameplayMode = 'arcade') {
   if (state.game) return state.game
 
   // Create the Game instance which in the existing code constructs
   // the engine and scene from the provided canvas.
-  state.game = new Game(canvas)
+  state.game = new Game(canvas, gameplayMode)
 
   if (typeof state.game.start === 'function') {
     state.game.start()

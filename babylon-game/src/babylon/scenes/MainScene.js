@@ -29,8 +29,11 @@ import { ScenarioSystem } from "../systems/ScenarioSystem"
 
 
 export class MainScene extends BaseScene {
-  constructor(engine) {
+  constructor(engine, gameplayMode = 'arcade') {
     super(engine)
+
+    // 'arcade' | 'story'
+    this.gameplayMode = gameplayMode
 
     // ID du noeud de zone actuellement chargé (utile pour demander l'ouverture de la map)
     this.currentZoneNodeId = null
@@ -155,56 +158,19 @@ export class MainScene extends BaseScene {
       console.error('[ZoneTree] Error generating tree', e)
     }
 
-    // Créer le système de spawn aléatoire
-    this.spawnerSystem = new SpawnerSystem(this.scene, MAP.WIDTH, MAP.HEIGHT, SPAWN.MIN_DIST_FROM_PLAYER);
-
-    // Le joueur spawn en 0, 0, 0. On veut protéger un carré autour de lui (ex: de -20 à +20)
-    // (Vector3 point_1, Vector3 point_2)
-    SPAWN.EXCLUSION_ZONES.forEach(([a, b]) =>
-      this.spawnerSystem.addExclusionZone(new Vector3(...a), new Vector3(...b))
-    )
-    this.spawnerSystem.addInclusionZone(new Vector3(...SPAWN.INCLUSION_ZONE[0]), new Vector3(...SPAWN.INCLUSION_ZONE[1]))
-
-    this.zone.addSpawner(this.spawnerSystem);
-
-    // Callback ennemi spawné
-    const spawnHandler = new EnemySpawnHandler(this.scene, {
-      getNavGrid: () => this.navGrid,
-      perceptionSystem: this.sharedPerceptionSystem,
-      playerEntry: this.playerEntry,
-      uiSystem: this.uiSystem,
-      enemies: this.enemies,
-      collisionSystem: this.collisionSystem,
-      spawnerSystem: this.spawnerSystem,
-      getCurrentRound: () => this.currentRound,
-      onEnemyKilled: (enemy) => {
-        this.kills++
-        this.xpSystem.addXP(enemy.xpValue)
-        this.score += enemy.coinValue
-        this.playerEntry.money = this.score  // Garder en sync
-        this.uiSystem?.updateKills(this.kills)
-        this.uiSystem?.updateGears(this.score)
-        this.uiSystem?.updateXP(this.xpSystem.progressToNext, this.xpSystem.level)
-      },
-      onKillOnly: () => { this.kills++ }
-    })
-    this.spawnerSystem.onEnemySpawned = spawnHandler.makeSpawnCallback()
-
-    // ── OPTIMISATION: Initialiser le Performance Monitor ──
-    this.performanceMonitor = new PerformanceMonitor(this.scene, this.spawnerSystem)
-
-    this.roundOrchestrator = new RoundOrchestrator(this.scene, {
-      spawnerSystem: this.spawnerSystem,
-      collisionSystem: this.collisionSystem,
-      enemies: this.enemies,
-      uiSystem: this.uiSystem,
-      showLootScreen: (opts) => this._showLootScreen(this.xpSystem.level, opts)
-    })
-    this.roundOrchestrator.currentZoneNodeId = this.currentZoneNodeId
+    // Arcade-only systems — null by default so story mode is safe
+    this.spawnerSystem = null
+    this.performanceMonitor = null
+    this.roundOrchestrator = null
+    this.currentRound = null
+    this.enemyCallbacks = null
     this._roundNumber = 1
-    this.currentRound = this.roundOrchestrator.buildInitialZone(this.zone)
-    this.currentRound.startRound()
-    this._triggerScenarioDialogue()
+
+    if (gameplayMode === 'arcade') {
+      this._initArcadeMode()
+    } else {
+      this._initStoryMode()
+    }
 
     this.weaponSystem = new WeaponSystem(
       this.scene,
@@ -260,9 +226,72 @@ export class MainScene extends BaseScene {
       }
     })
 
-    this.enemyCallbacks = spawnHandler.makeEnemyCallbacks()
     this._setupInputs()
     this._setupDebugCommands()
+  }
+
+  _initArcadeMode() {
+    this.spawnerSystem = new SpawnerSystem(this.scene, MAP.WIDTH, MAP.HEIGHT, SPAWN.MIN_DIST_FROM_PLAYER)
+
+    SPAWN.EXCLUSION_ZONES.forEach(([a, b]) =>
+      this.spawnerSystem.addExclusionZone(new Vector3(...a), new Vector3(...b))
+    )
+    this.spawnerSystem.addInclusionZone(new Vector3(...SPAWN.INCLUSION_ZONE[0]), new Vector3(...SPAWN.INCLUSION_ZONE[1]))
+
+    this.zone.addSpawner(this.spawnerSystem)
+
+    const spawnHandler = new EnemySpawnHandler(this.scene, {
+      getNavGrid: () => this.navGrid,
+      perceptionSystem: this.sharedPerceptionSystem,
+      playerEntry: this.playerEntry,
+      uiSystem: this.uiSystem,
+      enemies: this.enemies,
+      collisionSystem: this.collisionSystem,
+      spawnerSystem: this.spawnerSystem,
+      getCurrentRound: () => this.currentRound,
+      onEnemyKilled: (enemy) => {
+        this.kills++
+        this.xpSystem.addXP(enemy.xpValue)
+        this.score += enemy.coinValue
+        this.playerEntry.money = this.score
+        this.uiSystem?.updateKills(this.kills)
+        this.uiSystem?.updateGears(this.score)
+        this.uiSystem?.updateXP(this.xpSystem.progressToNext, this.xpSystem.level)
+      },
+      onKillOnly: () => { this.kills++ }
+    })
+    this.spawnerSystem.onEnemySpawned = spawnHandler.makeSpawnCallback()
+    this.enemyCallbacks = spawnHandler.makeEnemyCallbacks()
+
+    this.performanceMonitor = new PerformanceMonitor(this.scene, this.spawnerSystem)
+
+    this.roundOrchestrator = new RoundOrchestrator(this.scene, {
+      spawnerSystem: this.spawnerSystem,
+      collisionSystem: this.collisionSystem,
+      enemies: this.enemies,
+      uiSystem: this.uiSystem,
+      showLootScreen: (opts) => this._showLootScreen(this.xpSystem.level, opts)
+    })
+    this.roundOrchestrator.currentZoneNodeId = this.currentZoneNodeId
+    this.currentRound = this.roundOrchestrator.buildInitialZone(this.zone)
+    this.currentRound.startRound()
+    this._triggerScenarioDialogue()
+  }
+
+  _initStoryMode() {
+    // Le monde, le joueur et la caméra sont déjà prêts (init commune).
+    // Les rounds et le spawner démarreront via startStoryGameplay(),
+    // appelé par App.vue une fois l'intro cinématique terminée.
+    console.log('[StoryMode] Scène prête — en attente de la fin de l\'intro.')
+  }
+
+  /**
+   * Appelé par App.vue après la fin de l'intro histoire.
+   * Lance le gameplay (rounds, spawner, ennemis) exactement comme en mode Arcade.
+   */
+  startStoryGameplay() {
+    if (this.roundOrchestrator) return // déjà démarré, évite le double-appel
+    this._initArcadeMode()
   }
 
   /**
@@ -520,8 +549,9 @@ export class MainScene extends BaseScene {
     if (this.navGrid) this.navGrid.tick()
     if (this._isGamePausedForLoot || this._isGamePaused) return
 
-    // Level-up loot en attente : ouvrir seulement si le round est encore actif
+    // Level-up loot en attente : ouvrir seulement si le round est encore actif (arcade uniquement)
     if (
+      this.gameplayMode === 'arcade' &&
       this._pendingLevelUpLootLevel != null &&
       !this.lootUI.isVisible &&
       this.currentRound &&
@@ -614,12 +644,14 @@ export class MainScene extends BaseScene {
       )
     }
 
-    const rounds = this.zone.getRounds()
-    const currentIndex = rounds.indexOf(this.currentRound) + 1
-    const remaining = this.currentRound.state === 'waiting'
-      ? this.currentRound.remainingBefore
-      : this.currentRound.remainingTime
-    this.uiSystem.updateRound(currentIndex, rounds.length, this.currentRound.state, remaining)
+    if (this.currentRound) {
+      const rounds = this.zone.getRounds()
+      const currentIndex = rounds.indexOf(this.currentRound) + 1
+      const remaining = this.currentRound.state === 'waiting'
+        ? this.currentRound.remainingBefore
+        : this.currentRound.remainingTime
+      this.uiSystem.updateRound(currentIndex, rounds.length, this.currentRound.state, remaining)
+    }
 
     if (this.performanceMonitor) this.performanceMonitor.update(activatedEnemies, culledEnemies)
   }

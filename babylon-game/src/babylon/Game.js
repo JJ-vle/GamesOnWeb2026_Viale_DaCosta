@@ -3,13 +3,14 @@ import { Engine } from '@babylonjs/core'
 import { MainScene } from './scenes/MainScene'
 
 export class Game {
-  constructor(canvas) {
+  constructor(canvas, gameplayMode = 'arcade') {
     this.engine = new Engine(canvas, true)
+    this.gameplayMode = gameplayMode
     this.scene = null
   }
 
   start() {
-    this.scene = new MainScene(this.engine)
+    this.scene = new MainScene(this.engine, this.gameplayMode)
     
     // Capper à 60 FPS
     const targetFps = 60

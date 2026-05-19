@@ -3,13 +3,17 @@
 import { onMounted, onUnmounted, ref } from 'vue'
 import { initBabylon, getGame } from '@/babylon/BabylonService'
 
+const props = defineProps({
+  gameplayMode: { type: String, default: 'arcade' }
+})
+
 // The canvas will be created and passed once to the singleton Babylon service.
 // We intentionally do NOT dispose the Game on unmount so the engine/scene
 // remain persistent across UI view switches.
 const canvasRef = ref(null)
 
 onMounted(() => {
-  initBabylon(canvasRef.value)
+  initBabylon(canvasRef.value, props.gameplayMode)
 })
 
 onUnmounted(() => {
