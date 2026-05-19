@@ -176,7 +176,8 @@ function setDialogueVisible(isVisible) {
   const game = getGame()
 
   if (isVisible) {
-    if (game?.scene && !game.scene._isGamePaused) {
+    // In story mode, do not pause the scene when showing dialogues so player can keep moving
+    if (game?.scene && gameplayMode.value !== 'story' && !game.scene._isGamePaused) {
       game.scene._isGamePaused = true
       dialoguePausedGame.value = true
     } else {

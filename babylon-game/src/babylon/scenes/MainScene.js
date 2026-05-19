@@ -340,7 +340,15 @@ export class MainScene extends BaseScene {
     if (this.currentRound) {
       try {
         this._pendingLevelUpLootLevel = null
+        // clear loot/pause flags that may have been left set by the previous zone
         this._isGamePausedForLoot = false
+        this._isGamePaused = false
+        // Reset input state and locks so the player can move immediately
+        this.inputMap = {}
+        this._pauseSwitchLock = false
+        this._cameraSwitchLock = false
+        this._spaceLock = false
+
         if (this.spawnerSystem) {
           this.spawnerSystem.stop()
           this.spawnerSystem.spawnedCount = 0
@@ -350,6 +358,16 @@ export class MainScene extends BaseScene {
       } catch (e) { /* ignore */ }
 
       this.currentRound.startRound()
+      // Force an immediate UI refresh so the round state isn't stuck on WIN
+      if (this.uiSystem) {
+        const rounds = this.zone.getRounds()
+        const idx = rounds.indexOf(this.currentRound) + 1
+        const remaining = this.currentRound.state === 'waiting'
+          ? this.currentRound.remainingBefore
+          : this.currentRound.remainingTime
+        this.uiSystem.updateRound(idx, rounds.length, this.currentRound.state, remaining)
+      }
+
       this._triggerScenarioDialogue()
     }
 
@@ -370,11 +388,13 @@ export class MainScene extends BaseScene {
   }
 
   /**
-   * Déclenche un dialogue de scénario au début d'un round
+   * Déclenche un dialogue de scénario au début d'un round (story mode seulement)
    */
   _triggerScenarioDialogue() {
+    // Ne déclencher les dialogues que en mode story
+    if (this.gameplayMode !== 'story') return
     if (!this.scenarioSystem || !this.currentZoneNodeId) return
-    // Démarrer la séquence de dialogues pour la zone/round (gère plusieurs entrées)
+    // Démarrer la séquence de dialogues pour la zone/round (gère plusieurs entrées)121321
     try {
       this.scenarioSystem.startDialogueSequence(this.currentZoneNodeId, this._roundNumber)
     } catch (e) {
@@ -547,11 +567,21 @@ export class MainScene extends BaseScene {
     const deltaTime = this.scene.getEngine().getDeltaTime() / 1000
 
     if (this.navGrid) this.navGrid.tick()
-    if (this._isGamePausedForLoot || this._isGamePaused) return
+    if (this._isGamePausedForLoot || this._isGamePaused) {
+      // Diagnostic log to help identify why the update loop is paused
+      if (!this._pauseLogShown) {
+        try {
+          console.warn('[MainScene] update() paused — _isGamePausedForLoot=', this._isGamePausedForLoot, ' _isGamePaused=', this._isGamePaused, ' lootUIVisible=', !!(this.lootUI && this.lootUI.isVisible))
+        } catch (e) { /* ignore logging errors */ }
+        this._pauseLogShown = true
+      }
+      return
+    }
+    // reset pause log marker when running
+    this._pauseLogShown = false
 
-    // Level-up loot en attente : ouvrir seulement si le round est encore actif (arcade uniquement)
+    // Level-up loot en attente : ouvrir seulement si le round est encore actif
     if (
-      this.gameplayMode === 'arcade' &&
       this._pendingLevelUpLootLevel != null &&
       !this.lootUI.isVisible &&
       this.currentRound &&
