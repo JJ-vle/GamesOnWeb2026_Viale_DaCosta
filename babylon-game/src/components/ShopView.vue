@@ -8,6 +8,7 @@ const pool = ref([])
 const selectedItem = ref(null)
 const playerMoney = ref(0)
 const showConfirmation = ref(false)
+const purchasedItemIds = ref(new Set())
 
 // Fetch shop data when component mounts
 onMounted(async () => {
@@ -19,6 +20,11 @@ onMounted(async () => {
       occupiedSlots
     )
     playerMoney.value = game.scene.playerEntry.money || 0
+    
+    // Initialize purchased items from inventory
+    if (game.scene.playerEntry.inventory) {
+      purchasedItemIds.value = new Set(game.scene.playerEntry.inventory.getOccupiedSlots())
+    }
   }
 
   window.addEventListener('keydown', handleKeyPress)
@@ -34,7 +40,9 @@ const handleKeyPress = (e) => {
   }
 }
 
-const canAfford = (item) => playerMoney.value >= (item.price || 0)
+const isAlreadyPurchased = (item) => purchasedItemIds.value.has(item.id)
+
+const canAfford = (item) => !isAlreadyPurchased(item) && playerMoney.value >= (item.price || 0)
 
 const selectItem = (item) => {
   if (!canAfford(item)) return
@@ -50,9 +58,10 @@ const confirmPurchase = async () => {
   const player = game.scene.playerEntry
   const item = selectedItem.value
 
-  if (player.money >= item.price) {
+  if (player.money >= item.price && !isAlreadyPurchased(item)) {
     player.money -= item.price
     player.inventory.addItem(item.id)
+    purchasedItemIds.value.add(item.id)
     playerMoney.value = player.money
 
     // Emit purchase event
@@ -121,7 +130,11 @@ const getRarityStars = (rarity) => {
           v-for="item in pool"
           :key="item.id"
           class="item-card"
-          :class="{ disabled: !canAfford(item), clickable: canAfford(item) }"
+          :class="{ 
+            disabled: !canAfford(item), 
+            clickable: canAfford(item),
+            'out-of-stock': isAlreadyPurchased(item)
+          }"
           @click="selectItem(item)"
         >
           <div class="rarity-header" :style="{ borderColor: getRarityColor(item.rarity) }">
@@ -143,8 +156,12 @@ const getRarityStars = (rarity) => {
             {{ item.price }} 💰
           </div>
 
-          <div class="affordability-hint" v-if="!canAfford(item)">
+          <div class="affordability-hint" v-if="!isAlreadyPurchased(item) && !canAfford(item)">
             Manque {{ item.price - playerMoney }} pièces
+          </div>
+
+          <div class="out-of-stock-label" v-if="isAlreadyPurchased(item)">
+            HORS STOCK
           </div>
         </div>
       </div>
@@ -352,6 +369,13 @@ const getRarityStars = (rarity) => {
   pointer-events: none;
 }
 
+.item-card.out-of-stock {
+  opacity: 0.6;
+  border-color: #ff4444 !important;
+  background: rgba(255, 68, 68, 0.1) !important;
+  pointer-events: none;
+}
+
 .rarity-header {
   border: 2px solid;
   border-radius: 4px;
@@ -407,6 +431,20 @@ const getRarityStars = (rarity) => {
   font-family: monospace;
   text-align: center;
   margin-top: 8px;
+}
+
+.out-of-stock-label {
+  color: #ff4444;
+  font-size: 12px;
+  font-weight: bold;
+  font-family: monospace;
+  text-align: center;
+  margin-top: 8px;
+  padding: 4px 8px;
+  background: rgba(255, 68, 68, 0.2);
+  border: 1px solid #ff4444;
+  border-radius: 3px;
+  text-transform: uppercase;
 }
 
 .confirmation-area {

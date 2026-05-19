@@ -1,7 +1,7 @@
 {
   "zones": [
     {
-      "zoneId": 1,
+      "zoneId": 2,
       "dialogues": [
         {
           "nom": "Scientifique",
@@ -19,7 +19,7 @@
       ]
     },
     {
-      "zoneId": 2,
+      "zoneId": 3,
       "dialogues": [
         {
           "nom": "IA Corrompue",
