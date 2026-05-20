@@ -602,7 +602,11 @@ export class MainScene extends BaseScene {
     if (!this._isGameOver && this.playerEntry && this.playerEntry.life <= 0) {
       this._isGameOver = true
       this._isGamePausedForLoot = true
-      if (this.uiSystem && this.uiSystem.showGameOver) this.uiSystem.showGameOver()
+      try {
+        window.dispatchEvent(new CustomEvent('gameEnded', { detail: { result: 'lose' } }))
+      } catch (e) {
+        console.warn('[MainScene] Failed to dispatch gameEnded event', e)
+      }
       return
     }
   }

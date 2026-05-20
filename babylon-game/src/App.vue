@@ -13,6 +13,7 @@ import { useGameMode } from './stores/useGameMode'
 
 const gameStarted = ref(false)
 const gameEnded = ref(false)
+const gameEndResult = ref('win')
 // Vrai quand l'intro histoire est terminée et le gameplay peut démarrer
 const storyIntroComplete = ref(false)
 // current player node id to pass to ZoneMapView
@@ -42,6 +43,7 @@ function startGame(selectedMode) {
 function returnToMenu() {
   gameStarted.value = false
   gameEnded.value = false
+  gameEndResult.value = 'win'
   storyIntroComplete.value = false
   setMode('combat')
   setGameplayMode(null)
@@ -73,6 +75,7 @@ function onIntroComplete() {
       const node = g?.scene?.zone?.tree?.nodes?.find(n => n.id === id)
       const isFinalBoss = node && node.type && node.type.toLowerCase().includes('boss') && node.depth === g?.scene?.zone?.tree?.depth
       if (isFinalBoss) {
+        gameEndResult.value = 'win'
         gameEnded.value = true
         return
       }
@@ -84,6 +87,15 @@ function onIntroComplete() {
     }
   }
   window.addEventListener('openZoneMap', openMapHandler)
+
+  const gameEndedHandler = (e) => {
+    const detail = e && e.detail ? e.detail : {}
+    const result = detail.result === 'lose' ? 'lose' : 'win'
+    gameEndResult.value = result
+    gameEnded.value = true
+    setMode('combat')
+  }
+  window.addEventListener('gameEnded', gameEndedHandler)
 
   const keyHandler = (e) => {
     if (!gameStarted.value) return
@@ -129,6 +141,7 @@ function onIntroComplete() {
   onUnmounted(() => {
     window.removeEventListener('returnToMenu', handler)
     window.removeEventListener('openZoneMap', openMapHandler)
+    window.removeEventListener('gameEnded', gameEndedHandler)
     window.removeEventListener('keydown', keyHandler)
   })
 })
@@ -270,7 +283,11 @@ if (typeof window !== 'undefined') {
       />
 
       <!-- Overlays in-game (disponibles une fois le gameplay lancé) -->
-      <GameEndView v-if="gameEnded" @returnToMenu="onReturnToMenuFromEnd" />
+      <GameEndView
+        v-if="gameEnded"
+        :result="gameEndResult"
+        @returnToMenu="onReturnToMenuFromEnd"
+      />
       <ZoneMapView v-if="mode === 'map' && !gameEnded" :playerNodeId="playerNodeId" @selectZone="onSelectZone" @close="setMode('combat')" />
       <ShopView v-if="showShop" @close="onShopClose" />
       <InventoryView v-if="showInventory && inventoryData" :inventory="inventoryData" @close="showInventory = false" />

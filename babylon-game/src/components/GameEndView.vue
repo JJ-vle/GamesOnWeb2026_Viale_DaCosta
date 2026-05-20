@@ -1,5 +1,21 @@
 <script setup>
+import { computed } from 'vue'
+
+const props = defineProps({
+  result: {
+    type: String,
+    default: 'win'
+  }
+})
+
 const emit = defineEmits(['returnToMenu'])
+
+const isLose = computed(() => props.result === 'lose')
+const titleText = computed(() => (
+  isLose.value
+    ? 'Mission échouée. L\'IA Maléfique vous a neutralisé.'
+    : 'Bravo, vous avez triomphé de l\'IA Maléfique'
+))
 
 function handleReturnToMenu() {
   emit('returnToMenu')
@@ -10,9 +26,9 @@ function handleReturnToMenu() {
   <div class="game-end-root">
     <div class="end-container">
       <div class="end-content">
-        <h1 class="end-title">Bravo, vous avez triomphé de l'IA Maléfique</h1>
+        <h1 class="end-title" :class="{ 'end-title--lose': isLose }">{{ titleText }}</h1>
         
-        <div class="end-decorative">
+        <div v-if="!isLose" class="end-decorative">
           <div class="star"></div>
           <div class="star"></div>
           <div class="star"></div>
@@ -65,6 +81,11 @@ function handleReturnToMenu() {
   text-shadow: 0 0 24px rgba(0,255,255,0.08), 0 0 40px rgba(255,0,255,0.06);
   letter-spacing: 1px;
   font-family: 'Courier New', monospace;
+}
+
+.end-title--lose {
+  color: #ff8c8c;
+  text-shadow: 0 0 24px rgba(255, 90, 90, 0.16), 0 0 40px rgba(120, 0, 0, 0.12);
 }
 
 .end-decorative {
