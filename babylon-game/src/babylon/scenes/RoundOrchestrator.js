@@ -24,58 +24,17 @@ import { CoreSpawner } from '../entities/enemies/new/CoreSpawner.js'
 const CAT1 = [VoltStriker, NeonVector, BastionRed]
 const CAT2 = [DashTrigger, BoltSentry, SludgePhrax, BlastZone, IronBulwark, DroneSwarm, ToxicWasp, PyroCaster, JammerUnit, NitroHusk]
 const CAT3 = [EchoWraith, TitanRam, LinkCommander, CoreSpawner] //  ennemis spéciaux, 1 seul par round
-const ZONE_ENEMY_POOL_ORDER = [
-  VoltStriker,
-  NeonVector,
-  BastionRed,
-  DashTrigger,
-  BoltSentry,
-  SludgePhrax,
-  BlastZone,
-  IronBulwark,
-  DroneSwarm,
-  ToxicWasp,
-  PyroCaster,
-  JammerUnit,
-  NitroHusk,
-  EchoWraith,
-  TitanRam,
-  LinkCommander,
-  CoreSpawner,
-]
 
 const pickRandom = (arr, count) => [...arr].sort(() => 0.5 - Math.random()).slice(0, Math.min(count, arr.length)) // Mélange l'array et prend les "count" premiers éléments
 
-function getZoneEnemyPool(zoneDepth) {
-  const unlockedCount = Math.max(1, Math.min(zoneDepth, ZONE_ENEMY_POOL_ORDER.length))
-  return ZONE_ENEMY_POOL_ORDER.slice(0, unlockedCount)
-}
 
 /**
- * Peuple un Round avec des mobs selon la progression de la zone.
+ * Peuple un Round avec des mobs selon la progression globale.
  * @param {Round} round
- * @param {number} globalDifficulty - conserve une progression de quantité à l'intérieur de la zone
- * @param {Array<Function>} enemyPool - pool cumulatif de types d'ennemis débloqués pour la zone
+ * @param {number} globalDifficulty - (node.depth - 1) + r, croît à chaque node ET à chaque round local
  */
-function populateRound(round, globalDifficulty, enemyPool = null) {
+function populateRound(round, globalDifficulty) {
   const totalMobs = ROUND.MOBS_BASE + globalDifficulty * ROUND.MOBS_STEP
-
-  if (enemyPool && enemyPool.length > 0) {
-    const [baseEnemy, ...extraEnemies] = enemyPool
-    const extraCount = extraEnemies.length
-    const baseCount = Math.max(1, totalMobs - extraCount)
-
-    round.addMob({ type: baseEnemy, count: baseCount, spawnInterval: ROUND.INTERVAL_CAT1 })
-
-    extraEnemies.forEach((T, index) => {
-      round.addMob({
-        type: T,
-        count: 1,
-        spawnInterval: index === 0 ? ROUND.INTERVAL_CAT2 : ROUND.INTERVAL_CAT3,
-      })
-    })
-    return
-  }
 
   const frac1 = Math.max(ROUND.FRAC_CAT1_MIN, ROUND.FRAC_CAT1 - globalDifficulty * ROUND.FRAC_CAT1_DECAY)
   const types1 = pickRandom(CAT1, CAT1.length)
@@ -153,13 +112,12 @@ export class RoundOrchestrator {
 
     const nb = node.nbrounds || 1
     const nodeDepth = node.depth ?? 1
-    const enemyPool = getZoneEnemyPool(nodeDepth)
     for (let r = 0; r < nb; r++) {
       // globalDifficulty monte avec la profondeur de node ET avec le round local
       const globalDifficulty = (nodeDepth - 1) + r
       const calculatedTime = ROUND.TIME_LIMIT_BASE + globalDifficulty * ROUND.TIME_LIMIT_STEP
       const round = new Round(this.scene, newZone, { timelimit: Math.min(calculatedTime, 105), timebefore: ROUND.TIME_BEFORE })
-      populateRound(round, globalDifficulty, enemyPool)
+      populateRound(round, globalDifficulty)
       newZone.addRound(round)
       this._attachRoundEndHandler(round)
     }
