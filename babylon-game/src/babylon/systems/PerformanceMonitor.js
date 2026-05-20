@@ -19,7 +19,7 @@ export class PerformanceMonitor {
     
     // UI DOM
     this._container = null;
-    this._isVisible = true;
+    this._isVisible = false;
     
     // Stats de culling
     this._culledEnemies = 0;
@@ -47,6 +47,7 @@ export class PerformanceMonitor {
     
     // Styling
     Object.assign(container.style, {
+      display: this._isVisible ? 'block' : 'none',
       position: 'fixed',
       top: '10px',
       left: '10px',

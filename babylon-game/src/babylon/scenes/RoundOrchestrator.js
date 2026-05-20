@@ -28,26 +28,26 @@ const CAT3 = [EchoWraith, TitanRam, LinkCommander, CoreSpawner] //  ennemis spé
 const pickRandom = (arr, count) => [...arr].sort(() => 0.5 - Math.random()).slice(0, Math.min(count, arr.length)) // Mélange l'array et prend les "count" premiers éléments
 
 /**
- * Peuple un Round avec des mobs selon la progression (index de round r, départ à 0).
+ * Peuple un Round avec des mobs selon la progression globale.
+ * @param {Round} round
+ * @param {number} globalDifficulty - (node.depth - 1) + r, croît à chaque node ET à chaque round local
  */
-function populateRound(round, r) {
-  const totalMobs = ROUND.MOBS_BASE + r * ROUND.MOBS_STEP
+function populateRound(round, globalDifficulty) {
+  const totalMobs = ROUND.MOBS_BASE + globalDifficulty * ROUND.MOBS_STEP
 
-  // Stage 2+ : tous les types de CAT1
+  const frac1 = Math.max(ROUND.FRAC_CAT1_MIN, ROUND.FRAC_CAT1 - globalDifficulty * ROUND.FRAC_CAT1_DECAY)
   const types1 = pickRandom(CAT1, CAT1.length)
-  const c1 = Math.ceil(totalMobs * ROUND.FRAC_CAT1 / Math.max(1, types1.length))
+  const c1 = Math.ceil(totalMobs * frac1 / Math.max(1, types1.length))
   types1.forEach(T => round.addMob({ type: T, count: c1, spawnInterval: ROUND.INTERVAL_CAT1 }))
 
-  // Stage 3+ (r>=1) : CAT2
-  if (r >= 1) {
+  if (globalDifficulty >= ROUND.GLOBAL_DIFF_CAT2) {
     const types2 = pickRandom(CAT2, 2)
     const c2 = Math.ceil(totalMobs * ROUND.FRAC_CAT2 / Math.max(1, types2.length))
     types2.forEach(T => round.addMob({ type: T, count: c2, spawnInterval: ROUND.INTERVAL_CAT2 }))
   }
 
-  // Stage 5+ (r>=3) : CAT3, de 1 à 5 ennemis selon l'avancement
-  if (r >= 3) {
-    const cat3Total = Math.min(5, r - 2)
+  if (globalDifficulty >= ROUND.GLOBAL_DIFF_CAT3) {
+    const cat3Total = Math.min(5, globalDifficulty - 2)
     const types3 = pickRandom(CAT3, Math.min(cat3Total, CAT3.length))
     const c3 = Math.ceil(cat3Total / types3.length)
     types3.forEach(T => round.addMob({ type: T, count: c3, spawnInterval: ROUND.INTERVAL_CAT3 }))
@@ -110,9 +110,13 @@ export class RoundOrchestrator {
     if (spawnerSystem) newZone.addSpawner(spawnerSystem)
 
     const nb = node.nbrounds || 1
+    const nodeDepth = node.depth ?? 1
     for (let r = 0; r < nb; r++) {
-      const round = new Round(this.scene, newZone, { timelimit: ROUND.TIME_LIMIT_BASE + r * ROUND.TIME_LIMIT_STEP, timebefore: ROUND.TIME_BEFORE })
-      populateRound(round, r)
+      // globalDifficulty monte avec la profondeur de node ET avec le round local
+      const globalDifficulty = (nodeDepth - 1) + r
+      const calculatedTime = ROUND.TIME_LIMIT_BASE + globalDifficulty * ROUND.TIME_LIMIT_STEP
+      const round = new Round(this.scene, newZone, { timelimit: Math.min(calculatedTime, 105), timebefore: ROUND.TIME_BEFORE })
+      populateRound(round, globalDifficulty)
       newZone.addRound(round)
       this._attachRoundEndHandler(round)
     }
@@ -172,7 +176,8 @@ export class RoundOrchestrator {
     // Mode infini
     this.roundNumber++
     const n = this.roundNumber
-    const newRound = new Round(this.scene, this.zone, { timelimit: ROUND.INFINITE_TIME_BASE + n * ROUND.INFINITE_TIME_STEP, timebefore: ROUND.INFINITE_TIME_BEFORE })
+    const calculatedTimeInf = ROUND.INFINITE_TIME_BASE + n * ROUND.INFINITE_TIME_STEP
+    const newRound = new Round(this.scene, this.zone, { timelimit: Math.min(calculatedTimeInf, 150), timebefore: ROUND.INFINITE_TIME_BEFORE })
 
     const totalMobs = ROUND.INFINITE_MOBS_BASE + n * ROUND.INFINITE_MOBS_STEP
     const types1 = pickRandom(CAT1, 2)

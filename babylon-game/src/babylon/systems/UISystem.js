@@ -24,7 +24,7 @@ export class UISystem {
         this._buildActiveAbilityUI();
         this._buildKillCounter();
         this._buildXPBar();
-        this._buildItemList();
+        // this._buildItemList();
         this._buildStatsUI();
     }
 
@@ -258,8 +258,8 @@ export class UISystem {
     // ─────────────────────────────────────────────────────
     _buildActiveAbilityUI() {
         const container = new Rectangle("abilityContainer");
-        container.width = "116px";
-        container.height = "116px";
+        container.width = "8%";
+        container.height = "10%";
         container.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
         container.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
         container.bottomInPixels = 16;
@@ -321,38 +321,28 @@ export class UISystem {
         });
         this._uiObservers.push(sweepObs);
 
-        const keyLabel = new TextBlock("keyLabel");
-        keyLabel.text = "SPACE";
-        keyLabel.color = "#f4cc69";
-        keyLabel.fontSize = 10;
-        keyLabel.fontFamily = "monospace";
-        keyLabel.fontStyle = "bold";
-        keyLabel.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
-        keyLabel.top = "8px";
-        container.addControl(keyLabel);
-
         this.activeLabel = new TextBlock("activeLabel");
         this.activeLabel.text = "ACTIVABLE";
         this.activeLabel.color = "#ffffff99";
         this.activeLabel.fontSize = 9;
         this.activeLabel.fontFamily = "monospace";
         this.activeLabel.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
-        this.activeLabel.top = "24px";
+        this.activeLabel.top = "8px";
         container.addControl(this.activeLabel);
 
         this.abilityIcon = new TextBlock("abilityIcon");
         this.abilityIcon.text = "ðŸ’Š";
-        this.abilityIcon.fontSize = 32;
-        this.abilityIcon.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
-        this.abilityIcon.top = "44px";
+        this.abilityIcon.fontSize = 42;
+        this.abilityIcon.verticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
+        this.abilityIcon.top = "8px";
         container.addControl(this.abilityIcon);
 
         // Large image shown when no emoji item is present (uses placeholder floppydisk)
         this.abilityIconImage = new Image("abilityIconImage", "/assets/items/disquette/disquette_gris.png");
-        this.abilityIconImage.width = "52px";
-        this.abilityIconImage.height = "52px";
-        this.abilityIconImage.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
-        this.abilityIconImage.top = "44px";
+        this.abilityIconImage.width = "70%";
+        this.abilityIconImage.height = "90%";
+        this.abilityIconImage.verticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
+        this.abilityIconImage.top = "8px";
         this.abilityIconImage.isVisible = false;
         container.addControl(this.abilityIconImage);
 
@@ -539,6 +529,8 @@ export class UISystem {
     }
 
     updateItems(items) {
+        if (!this.itemsListPanel) return;
+
         // On recrée la liste (performance OK pour un tableau de < 50 items)
         this.itemsListPanel.clearControls();
         items.forEach(item => {

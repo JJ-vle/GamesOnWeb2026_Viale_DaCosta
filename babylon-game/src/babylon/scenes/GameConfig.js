@@ -80,11 +80,15 @@ export const ROUND = {
   INFINITE_MOBS_BASE: 10,   // totalMobs = INFINITE_MOBS_BASE + n * INFINITE_MOBS_STEP
   INFINITE_MOBS_STEP: 5,
 
-  // Composition des mobs
-  MOBS_BASE: 6,      // totalMobs = MOBS_BASE + r * MOBS_STEP
+  // Composition des mobs (basé sur globalDifficulty = node.depth - 1 + r)
+  MOBS_BASE: 6,      // totalMobs = MOBS_BASE + globalDifficulty * MOBS_STEP
   MOBS_STEP: 4,
-  FRAC_CAT1: 0.7,
+  FRAC_CAT1: 0.7,        // fraction de départ (depth 1)
+  FRAC_CAT1_DECAY: 0.06, // réduction par niveau de globalDifficulty
+  FRAC_CAT1_MIN: 0.2,    // plancher : CAT1 ne disparaît jamais complètement
   FRAC_CAT2: 0.25,
+  GLOBAL_DIFF_CAT2: 1,   // globalDifficulty minimum pour que les CAT2 apparaissent
+  GLOBAL_DIFF_CAT3: 3,   // globalDifficulty minimum pour que les CAT3 apparaissent
 
   // Intervalles de spawn par catégorie (secondes)
   INTERVAL_CAT1: 1.5,
