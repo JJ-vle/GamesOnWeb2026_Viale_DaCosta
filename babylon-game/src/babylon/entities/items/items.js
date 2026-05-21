@@ -2,7 +2,7 @@ export const ItemDatabase = {
   "plume": {
     type: "Passif",
     name: "Plume",
-    sprite: "",
+    sprite: "assets/items/disquette/disquette_vert.png",
     bonus: "Vitesse",
     modifiers: { speed: 0.1 },
     pool: "chest",
@@ -13,7 +13,7 @@ export const ItemDatabase = {
   "ingenieur": {
     type: "Passif",
     name: "Ingénieur",
-    sprite: "",
+    sprite: "assets/items/disquette/disquette_bleu.png",
     bonus: "Dégats",
     modifiers: { damage: 0.2 },
     pool: "chest",
@@ -24,7 +24,7 @@ export const ItemDatabase = {
   "marteau": {
     type: "Passif",
     name: "Marteau",
-    sprite: "",
+    sprite: "assets/items/disquette/disquette_rouge.png",
     bonus: "Dégats",
     modifiers: { damage: 0.2 },
     pool: "chest",
@@ -35,7 +35,7 @@ export const ItemDatabase = {
   "recharge": {
     type: "Passif",
     name: "Recharge",
-    sprite: "",
+    sprite: "assets/items/disquette/disquette_jaune.png",
     bonus: "Cadence de tire",
     modifiers: { fireRate: 0.2 },
     pool: "chest",
@@ -46,7 +46,7 @@ export const ItemDatabase = {
   "pierre": {
     type: "Passif",
     name: "Pierre",
-    sprite: "",
+    sprite: "assets/items/disquette/disquette_gris.png",
     bonus: "Vitesse",
     modifiers: { damage: 0.5, speed: -0.2 },
     pool: "chest",
@@ -57,7 +57,7 @@ export const ItemDatabase = {
   "feuille": {
     type: "Passif",
     name: "Feuille",
-    sprite: "",
+    sprite: "assets/items/disquette/disquette_orange.png",
     bonus: "Dégâts",
     modifiers: { luck: 0.5, damage: -0.2 },
     pool: "chest",
@@ -68,7 +68,7 @@ export const ItemDatabase = {
   "ciseaux": {
     type: "Passif",
     name: "Ciseaux",
-    sprite: "",
+    sprite: "assets/items/disquette/disquette_rose.png",
     bonus: "Chance",
     modifiers: { speed: 0.5, luck: -0.2 },
     pool: "chest",
@@ -79,7 +79,7 @@ export const ItemDatabase = {
   "cable_d_acier": {
     type: "Passif",
     name: "Câble d'Acier",
-    sprite: "",
+    sprite: "assets/items/disquette/disquette_blanc.png",
     bonus: "Dégats",
     modifiers: { damage: 0.2 },
     pool: "chest",
@@ -90,7 +90,7 @@ export const ItemDatabase = {
   "moteur_turbo": {
     type: "Passif",
     name: "Moteur Turbo",
-    sprite: "",
+    sprite: "assets/items/disquette/disquette_turquoize.png",
     bonus: "Vitesse",
     modifiers: { speed: 0.15 },
     pool: "chest",
@@ -101,7 +101,7 @@ export const ItemDatabase = {
   "puce_aleatoire": {
     type: "Passif",
     name: "Puce Aléatoire",
-    sprite: "",
+    sprite: "assets/items/disquette/disquette_violet.png",
     bonus: "Chance",
     modifiers: { luck: 0.2 },
     pool: "chest",
@@ -112,7 +112,7 @@ export const ItemDatabase = {
   "watercooling": {
     type: "Passif",
     name: "Watercooling",
-    sprite: "",
+    sprite: "assets/items/disquette/disquette_noir.png",
     bonus: "Cooldown",
     modifiers: { cooldownReduction: 0.05 },
     pool: "chest",
@@ -124,7 +124,7 @@ export const ItemDatabase = {
   "cd_douteux": {
     type: "Passif",
     name: "CD Douteux",
-    sprite: "",
+    sprite: "assets/items/disquette/disquette_bleu.png",
     bonus: "Dégâts // Vitesse ",
     modifiers: { damage: 0.5, speed: -0.3 },
     pool: "chest",
@@ -137,7 +137,7 @@ export const ItemDatabase = {
   "chargeur_rapide": {
     type: "Passif",
     name: "Chargeur rapide",
-    sprite: "",
+    sprite: "assets/items/disquette/disquette_rouge.png",
     bonus: "cadence de tire",
     modifiers: { fireRate: 0.2 },
     pool: "chest",
@@ -149,7 +149,7 @@ export const ItemDatabase = {
   "bottes_de_cowboy": {
     type: "Passif",
     name: "Bottes de Cowboy",
-    sprite: "",
+    sprite: "assets/items/disquette/disquette_vert.png",
     bonus: "Vitesse",
     modifiers: { speed: 0.1 },
     pool: "chest",
@@ -160,7 +160,7 @@ export const ItemDatabase = {
   "cle_a_molette": {
     type: "Passif",
     name: "Clé à molette",
-    sprite: "",
+    sprite: "assets/items/disquette/disquette_jaune.png",
     bonus: "Cadence de tire",
     modifiers: { fireRate: 0.2 },
     pool: "chest",
@@ -171,7 +171,7 @@ export const ItemDatabase = {
   "reroll": {
     type: "Passif",
     name: "Reroll",
-    sprite: "",
+    sprite: "assets/items/disquette/disquette_gris.png",
     price: 50,
     bonus: "Reroll",
     modifiers: { rerollToken: 1 },
@@ -257,7 +257,7 @@ export const ItemDatabase = {
   "equivalence": {
     type: "Passif",
     name: "Equivalence",
-    sprite: "",
+    sprite: "assets/items/usb/cle_usb_bleu.png",
     bonus: "Emplacement",
     modifiers: {},
     pool: "shop",
@@ -269,7 +269,7 @@ export const ItemDatabase = {
   "huile": {
     type: "Passif",
     name: "Huile",
-    sprite: "",
+    sprite: "assets/items/usb/cle_usb_jaune.png",
     bonus: "Cadence",
     modifiers: { fireRate: 0.5 },
     pool: "chest",
@@ -280,7 +280,7 @@ export const ItemDatabase = {
   "potion": {
     type: "Passif",
     name: "Potion",
-    sprite: "",
+    sprite: "assets/items/usb/cle_usb_rouge.png",
     bonus: "Dégats",
     modifiers: { damage: 0.5 },
     pool: "chest",
@@ -291,7 +291,7 @@ export const ItemDatabase = {
   "etoile": {
     type: "Passif",
     name: "Étoile",
-    sprite: "",
+    sprite: "assets/items/usb/cle_usb_violet.png",
     bonus: "Chance",
     modifiers: { luck: 0.5 },
     pool: "chest",
@@ -302,7 +302,7 @@ export const ItemDatabase = {
   "turbo": {
     type: "Passif",
     name: "Turbo",
-    sprite: "",
+    sprite: "assets/items/usb/cle_usb_vert.png",
     bonus: "Vitesse",
     modifiers: { speed: 0.2 },
     pool: "chest",
