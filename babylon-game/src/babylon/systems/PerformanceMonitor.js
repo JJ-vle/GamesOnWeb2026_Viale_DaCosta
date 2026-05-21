@@ -71,31 +71,32 @@ export class PerformanceMonitor {
       <div id="perf-gpu">GPU: 0ms</div>
       <div id="perf-enemies">Enemies: 0 (Culled: 0)</div>
       <div id="perf-pool">Pool: 0 types</div>
-      <div><small style="color: #00aa00;">Press [E] to toggle</small></div>
+      <div><small style="color: #00aa00;">Press [,] or [?] to toggle</small></div>
     `;
 
     document.body.appendChild(container);
     this._container = container;
 
-    // Toggle avec touche D
+    // Toggle avec touche ,
     this._setupToggleKey();
   }
 
   /**
-   * Configure la touche [E] pour toggle le monitoring
+   * Configure la touche [,] ou [?] pour toggle le monitoring
    * @private
    */
   _setupToggleKey() {
     if (!this.scene) return
     
-    let eKeyPressed = false;
+    let toggleKeyPressed = false;
     this.scene.onKeyboardObservable.add((kbInfo) => {
-      if (kbInfo.event && kbInfo.event.key && kbInfo.event.key.toLowerCase() === 'e') {
-        if (kbInfo.type === 1 && !eKeyPressed) { // keyDown
-          eKeyPressed = true;
+      const key = kbInfo.event && kbInfo.event.key;
+      if (key && (key === ',' || key === '?')) {
+        if (kbInfo.type === 1 && !toggleKeyPressed) { // keyDown
+          toggleKeyPressed = true;
           this.toggle();
         } else if (kbInfo.type === 2) { // keyUp
-          eKeyPressed = false;
+          toggleKeyPressed = false;
         }
       }
     });

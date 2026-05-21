@@ -1,5 +1,7 @@
 import {
     Vector3,
+    Matrix,
+    Plane,
     MeshBuilder,
     Color3,
     StandardMaterial,
@@ -47,6 +49,8 @@ export class Player {
         this._childMeshCache = null;
         this._targetRotationY = 0; // rotation cible (mise à jour par pick)
         this._hasTargetRotation = false;
+        this.modelRoot = null;      // racine du GLB (enfant de la hitbox)
+        this._targetPitchX = 0;    // pitch visuel cible (rotation.x du modelRoot)
 
         // ── Orbiting projectiles (Égalité) ──
         this._orbitAngle = 0;
@@ -72,6 +76,7 @@ export class Player {
                 root.scaling = new Vector3(0.6, 0.6, 0.6); // Réduit à 60%
                 root.position = new Vector3(0, -0.67, 0); // Ajustez si besoin (offsetX, offsetZ)
                 root.parent = this.mesh;
+                this.modelRoot = root;
 
                 // Correction Matériaux
                 result.meshes.forEach(m => {
@@ -385,29 +390,49 @@ export class Player {
     }
 
     _updateRotation() {
-        // Pick raycast throttlé (1 frame sur 3) pour obtenir la cible
+        // Throttlé : 1 frame sur 3
         this._rotationFrameSkip++;
         if (this._rotationFrameSkip >= 3) {
             this._rotationFrameSkip = 0;
 
-            // Cache les child meshes (ne change pas en cours de jeu)
-            if (!this._childMeshCache) {
-                this._childMeshCache = new Set(this.mesh.getChildMeshes());
-            }
-            const childSet = this._childMeshCache;
+            const camera = this.scene.activeCamera;
+            if (camera) {
+                // Intersection ray-plan horizontal — fiable peu importe la géométrie sous le curseur
+                // (évite de ramasser les murs/décors derrière le joueur comme scene.pick le ferait)
+                const ray = this.scene.createPickingRay(
+                    this.scene.pointerX,
+                    this.scene.pointerY,
+                    Matrix.Identity(),
+                    camera
+                );
+                const groundPlane = Plane.FromPositionAndNormal(
+                    new Vector3(0, this.mesh.position.y, 0),
+                    Vector3.Up()
+                );
+                const distance = ray.intersectsPlane(groundPlane);
+                if (distance !== null && distance > 0) {
+                    const targetPoint = ray.origin.add(ray.direction.scale(distance));
+                    const dx = targetPoint.x - this.mesh.position.x;
+                    const dz = targetPoint.z - this.mesh.position.z;
+                    this._targetRotationY = Math.atan2(-dx, -dz);
+                    this._hasTargetRotation = true;
 
-            const pickResult = this.scene.pick(this.scene.pointerX, this.scene.pointerY, (mesh) => {
-                return mesh !== this.mesh && !childSet.has(mesh);
-            });
-
-            if (pickResult.hit) {
-                const targetPoint = pickResult.pickedPoint;
-                targetPoint.y = this.mesh.position.y;
-                // Calculer l'angle cible sans l'appliquer directement
-                const dx = targetPoint.x - this.mesh.position.x;
-                const dz = targetPoint.z - this.mesh.position.z;
-                this._targetRotationY = Math.atan2(-dx, -dz);
-                this._hasTargetRotation = true;
+                    // Pitch visuel : inclinaison du modèle selon la position écran du curseur
+                    if (this.modelRoot) {
+                        const engine = this.scene.getEngine();
+                        const viewport = camera.viewport.toGlobal(engine.getRenderWidth(), engine.getRenderHeight());
+                        const projected = Vector3.Project(
+                            this.mesh.position,
+                            Matrix.IdentityReadOnly,
+                            this.scene.getTransformMatrix(),
+                            viewport
+                        );
+                        // screenDY > 0 quand le curseur est au-dessus du joueur à l'écran
+                        const screenDY = projected.y - this.scene.pointerY;
+                        // rotation.x négatif = tête/armes vers le haut
+                        this._targetPitchX = Math.max(-0.35, Math.min(0.35, -screenDY * 0.003));
+                    }
+                }
             }
         }
 
@@ -415,11 +440,16 @@ export class Player {
         if (this._hasTargetRotation) {
             let current = this.mesh.rotation.y;
             let target = this._targetRotationY;
-            // Normaliser la différence d'angle entre -PI et PI
             let diff = target - current;
             while (diff > Math.PI) diff -= Math.PI * 2;
             while (diff < -Math.PI) diff += Math.PI * 2;
             this.mesh.rotation.y += diff * 0.35;
+        }
+
+        // Appliquer le pitch lissé sur le modèle visuel uniquement (pas la hitbox)
+        if (this.modelRoot) {
+            const pitchDiff = this._targetPitchX - (this.modelRoot.rotation.x || 0);
+            this.modelRoot.rotation.x += pitchDiff * 0.35;
         }
     }
 
