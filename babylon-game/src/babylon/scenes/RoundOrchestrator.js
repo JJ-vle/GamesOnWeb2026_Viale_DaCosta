@@ -20,10 +20,12 @@ import { EchoWraith } from '../entities/enemies/new/EchoWraith.js'
 import { TitanRam } from '../entities/enemies/new/TitanRam.js'
 import { LinkCommander } from '../entities/enemies/new/LinkCommander.js'
 import { CoreSpawner } from '../entities/enemies/new/CoreSpawner.js'
+import { NeonLeviathan } from '../entities/enemies/new/NeonLeviathan.js'
 
 const CAT1 = [VoltStriker, NeonVector, BastionRed]
 const CAT2 = [DashTrigger, BoltSentry, SludgePhrax, BlastZone, IronBulwark, DroneSwarm, ToxicWasp, PyroCaster, JammerUnit, NitroHusk]
 const CAT3 = [EchoWraith, TitanRam, LinkCommander, CoreSpawner] //  ennemis spéciaux, 1 seul par round
+const CAT_BOSS = [NeonLeviathan]   // Boss de fin — 1 seul, niveau max
 
 const pickRandom = (arr, count) => [...arr].sort(() => 0.5 - Math.random()).slice(0, Math.min(count, arr.length)) // Mélange l'array et prend les "count" premiers éléments
 
@@ -32,8 +34,15 @@ const pickRandom = (arr, count) => [...arr].sort(() => 0.5 - Math.random()).slic
  * Peuple un Round avec des mobs selon la progression globale.
  * @param {Round} round
  * @param {number} globalDifficulty - (node.depth - 1) + r, croît à chaque node ET à chaque round local
+ * @param {boolean} [isBossRound=false] - si true, uniquement le NEON-LEVIATHAN
  */
-function populateRound(round, globalDifficulty) {
+function populateRound(round, globalDifficulty, isBossRound = false) {
+  // ── Round de boss : NEON-LEVIATHAN uniquement ──
+  if (isBossRound) {
+    round.addMob({ type: NeonLeviathan, count: 1, spawnInterval: 2.0 })
+    return
+  }
+
   const totalMobs = ROUND.MOBS_BASE + globalDifficulty * ROUND.MOBS_STEP
 
   const frac1 = Math.max(ROUND.FRAC_CAT1_MIN, ROUND.FRAC_CAT1 - globalDifficulty * ROUND.FRAC_CAT1_DECAY)
@@ -112,12 +121,22 @@ export class RoundOrchestrator {
 
     const nb = node.nbrounds || 1
     const nodeDepth = node.depth ?? 1
+    const isFinalNode = existingZoneTree && node.depth === existingZoneTree.depth
+
     for (let r = 0; r < nb; r++) {
       // globalDifficulty monte avec la profondeur de node ET avec le round local
       const globalDifficulty = (nodeDepth - 1) + r
       const calculatedTime = ROUND.TIME_LIMIT_BASE + globalDifficulty * ROUND.TIME_LIMIT_STEP
-      const round = new Round(this.scene, newZone, { timelimit: Math.min(calculatedTime, 105), timebefore: ROUND.TIME_BEFORE })
-      populateRound(round, globalDifficulty)
+
+      // Dernier round du nœud final → round de boss (NEON-LEVIATHAN)
+      const isBossRound = isFinalNode && r === nb - 1
+
+      const round = new Round(this.scene, newZone, {
+        timelimit: isBossRound ? Infinity : Math.min(calculatedTime, 105),
+        timebefore: ROUND.TIME_BEFORE,
+        endOnAllEnemiesDead: isBossRound,
+      })
+      populateRound(round, globalDifficulty, isBossRound)
       newZone.addRound(round)
       this._attachRoundEndHandler(round)
     }

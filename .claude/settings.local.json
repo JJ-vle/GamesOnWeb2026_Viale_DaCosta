@@ -9,7 +9,10 @@
       "Bash(ls -la \"c:\\\\\\\\Users\\\\\\\\tdacosta\\\\\\\\OneDrive - oxya\\\\\\\\Documents\\\\\\\\M1\\\\\\\\3D\\\\\\\\GamesOnWeb2026_Viale_DaCosta\\\\\\\\babylon-game\\\\\\\\src\\\\\\\\\")",
       "Bash(tree -L 3 -I 'node_modules' \"c:\\\\\\\\Users\\\\\\\\tdacosta\\\\\\\\OneDrive - oxya\\\\\\\\Documents\\\\\\\\M1\\\\\\\\3D\\\\\\\\GamesOnWeb2026_Viale_DaCosta\\\\\\\\babylon-game\\\\\\\\src\")",
       "Bash(find \"c:\\\\\\\\Users\\\\\\\\tdacosta\\\\\\\\OneDrive - oxya\\\\\\\\Documents\\\\\\\\M1\\\\\\\\3D\\\\\\\\GamesOnWeb2026_Viale_DaCosta\\\\\\\\babylon-game\\\\\\\\src\" -type d)",
-      "Bash(node --input-type=module --eval ' *)"
+      "Bash(node --input-type=module --eval ' *)",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\tdacosta\\\\OneDrive - oxya\\\\Documents\\\\M1\\\\3D\\\\GamesOnWeb2026_Viale_DaCosta\" -Recurse -Filter \"UISystem.js\")",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(xargs -I {} bash -c 'echo \"=== {} ===\" && head -15 \"/c/Users/tdacosta/OneDrive - oxya/Documents/M1/3D/GamesOnWeb2026_Viale_DaCosta/babylon-game/src/babylon/entities/enemies/new/{}\"')"
     ]
   }
 }

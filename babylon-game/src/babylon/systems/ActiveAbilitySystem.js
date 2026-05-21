@@ -34,6 +34,9 @@ export class ActiveAbilitySystem {
         this._spaceLock = false
         this._lastMoveDir = null        // Vector3 — direction du dernier mouvement
 
+        // Référence optionnelle au UISystem pour afficher les notifications de brouillage
+        this.uiSystem = null
+
         // Callbacks optionnels
         this.onAbilityUsed = null    // () => void
         this.onItemChanged = null    // (itemType) => void
@@ -199,6 +202,12 @@ export class ActiveAbilitySystem {
 
     _tryDash() {
         if (this.dashCharges <= 0) return
+
+        // Brouillage du dash par un BossJammerUnit actif
+        if (this.scene.isDashJammed) {
+            this.uiSystem?.showNotification('DASH BROUILLÉ', '#ff4400', 1200)
+            return
+        }
 
         this.dashCharges--
         if (this.dashCharges < this.maxDashCharges) {

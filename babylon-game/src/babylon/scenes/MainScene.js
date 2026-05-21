@@ -192,6 +192,9 @@ export class MainScene extends BaseScene {
       this.enemies
     )
 
+    // Injecter UISystem pour que le dash puisse afficher "DASH BROUILLÉ"
+    this.activeAbilitySystem.uiSystem = this.uiSystem
+
     this.activeAbilitySystem.onAbilityUsed = () => {
       if (this.activeAbilitySystem.equippedItem === 'grenade') {
         this.uiSystem.showNotification('💥 GRENADE !', '#ff8800', 1200)
