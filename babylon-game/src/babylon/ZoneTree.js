@@ -12,6 +12,8 @@ export function generateZoneTree(options = {}) {
   const maxDepth = options.maxDepth || 8
   const depth = Math.floor(Math.random() * (maxDepth - minDepth + 1)) + minDepth
 
+  const getRoundsForDepth = (depthLevel) => Math.min(3, Math.floor((depthLevel - 1) / 2) + 1)
+
   let idCounter = 1
   const nodesByDepth = {}
   const nodes = {}
@@ -35,7 +37,7 @@ export function generateZoneTree(options = {}) {
       type: 'Battle',
       effect: 'none',
       infos: {},
-      nbrounds: Math.max(1, Math.floor(Math.random() * 3)),
+      nbrounds: getRoundsForDepth(depthLevel),
       next: [],
       corrupted: false,
       parent: parentId,
@@ -164,7 +166,7 @@ export function generateZoneTree(options = {}) {
   // Boss final
   const boss = makeNode(depth, null)
   boss.type = 'Boss'
-  boss.nbrounds = Math.max(1, Math.floor(Math.random() * 3) + 2)
+  boss.nbrounds = getRoundsForDepth(depth)
   // do not label boss with 'final' effect; keep effect none and mark aura
   boss.effect = 'none'
   boss.aura = 'yellow'

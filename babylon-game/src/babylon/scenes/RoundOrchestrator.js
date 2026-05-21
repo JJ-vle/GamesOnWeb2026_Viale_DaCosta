@@ -89,9 +89,7 @@ export class RoundOrchestrator {
 
       clearEnemies(enemies, collisionSystem)
 
-      const rounds = this.zone?.getRounds() ?? []
-      const idx = rounds.indexOf(round)
-      const isLast = idx >= 0 ? idx === rounds.length - 1 : true
+      const isLast = !!round.isLastZoneRound
 
       // Si dernier round, passer une callback pour ouvrir la carte APRÈS le choix de l'item
       const onItemPicked = isLast && this.zone && !this.zone.allowInfiniteRounds ? () => {
@@ -136,6 +134,9 @@ export class RoundOrchestrator {
         timebefore: ROUND.TIME_BEFORE,
         endOnAllEnemiesDead: isBossRound,
       })
+      round.zoneRoundIndex = r
+      round.zoneRoundCount = nb
+      round.isLastZoneRound = r === nb - 1
       populateRound(round, globalDifficulty, isBossRound)
       newZone.addRound(round)
       this._attachRoundEndHandler(round)

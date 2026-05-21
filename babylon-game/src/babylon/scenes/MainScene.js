@@ -339,6 +339,8 @@ export class MainScene extends BaseScene {
     this.roundOrchestrator.zone = newZone
     this._roundNumber = 1
     this.currentRound = this.zone.getRounds()[0]
+    this.roundOrchestrator.currentRound = this.currentRound
+    this.roundOrchestrator.roundNumber = 1
     console.debug('[MainScene] zone loaded — rounds=', this.zone.getRounds().length, 'currentRoundIndex=0 assigned')
     if (this.currentRound) {
       try {
