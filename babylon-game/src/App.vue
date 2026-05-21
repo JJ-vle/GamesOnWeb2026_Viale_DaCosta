@@ -124,8 +124,14 @@ function onIntroComplete() {
         const g = getGame()
         const inv = g?.scene?.player?.inventory
         inventoryData.value = inv
-          ? { items: [...inv.items], slotCapacity: { ...inv.slotCapacity }, slotCount: { ...inv.slotCount } }
-          : { items: [], slotCapacity: {}, slotCount: {} }
+          ? {
+              items: [...inv.items],
+              slotCapacity: { ...inv.slotCapacity },
+              slotCount: { ...inv.slotCount },
+              level: g?.scene?.xpSystem?.level ?? 1,
+              kills: g?.scene?.kills ?? 0
+            }
+          : { items: [], slotCapacity: {}, slotCount: {}, level: 1, kills: 0 }
         showInventory.value = true
       } else {
         showInventory.value = false

@@ -5,7 +5,7 @@ const props = defineProps({
   inventory: {
     type: Object,
     required: true,
-    // Shape: { items: [{id, item}], slotCapacity: {head,arm,leg,body,active}, slotCount: {head,arm,leg,body,active} }
+    // Shape: { items: [{id, item}], slotCapacity: {head,arm,leg,body,active}, slotCount: {head,arm,leg,body,active}, level, kills }
   }
 })
 
@@ -76,6 +76,19 @@ onUnmounted(() => window.removeEventListener('keydown', keyHandler))
     <div class="inv-header">
       <span class="inv-title">// SYSTEME CYBERWARE //</span>
       <button class="inv-close" @click="emit('close')">[ ESC ]</button>
+    </div>
+
+    <!-- Stats bar -->
+    <div class="inv-stats-bar">
+      <div class="inv-stat">
+        <span class="inv-stat-label">NIVEAU</span>
+        <span class="inv-stat-value inv-stat-level">{{ inventory.level ?? 1 }}</span>
+      </div>
+      <div class="inv-stat-divider"></div>
+      <div class="inv-stat">
+        <span class="inv-stat-label">ELIMINATIONS</span>
+        <span class="inv-stat-value inv-stat-kills">{{ inventory.kills ?? 0 }}</span>
+      </div>
     </div>
 
     <!-- Main grid -->
@@ -677,6 +690,57 @@ onUnmounted(() => window.removeEventListener('keydown', keyHandler))
   padding: 6px;
   flex-shrink: 0;
   border-top: 1px solid rgba(255,100,0,0.1);
+}
+
+/* ═══════════════════════════════════════════════
+   STATS BAR (level + kills)
+═══════════════════════════════════════════════ */
+.inv-stats-bar {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 6px 28px;
+  background: rgba(0,0,0,0.25);
+  border-bottom: 1px solid rgba(255,100,0,0.2);
+  flex-shrink: 0;
+}
+
+.inv-stat {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.inv-stat-label {
+  font-size: 9px;
+  letter-spacing: 3px;
+  color: rgba(200,232,255,0.35);
+  text-transform: uppercase;
+}
+
+.inv-stat-value {
+  font-size: 20px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  line-height: 1;
+  text-shadow: 0 0 12px currentColor;
+}
+
+.inv-stat-level {
+  color: #ff6a00;
+  text-shadow: 0 0 12px rgba(255,106,0,0.8), 0 0 24px rgba(255,106,0,0.35);
+}
+
+.inv-stat-kills {
+  color: #00cfff;
+  text-shadow: 0 0 12px rgba(0,207,255,0.7), 0 0 24px rgba(0,207,255,0.3);
+}
+
+.inv-stat-divider {
+  width: 1px;
+  height: 28px;
+  background: rgba(255,100,0,0.2);
+  margin: 0 24px;
 }
 
 /* ═══════════════════════════════════════════════

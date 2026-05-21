@@ -341,6 +341,7 @@ export class UISystem {
         this.abilityIconImage = new Image("abilityIconImage", "/assets/items/disquette/disquette_gris.png");
         this.abilityIconImage.width = "70%";
         this.abilityIconImage.height = "90%";
+        this.abilityIconImage.stretch = Image.STRETCH_UNIFORM;
         this.abilityIconImage.verticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
         this.abilityIconImage.top = "8px";
         this.abilityIconImage.isVisible = false;
@@ -370,18 +371,7 @@ export class UISystem {
     // ─────────────────────────────────────────────────────
     // COMPTEUR DE KILLS (bas-gauche, au-dessus de la vie)
     // ─────────────────────────────────────────────────────
-    _buildKillCounter() {
-        this.killText = new TextBlock("killText");
-        this.killText.text = "â˜  0 kills";
-        this.killText.color = "#ffffff66";
-        this.killText.fontSize = 12;
-        this.killText.fontFamily = "monospace";
-        this.killText.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
-        this.killText.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
-        this.killText.leftInPixels = 22;
-        this.killText.bottomInPixels = 88;
-        this.ui.addControl(this.killText);
-    }
+    _buildKillCounter() {}
 
     // ─────────────────────────────────────────────────────
     // BARRE XP (tout en bas, pleine largeur)
@@ -405,19 +395,6 @@ export class UISystem {
         this.xpFill.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
         this.xpFill.thickness = 0;
         xpBg.addControl(this.xpFill);
-
-        // Niveau
-        this.levelText = new TextBlock("levelText");
-        this.levelText.text = "LVL 1";
-        this.levelText.color = "#00ffcc";
-        this.levelText.fontSize = 11;
-        this.levelText.fontFamily = "monospace";
-        this.levelText.fontStyle = "bold";
-        this.levelText.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
-        this.levelText.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
-        this.levelText.rightInPixels = 8;
-        this.levelText.bottomInPixels = 8;
-        this.ui.addControl(this.levelText);
     }
 
     // ─────────────────────────────────────────────────────
@@ -514,9 +491,7 @@ export class UISystem {
         this.gearCount.text = `${display}`;
     }
 
-    updateKills(kills) {
-        this.killText.text = `â˜  ${kills} kills`;
-    }
+    updateKills(kills) {}
 
     /**
      * Met à jour la barre XP
@@ -525,7 +500,6 @@ export class UISystem {
      */
     updateXP(progress, level) {
         this.xpFill.width = Math.round(progress * 100) + "%";
-        this.levelText.text = `LVL ${level}`;
     }
 
     updateItems(items) {

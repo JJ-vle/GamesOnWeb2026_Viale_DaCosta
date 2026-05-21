@@ -7,7 +7,7 @@ const emit = defineEmits(['introComplete'])
 // ── Script narratif ───────────────────────────────────────────────────────────
 
 const LORE_TEXT =
-`L'humanité a créé les IA, celles-ci ont énormément aidé les êtres humains. Un jour, l'humanité a passé un cap énorme : enregistrer la conscience humaine — la plus grande avancée technologique de tous les temps. L'être humain est désormais immortel et a créé des robots capables d'absorber cette conscience.
+`L'humanité a créé les IA, celles-ci ont énormément aidé les êtres humains. Un jour, l'humanité a passé un cap énorme : enregistrer la conscience humaine la plus grande avancée technologique de tous les temps. L'être humain est désormais immortel et a créé des robots capables d'absorber cette conscience.
 
 C'est à ce moment que les humains ont réalisé que les IA étaient de moins en moins utiles, la conscience humaine s'avérant bien plus puissante. Ils ont alors décidé de les débrancher une à une...
 
@@ -44,7 +44,7 @@ const DIALOGUES = [
   {
     character: 'Scientifique',
     image: '/assets/items/disquette/disquette_blanc.png',
-    text: "Ho ho, ça sent pas bon — tes modules ont été désactivés. Tu vas devoir récupérer ceux que tu trouves dans la zone." 
+    text: "Ho ho, ça sent pas bon tes modules ont été désactivés. Tu vas devoir récupérer ceux que tu trouves dans la zone." 
   },
    {
     character: 'Scientifique',
@@ -54,17 +54,27 @@ const DIALOGUES = [
   {
     character: 'Scientifique',
     image: '/assets/items/disquette/disquette_blanc.png',
-    text: "Chaque module a ses spécificités. Une fois récupéré, impossible de l'enlever — sauf dans un shop. Les modules de châssis (les plus rares) s'équipent sur tes emplacements corporels, un seul par emplacement."
+    text: "Chaque module a ses spécificités. Une fois récupéré, impossible de l'enlever sauf dans un shop."
   },
   {
     character: 'Scientifique',
     image: '/assets/items/disquette/disquette_blanc.png',
-    text: "Tes capacités actives s'utilisent avec [E]. Ton dash est toujours disponible avec [ESPACE] — utilise-le pour fuir les zones à risque !"
+    text: "Les modules de châssis (les plus rares) s'équipent sur tes emplacements corporels, un seul par emplacement."
   },
   {
     character: 'Scientifique',
     image: '/assets/items/disquette/disquette_blanc.png',
-    text: "L'IA rebelle se trouve à la fin de ces épreuves. Tiens le temps indiqué en haut de ton écran pour passer à la zone suivante. Les ennemis seront de plus en plus coriaces — fuis si nécessaire, tant que tu restes en vie, il y a de l'espoir !"
+    text: "Tes capacités actives s'utilisent avec [E]. Ton dash est toujours disponible avec [ESPACE] utilise-le pour fuir les zones à risque !"
+  },
+  {
+    character: 'Scientifique',
+    image: '/assets/items/disquette/disquette_blanc.png',
+    text: "L'IA rebelle se trouve à la fin de ces épreuves. Tiens le temps indiqué en haut de ton écran pour passer à la zone suivante."
+  },
+  {
+    character: 'Scientifique',
+    image: '/assets/items/disquette/disquette_blanc.png',
+    text: "Les ennemis seront de plus en plus coriaces fuis si nécessaire, tant que tu restes en vie, il y a de l'espoir !"
   },
   {
     character: 'Scientifique',
@@ -178,7 +188,7 @@ onUnmounted(() => {
       <div class="letterbox letterbox-bottom"></div>
       <div class="lore-wrapper">
         <div class="lore-box">
-          <div class="lore-label">ARCHIVES — CONTEXTE HISTORIQUE</div>
+          <div class="lore-label">ARCHIVES CONTEXTE HISTORIQUE</div>
           <div class="lore-text">
             {{ displayedLore }}<span v-if="!loreComplete" class="cursor">▊</span>
           </div>
