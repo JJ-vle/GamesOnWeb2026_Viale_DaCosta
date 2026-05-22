@@ -59,6 +59,10 @@ export class Player {
 
         // ── Poison DoT ──
         this._poisonStacks = []; // [{ dps, remaining }]
+
+        // ── Glitch (The Architect) ──
+        this._glitchActive = false;
+        this._glitchTimer = 0;
     }
 
     async _loadCharacter() {
@@ -195,8 +199,11 @@ export class Player {
     }
 
     update(inputMap) {
+        const dt = this.scene.getEngine().getDeltaTime() / 1000;
+
         // Faire tourner le joueur vers la souris
         this._updateRotation();
+        this._updateGlitch(dt);
 
         let forwardInput = 0;
         let sideInput = 0;
@@ -221,6 +228,12 @@ export class Player {
         if (inputMagnitude > 0) {
             forwardInput /= inputMagnitude;
             sideInput /= inputMagnitude;
+        }
+
+        // ── Glitch : inversion des contrôles ──
+        if (this._glitchActive) {
+            forwardInput = -forwardInput;
+            sideInput = -sideInput;
         }
 
         let moveDir = new Vector3(0, 0, 0);
@@ -278,7 +291,6 @@ export class Player {
         }
 
         // ── Régénération passive ──
-        const dt = this.scene.getEngine().getDeltaTime() / 1000;
         if (this.regen > 0 && this.life < this.maxLife) {
             this._regenAccum += this.regen * dt;
             if (this._regenAccum >= 1) {
@@ -487,6 +499,40 @@ export class Player {
         this.life += amount;
         if (this.life > this.maxLife) {
             this.life = this.maxLife;
+        }
+    }
+
+    /**
+     * Active l'effet Glitch : inverse les contrôles et pulse l'emissive du mesh.
+     * Appelé par EnemySpawnHandler via callbacks.onGlitchPlayer.
+     * @param {number} duration - durée en secondes
+     */
+    applyGlitchEffect(duration) {
+        this._glitchActive = true;
+        this._glitchTimer = duration;
+        if (this.mesh.material) {
+            this._preGlitchEmissive = this.mesh.material.emissiveColor?.clone?.() || null;
+            this.mesh.material.emissiveColor = new Color3(0.8, 0.8, 0.1);
+        }
+    }
+
+    _updateGlitch(dt) {
+        if (!this._glitchActive) return;
+        this._glitchTimer -= dt;
+        // Pulse électrique jaune/blanc sur l'emissive du mesh hitbox
+        const pulse = Math.abs(Math.sin(performance.now() / 60));
+        if (this.mesh.material) {
+            this.mesh.material.emissiveColor.set(0.5 + 0.4 * pulse, 0.5 + 0.4 * pulse, 0.1 * pulse);
+        }
+        if (this._glitchTimer <= 0) {
+            this._glitchActive = false;
+            if (this.mesh.material) {
+                if (this._preGlitchEmissive) {
+                    this.mesh.material.emissiveColor.copyFrom(this._preGlitchEmissive);
+                } else {
+                    this.mesh.material.emissiveColor.set(0, 0, 0);
+                }
+            }
         }
     }
 

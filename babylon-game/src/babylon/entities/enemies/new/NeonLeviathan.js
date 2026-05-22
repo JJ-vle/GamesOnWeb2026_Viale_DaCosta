@@ -32,6 +32,8 @@ export class NeonLeviathan extends Enemy {
 
         this.xpValue = 500
         this.coinValue = 300
+        this.isBoss = true
+        this.bossName = 'NEON LEVIATHAN'
 
         // ── État général ──
         this._phase = 1            // 1 = Artillerie | 2 = Overheat

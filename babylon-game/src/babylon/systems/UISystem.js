@@ -24,6 +24,7 @@ export class UISystem {
         this._buildActiveAbilityUI();
         this._buildKillCounter();
         this._buildXPBar();
+        this._buildBossBar();
         // this._buildItemList();
         this._buildStatsUI();
     }
@@ -369,6 +370,91 @@ export class UISystem {
     }
 
     // ─────────────────────────────────────────────────────
+    // BARRE DE VIE BOSS (haut-centre, sous le timer)
+    // ─────────────────────────────────────────────────────
+    _buildBossBar() {
+        const container = new Rectangle("bossBarContainer");
+        container.width = "55%";
+        container.height = "52px";
+        container.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
+        container.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+        container.topInPixels = 72;
+        container.background = "#0d0005ee";
+        container.color = "#ff224466";
+        container.thickness = 1;
+        container.cornerRadius = 4;
+        container.isVisible = false;
+        this.ui.addControl(container);
+        this._bossBarContainer = container;
+
+        const cornerTL = new Rectangle("bossCornerTL");
+        cornerTL.width = "12px"; cornerTL.height = "12px";
+        cornerTL.left = "-2px"; cornerTL.top = "-2px";
+        cornerTL.thickness = 2; cornerTL.color = "#ff2244";
+        cornerTL.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+        cornerTL.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+        cornerTL.isHitTestVisible = false;
+        container.addControl(cornerTL);
+
+        const cornerBR = new Rectangle("bossCornerBR");
+        cornerBR.width = "12px"; cornerBR.height = "12px";
+        cornerBR.right = "-2px"; cornerBR.bottom = "-2px";
+        cornerBR.thickness = 2; cornerBR.color = "#ff2244";
+        cornerBR.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
+        cornerBR.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
+        cornerBR.isHitTestVisible = false;
+        container.addControl(cornerBR);
+
+        const nameLabel = new TextBlock("bossNameLabel");
+        nameLabel.text = "BOSS";
+        nameLabel.color = "#ff6680";
+        nameLabel.fontSize = 11;
+        nameLabel.fontFamily = "monospace";
+        nameLabel.fontStyle = "bold";
+        nameLabel.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+        nameLabel.top = "5px";
+        container.addControl(nameLabel);
+        this._bossNameLabel = nameLabel;
+
+        const barBg = new Rectangle("bossBarBg");
+        barBg.width = "92%";
+        barBg.height = "18px";
+        barBg.background = "#1a0008";
+        barBg.color = "#ff002266";
+        barBg.thickness = 1;
+        barBg.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
+        barBg.bottomInPixels = 7;
+        barBg.cornerRadius = 3;
+        container.addControl(barBg);
+
+        const barFill = new Rectangle("bossBarFill");
+        barFill.width = "100%";
+        barFill.height = "100%";
+        barFill.background = "#ff2244";
+        barFill.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+        barFill.cornerRadius = 3;
+        barFill.thickness = 0;
+        barBg.addControl(barFill);
+        this._bossBarFill = barFill;
+
+        const hpText = new TextBlock("bossHpText");
+        hpText.text = "";
+        hpText.color = "#ffffffcc";
+        hpText.fontSize = 11;
+        hpText.fontFamily = "monospace";
+        hpText.fontStyle = "bold";
+        barBg.addControl(hpText);
+        this._bossHpText = hpText;
+
+        // Pulse sur la bordure du container
+        const bossGlowObs = this.scene.onBeforeRenderObservable.add(() => {
+            if (!container.isVisible) return;
+            container.alpha = 0.88 + 0.12 * Math.abs(Math.sin(performance.now() / 600));
+        });
+        this._uiObservers.push(bossGlowObs);
+    }
+
+    // ─────────────────────────────────────────────────────
     // COMPTEUR DE KILLS (bas-gauche, au-dessus de la vie)
     // ─────────────────────────────────────────────────────
     _buildKillCounter() {}
@@ -457,6 +543,24 @@ export class UISystem {
     // ─────────────────────────────────────────────────────
     // UPDATE METHODS
     // ─────────────────────────────────────────────────────
+
+    updateBossBar(current, max, name) {
+        if (!this._bossBarContainer) return;
+        if (!this._bossBarContainer.isVisible) {
+            this._bossBarContainer.isVisible = true;
+            if (name && this._bossNameLabel) this._bossNameLabel.text = name.toUpperCase();
+        }
+        const pct = Math.max(0, Math.min(1, current / max));
+        this._bossBarFill.width = (pct * 100) + "%";
+        this._bossHpText.text = `${Math.max(0, Math.ceil(current))} / ${max}`;
+        if (pct > 0.5) this._bossBarFill.background = "#ff2244";
+        else if (pct > 0.25) this._bossBarFill.background = "#ff6600";
+        else this._bossBarFill.background = "#cc0000";
+    }
+
+    hideBossBar() {
+        if (this._bossBarContainer) this._bossBarContainer.isVisible = false;
+    }
 
     updateLife(current, max) {
         const percent = Math.max(0, current / max);

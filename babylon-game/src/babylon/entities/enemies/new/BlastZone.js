@@ -51,7 +51,8 @@ export class BlastZone extends Enemy {
     _createWarningZone() {
         const warning = MeshBuilder.CreateDisc("warningZone", { radius: this.aoeRadius, tessellation: 32 }, this.scene)
         warning.position = this.enemy.position.clone()
-        warning.position.y = 0.1 // Just above ground
+        // Ancrer au sol réel de l'ennemi (centre y - demi-hauteur du mesh + léger offset)
+        warning.position.y = this.enemy.position.y - 0.65
         warning.rotation.x = Math.PI / 2
         
         const mat = new StandardMaterial("warningMat", this.scene)
@@ -108,20 +109,11 @@ export class BlastZone extends Enemy {
         } else if (this.state === 'EXPLODING') {
             this.stateTimer -= dt
             if (this.stateTimer <= 0) {
-                this.state = 'COOLDOWN'
-                this.stateTimer = 3.0
-            }
-        } else if (this.state === 'COOLDOWN') {
-            this.stateTimer -= dt
-
-            // Recule pendant le CD
-            const direction = playerMesh.position.subtract(this.enemy.position)
-            direction.y = 0
-            direction.normalize()
-            this.enemy.position.addInPlace(direction.scale(-0.02 * this.speed * slow))
-
-            if (this.stateTimer <= 0) {
-                this.state = 'APPROACH'
+                // Explosion naturelle : pas d'XP ni de pièces
+                this.xpValue = 0
+                this.coinValue = 0
+                this.life = 0
+                this.destroy()
             }
         }
     }

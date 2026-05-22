@@ -21,11 +21,12 @@ import { TitanRam } from '../entities/enemies/new/TitanRam.js'
 import { LinkCommander } from '../entities/enemies/new/LinkCommander.js'
 import { CoreSpawner } from '../entities/enemies/new/CoreSpawner.js'
 import { NeonLeviathan } from '../entities/enemies/new/NeonLeviathan.js'
+import { ArchitectBoss } from '../entities/enemies/new/ArchitectBoss.js'
 
 const CAT1 = [VoltStriker, NeonVector, BastionRed]
 const CAT2 = [DashTrigger, BoltSentry, SludgePhrax, BlastZone, IronBulwark, DroneSwarm, ToxicWasp, PyroCaster, JammerUnit, NitroHusk]
 const CAT3 = [EchoWraith, TitanRam, LinkCommander, CoreSpawner] //  ennemis spéciaux, 1 seul par round
-const CAT_BOSS = [NeonLeviathan]   // Boss de fin — 1 seul, niveau max
+const CAT_BOSS = [NeonLeviathan, ArchitectBoss]   // Boss de fin — tiré aléatoirement
 
 const pickRandom = (arr, count) => [...arr].sort(() => 0.5 - Math.random()).slice(0, Math.min(count, arr.length)) // Mélange l'array et prend les "count" premiers éléments
 
@@ -37,9 +38,10 @@ const pickRandom = (arr, count) => [...arr].sort(() => 0.5 - Math.random()).slic
  * @param {boolean} [isBossRound=false] - si true, uniquement le NEON-LEVIATHAN
  */
 function populateRound(round, globalDifficulty, isBossRound = false) {
-  // ── Round de boss : NEON-LEVIATHAN uniquement ──
+  // ── Round de boss : tiré aléatoirement parmi CAT_BOSS ──
   if (isBossRound) {
-    round.addMob({ type: NeonLeviathan, count: 1, spawnInterval: 2.0 })
+    const BossType = CAT_BOSS[Math.floor(Math.random() * CAT_BOSS.length)]
+    round.addMob({ type: BossType, count: 1, spawnInterval: 2.0 })
     return
   }
 

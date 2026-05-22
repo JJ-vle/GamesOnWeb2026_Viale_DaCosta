@@ -504,7 +504,17 @@ export class MainScene extends BaseScene {
       }
     }
 
-    // 4. giveItem(itemId) pour se donner un item spécifique par son ID
+    // 4. endRound() pour forcer la victoire instantanée de la vague actuelle
+    window.endRound = () => {
+      if (this.currentRound && this.currentRound.state !== "finished") {
+        console.log("[Cheat] Fin de la vague forcée !");
+        this.currentRound.stopRound();
+      } else {
+        console.warn("[Cheat] Aucun round en cours à terminer.");
+      }
+    }
+
+    // 5. giveItem(itemId) pour se donner un item spécifique par son ID
     window.giveItem = (itemId) => {
       if (this.playerEntry && this.playerEntry.inventory) {
         const success = this.playerEntry.inventory.addItem(itemId)
@@ -516,7 +526,7 @@ export class MainScene extends BaseScene {
       }
     }
 
-    // 5. removeItem(itemId) pour retirer un item spécifique par son ID
+    // 6. removeItem(itemId) pour retirer un item spécifique par son ID
     window.removeItem = (itemId) => {
       if (this.playerEntry && this.playerEntry.inventory) {
         const success = this.playerEntry.inventory.removeItem(itemId)
@@ -528,7 +538,7 @@ export class MainScene extends BaseScene {
       }
     }
 
-    // 6. help() pour voir comment utiliser les commandes
+    // 7. help() pour voir comment utiliser les commandes
     window.help = () => {
       console.log(`
 %c🛠️ COMMANDES DE TRICHE (Menu Développeur) 🛠️
@@ -544,10 +554,12 @@ export class MainScene extends BaseScene {
 3. %cclearEnemies() %c- Lance une frappe orbitale qui tue INSTANTANÉMENT tous les ennemis sur la carte.
    (Tu gagnes tout de même l'XP et le Score pour chaque mort)
 
-4. %cgiveItem(itemId) %c- Ajoute un item spécifique dans l'inventaire.
+4. %cendRound() %c- Termine IMMÉDIATEMENT la vague/le round en cours (arrête les spawners et déclenche la victoire).
+
+5. %cgiveItem(itemId) %c- Ajoute un item spécifique dans l'inventaire.
    Ex: %cgiveItem('plume')%c        (Ajoute l'item 'plume')
 
-5. %cremoveItem(itemId) %c- Retire un item spécifique de l'inventaire.
+6. %cremoveItem(itemId) %c- Retire un item spécifique de l'inventaire.
    Ex: %cremoveItem('plume')%c      (Enlève l'item 'plume')
 
 6. %chelp() %c- Affiche ce menu.
@@ -691,6 +703,10 @@ export class MainScene extends BaseScene {
         : this.currentRound.remainingTime
       this.uiSystem.updateRound(currentIndex, rounds.length, this.currentRound.state, remaining)
     }
+
+    const boss = this.enemies.find(e => e.isBoss)
+    if (boss) this.uiSystem.updateBossBar(boss.life, boss.maxLife, boss.bossName)
+    else this.uiSystem.hideBossBar()
 
     if (this.performanceMonitor) this.performanceMonitor.update(activatedEnemies, culledEnemies)
   }
