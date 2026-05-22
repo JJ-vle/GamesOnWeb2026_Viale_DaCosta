@@ -23,10 +23,10 @@ dist-ssr
 *.sln
 *.sw?
 #Extension anim
-*.glb
+#*.glb
 *.fbx
 *.gif
 *.obj
 *.mtl
-*.png
+#*.png
 *.vox
