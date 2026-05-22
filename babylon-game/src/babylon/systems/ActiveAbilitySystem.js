@@ -225,6 +225,9 @@ export class ActiveAbilitySystem {
         dir.y = 0
         dir.normalize()
 
+        // Inversion du dash si le glitch THE ARCHITECT est actif
+        if (this.player._glitchActive) dir.negateInPlace()
+
         const DASH_DISTANCE = 4.5
         const DASH_DURATION = 0.15 // secondes
         let elapsed = 0

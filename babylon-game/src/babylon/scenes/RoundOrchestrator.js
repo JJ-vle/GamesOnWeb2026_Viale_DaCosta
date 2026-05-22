@@ -22,11 +22,12 @@ import { LinkCommander } from '../entities/enemies/new/LinkCommander.js'
 import { CoreSpawner } from '../entities/enemies/new/CoreSpawner.js'
 import { NeonLeviathan } from '../entities/enemies/new/NeonLeviathan.js'
 import { ArchitectBoss } from '../entities/enemies/new/ArchitectBoss.js'
+import { ApexSentinel } from '../entities/enemies/new/ApexSentinel.js'
 
 const CAT1 = [VoltStriker, NeonVector, BastionRed]
 const CAT2 = [DashTrigger, BoltSentry, SludgePhrax, BlastZone, IronBulwark, DroneSwarm, ToxicWasp, PyroCaster, JammerUnit, NitroHusk]
 const CAT3 = [EchoWraith, TitanRam, LinkCommander, CoreSpawner] //  ennemis spéciaux, 1 seul par round
-const CAT_BOSS = [NeonLeviathan, ArchitectBoss]   // Boss de fin — tiré aléatoirement
+const CAT_BOSS = [NeonLeviathan, ArchitectBoss, ApexSentinel]  // Boss de fin — tiré aléatoirement
 
 const pickRandom = (arr, count) => [...arr].sort(() => 0.5 - Math.random()).slice(0, Math.min(count, arr.length)) // Mélange l'array et prend les "count" premiers éléments
 

@@ -72,10 +72,18 @@ export class JammerUnit extends Enemy {
         this.ringMesh.scaling.x = 0.8 + Math.abs(Math.sin(this._ringScale)) * 0.2
         this.ringMesh.scaling.z = 0.8 + Math.abs(Math.sin(this._ringScale)) * 0.2
 
-        // Brouillage actif
+        // Brouillage actif — reset explicite quand hors zone
         const dist = Vector3.Distance(this.enemy.position, playerMesh.position)
         if (dist <= this.jamRadius) {
             if (onJam) onJam(true)
+        } else {
+            if (onJam) onJam(false)
         }
+    }
+
+    destroy() {
+        // Libère le brouillage au moment de la mort, même si le joueur était dans la zone
+        this.scene.isDashJammed = false
+        super.destroy()
     }
 }

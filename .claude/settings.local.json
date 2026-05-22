@@ -16,7 +16,10 @@
       "PowerShell(cd \"c:\\\\Users\\\\tdacosta\\\\OneDrive - oxya\\\\Documents\\\\M1\\\\3D\\\\GamesOnWeb2026_Viale_DaCosta\\\\babylon-game\"; Get-ChildItem -Recurse -Force | Select-Object -ExpandProperty FullName | ForEach-Object { $_ -replace [regex]::Escape\\(\\(Get-Item .\\).FullName + '\\\\'\\), '' } | Sort-Object)",
       "PowerShell(cd \"c:\\\\Users\\\\tdacosta\\\\OneDrive - oxya\\\\Documents\\\\M1\\\\3D\\\\GamesOnWeb2026_Viale_DaCosta\\\\babylon-game\\\\src\"; Get-ChildItem -Recurse -Force | Select-Object -ExpandProperty FullName | ForEach-Object { $_ -replace [regex]::Escape\\(\\(Get-Item .\\).FullName + '\\\\'\\), '' } | Sort-Object)",
       "PowerShell(cd \"c:\\\\Users\\\\tdacosta\\\\OneDrive - oxya\\\\Documents\\\\M1\\\\3D\\\\GamesOnWeb2026_Viale_DaCosta\\\\babylon-game\"; Get-ChildItem -Depth 0 | Where-Object { $_.Name -match '\\(README|package|vite|tsconfig|\\\\.github|\\\\.claude\\)' -or $_.Extension -in @\\('.json', '.md', '.ts', '.html', '.css'\\) } | Select-Object Name, FullName)",
-      "PowerShell(cd \"c:\\\\Users\\\\tdacosta\\\\OneDrive - oxya\\\\Documents\\\\M1\\\\3D\\\\GamesOnWeb2026_Viale_DaCosta\\\\babylon-game\"; Get-ChildItem -Depth 0 | Select-Object Name | ForEach-Object { $_.Name })"
+      "PowerShell(cd \"c:\\\\Users\\\\tdacosta\\\\OneDrive - oxya\\\\Documents\\\\M1\\\\3D\\\\GamesOnWeb2026_Viale_DaCosta\\\\babylon-game\"; Get-ChildItem -Depth 0 | Select-Object Name | ForEach-Object { $_.Name })",
+      "Bash(node --input-type=module --eval \"import\\('./src/babylon/entities/enemies/new/ApexSentinel.js'\\).then\\(\\(\\) => console.log\\('OK'\\)\\).catch\\(e => console.error\\('ERR:', e.message\\)\\)\")",
+      "Bash(node --input-type=module --eval \"import\\('./src/babylon/entities/enemies/new/ApexSentinel.js'\\).then\\(\\(\\) => console.log\\('OK'\\)\\).catch\\(e => console.error\\(e.message\\)\\)\")",
+      "Bash(npx acorn *)"
     ]
   }
 }
