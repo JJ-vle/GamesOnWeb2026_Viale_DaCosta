@@ -97,10 +97,22 @@ export class PauseUI {
     /**
      * Affiche l'écran de pause
      * @param {function} onResume - callback quand le joueur appuie sur Resume
+     * @param {object} [options]
+     * @param {number} [options.musicVolume]
+     * @param {number} [options.sfxVolume]
+     * @param {(v:number)=>void} [options.onMusicVolumeChange]
+     * @param {(v:number)=>void} [options.onSfxVolumeChange]
      */
-    show(onResume) {
+    show(onResume, options = {}) {
         this._clearUI();
         this._visible = true;
+
+        const {
+            musicVolume = 0.6,
+            sfxVolume = 0.8,
+            onMusicVolumeChange = null,
+            onSfxVolumeChange = null
+        } = options;
 
         // ── Fond sombre semi-transparent ──
         const overlay = new Rectangle('pauseOverlay');
@@ -126,7 +138,7 @@ export class PauseUI {
         // ── Conteneur des boutons ──
         const buttonContainer = new Rectangle('buttonContainer');
         buttonContainer.width = '400px';
-        buttonContainer.height = '440px';
+        buttonContainer.height = '700px';
         buttonContainer.thickness = 0;
         buttonContainer.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
         buttonContainer.verticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
@@ -152,32 +164,83 @@ export class PauseUI {
         });
         this._listeners.push({ observable: resumeBtn.onPointerClickObservable, observer: resumeObserver });
 
-        // ── Bouton Settings (placeholder) ──
-        const settingsBtn = Button.CreateSimpleButton('settingsBtn', '⚙ Settings');
-        settingsBtn.width = '300px';
-        settingsBtn.height = '60px';
-        settingsBtn.top = '80px';
-        settingsBtn.cornerRadius = 8;
-        settingsBtn.background = THEME.panelStrong;
-        settingsBtn.color = THEME.ink;
-        settingsBtn.fontSize = 24;
-        settingsBtn.fontFamily = 'monospace';
-        settingsBtn.fontStyle = 'bold';
-        settingsBtn.paddingInPixels = 10;
-        addNeonSweep(this.scene, settingsBtn, 'settingsBtn', THEME.pink, THEME.shadowPink, THEME.shadowCyan, this._listeners);
-        buttonContainer.addControl(settingsBtn);
+        // ── Slider Musique ──
+        const musicPanel = new Rectangle('musicPanel');
+        musicPanel.width = '320px';
+        musicPanel.height = '80px';
+        musicPanel.top = '80px';
+        musicPanel.thickness = 0;
+        buttonContainer.addControl(musicPanel);
 
-        // Placeholder click
-        const settingsObserver = settingsBtn.onPointerClickObservable.add(() => {
-            console.log('[PauseUI] Settings clicked (not implemented)');
+        const musicLabel = new TextBlock('musicLabel');
+        musicLabel.text = `Musique: ${Math.round(musicVolume * 100)}%`;
+        musicLabel.color = THEME.inkSoft;
+        musicLabel.fontSize = 18;
+        musicLabel.fontFamily = 'monospace';
+        musicLabel.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+        musicLabel.height = '30px';
+        musicPanel.addControl(musicLabel);
+
+        const musicSlider = new Slider('musicSlider');
+        musicSlider.minimum = 0;
+        musicSlider.maximum = 1;
+        musicSlider.value = musicVolume;
+        musicSlider.height = '20px';
+        musicSlider.width = '300px';
+        musicSlider.color = THEME.pink;
+        musicSlider.background = '#2a2d36';
+        musicSlider.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
+        musicPanel.addControl(musicSlider);
+
+        const musicSliderObs = musicSlider.onValueChangedObservable.add((value) => {
+            musicLabel.text = `Musique: ${Math.round(value * 100)}%`;
+            if (typeof onMusicVolumeChange === 'function') {
+                onMusicVolumeChange(value);
+            }
         });
-        this._listeners.push({ observable: settingsBtn.onPointerClickObservable, observer: settingsObserver });
+        this._listeners.push({ observable: musicSlider.onValueChangedObservable, observer: musicSliderObs });
+
+        // ── Slider Effets sonores ──
+        const sfxPanel = new Rectangle('sfxPanel');
+        sfxPanel.width = '320px';
+        sfxPanel.height = '80px';
+        sfxPanel.top = '165px';
+        sfxPanel.thickness = 0;
+        buttonContainer.addControl(sfxPanel);
+
+        const sfxLabel = new TextBlock('sfxLabel');
+        sfxLabel.text = `Effets sonores: ${Math.round(sfxVolume * 100)}%`;
+        sfxLabel.color = THEME.inkSoft;
+        sfxLabel.fontSize = 18;
+        sfxLabel.fontFamily = 'monospace';
+        sfxLabel.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+        sfxLabel.height = '30px';
+        sfxPanel.addControl(sfxLabel);
+
+        const sfxSlider = new Slider('sfxSlider');
+        sfxSlider.minimum = 0;
+        sfxSlider.maximum = 1;
+        sfxSlider.value = sfxVolume;
+        sfxSlider.height = '20px';
+        sfxSlider.width = '300px';
+        sfxSlider.color = THEME.cyan;
+        sfxSlider.background = '#2a2d36';
+        sfxSlider.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
+        sfxPanel.addControl(sfxSlider);
+
+        const sfxSliderObs = sfxSlider.onValueChangedObservable.add((value) => {
+            sfxLabel.text = `Effets sonores: ${Math.round(value * 100)}%`;
+            if (typeof onSfxVolumeChange === 'function') {
+                onSfxVolumeChange(value);
+            }
+        });
+        this._listeners.push({ observable: sfxSlider.onValueChangedObservable, observer: sfxSliderObs });
 
         // ── Slider Luminosité ──
         const brightnessPanel = new Rectangle('brightnessPanel');
         brightnessPanel.width = '300px';
         brightnessPanel.height = '80px';
-        brightnessPanel.top = '180px';
+        brightnessPanel.top = '265px';
         brightnessPanel.thickness = 0;
         buttonContainer.addControl(brightnessPanel);
 
@@ -201,7 +264,7 @@ export class PauseUI {
         brightnessSlider.value = this.scene.metadata.brightnessMultiplier;
         brightnessSlider.height = '20px';
         brightnessSlider.width = '280px';
-        brightnessSlider.color = THEME.cyan;
+        brightnessSlider.color = THEME.gold;
         brightnessSlider.background = '#2a2d36';
         brightnessSlider.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
         brightnessPanel.addControl(brightnessSlider);

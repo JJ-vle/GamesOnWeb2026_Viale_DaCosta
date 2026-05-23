@@ -1,5 +1,6 @@
 import { Vector3, MeshBuilder, StandardMaterial, Color3 } from '@babylonjs/core'
 import { ItemDatabase } from '../entities/items/items.js'
+import { applySfxVolume } from './AudioSettings'
 
 export class ActiveAbilitySystem {
     /**
@@ -38,9 +39,10 @@ export class ActiveAbilitySystem {
         this.uiSystem = null
 
         // Audio natif navigateur pour le dash
+        this._dashBaseVolume = 0.05
         this._dashSound = new Audio('/assets/sounds/dash.mp3')
         this._dashSound.preload = 'auto'
-        this._dashSound.volume = 0.10
+        this._dashSound.volume = applySfxVolume(this._dashBaseVolume)
         this._dashAudioUnlocked = false
 
         // Callbacks optionnels
@@ -77,7 +79,7 @@ export class ActiveAbilitySystem {
         if (!this._dashSound) return
 
         const audio = this._dashSound.cloneNode(true)
-        audio.volume = this._dashSound.volume
+        audio.volume = applySfxVolume(this._dashBaseVolume)
         audio.currentTime = 0
 
         const playPromise = audio.play()

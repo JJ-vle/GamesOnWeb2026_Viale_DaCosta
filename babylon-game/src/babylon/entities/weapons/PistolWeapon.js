@@ -2,6 +2,7 @@
 import { Vector3 } from "@babylonjs/core"
 import { Weapon } from "./Weapon"
 import { PistolProjectile } from "./PistolProjectile"
+import { applySfxVolume } from "../../systems/AudioSettings"
 
 export class PistolWeapon extends Weapon {
   constructor(scene, player) {
@@ -11,9 +12,10 @@ export class PistolWeapon extends Weapon {
     this.cooldown = 0.25
     this._cooldownTimer = 0
     this.baseDamage = 2        // dégâts de base avant strength
+    this._baseShotVolume = 0.001
     this._shotSound = new Audio('/assets/sounds/blaster.mp3')
     this._shotSound.preload = 'auto'
-    this._shotSound.volume = 0.001
+    this._shotSound.volume = applySfxVolume(this._baseShotVolume)
     this._audioUnlocked = false
 
     this.isFiring = true;
@@ -40,7 +42,7 @@ export class PistolWeapon extends Weapon {
     if (!this._shotSound) return
 
     const audio = this._shotSound.cloneNode(true)
-    audio.volume = this._shotSound.volume
+    audio.volume = applySfxVolume(this._baseShotVolume)
     audio.currentTime = 0
 
     const playPromise = audio.play()

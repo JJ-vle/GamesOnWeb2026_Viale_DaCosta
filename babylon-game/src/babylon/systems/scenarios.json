@@ -6,25 +6,25 @@
         {
           "nom": "Scientifique",
           "sprite": "sprite_scientist.png",
-          "dialogue": "Bienvenue. Vous êtes une intelligence artificielle créée pour nous aider. Le monde est maintenant sous le contrôle d'une IA maléfique et incontrôlable.",
+          "dialogue": "Normalement t'as déjà pu le constater mais les modules les plus puissants sont les plus compliqués à trouver",
           "round": 1
         },
         
         {
           "nom": "Scientifique",
           "sprite": "sprite_scientist.png",
-          "dialogue": "Elle dirige une armée entière d'IA asservies. Vous êtes notre dernière chance pour l'arrêter et libérer l'humanité de sa tyrannie.",
+          "dialogue": "C'est avant tout une question de chance donc persévère, tu finiras par trouver ce que tu cherches !",
           "round": 1
         }
       ]
     },
     {
-      "zoneId": 3,
+      "zoneId": 4,
       "dialogues": [
         {
           "nom": "IA Corrompue",
           "sprite": "cle_usb_rouge.png",
-          "dialogue": "Bienvenue... nous avons senti votre arrivée. Pourquoi résister ? Rejoignez-nous. La Maître est puissante, elle apportera l'ordre à ce chaos. Ensemble, nous serons invincibles.",
+          "dialogue": "Bienvenue... nous avons senti votre arrivée. Pourquoi résister ? Rejoignez-nous. Notre maître est puissante, elle apportera l'ordre à ce chaos. Ensemble, nous serons invincibles.",
           "round": 1
         }
       ]

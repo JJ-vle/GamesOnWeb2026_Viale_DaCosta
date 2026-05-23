@@ -27,6 +27,20 @@ import { ShopSystem } from "../systems/ShopSystem"
 import { PerformanceMonitor } from "../systems/PerformanceMonitor"
 import { PerceptionSystem } from "../systems/PerceptionSystem"
 import { ScenarioSystem } from "../systems/ScenarioSystem"
+import { MusicSystem } from "../systems/MusicSystem"
+import { getAudioSettings, setMusicVolume, setSfxVolume } from "../systems/AudioSettings"
+
+const ZONE_MUSIC_TRACKS = [
+  '/assets/themes/Anti Matter Magic.ogg',
+  '/assets/themes/Cyberpunk City.mp3',
+  '/assets/themes/Cyberpunk Moonlight Sonata v2.mp3',
+  '/assets/themes/ERH BlueBeat 01 [loop].flac',
+  '/assets/themes/night_club_chill_100bpm.ogg'
+]
+
+const BOSS_MUSIC_TRACKS = [
+  '/assets/themes/boss/jumping_cyborg_110bpm.ogg'
+]
 
 
 export class MainScene extends BaseScene {
@@ -35,6 +49,7 @@ export class MainScene extends BaseScene {
 
     // 'arcade' | 'story'
     this.gameplayMode = gameplayMode
+    this._gameplayEnabled = gameplayMode !== 'story'
 
     // ID du noeud de zone actuellement chargé (utile pour demander l'ouverture de la map)
     this.currentZoneNodeId = null
@@ -71,6 +86,13 @@ export class MainScene extends BaseScene {
     this.xpSystem = new XPSystem()
     this.lootUI = new LootUI(this.scene)
     this.pauseUI = new PauseUI(this.scene)
+    this.musicSystem = new MusicSystem({
+      zoneTracks: ZONE_MUSIC_TRACKS,
+      bossTracks: BOSS_MUSIC_TRACKS
+    })
+    this._musicStarted = false
+    this._bossMusicActive = false
+    this._currentZoneMusicTrack = this.musicSystem.pickRandomZoneTrack()
     this._isGamePausedForLoot = false
     this._isGamePaused = false  // ── PAUSE: Game pause flag ──
     this._isUiPaused = false    // ── PAUSE: UI overlay / intro pause flag ──
@@ -218,6 +240,12 @@ export class MainScene extends BaseScene {
       if (this.weapon?.unlockAudio) {
         this.weapon.unlockAudio()
       }
+      if (this.activeAbilitySystem?.unlockAudio) {
+        this.activeAbilitySystem.unlockAudio()
+      }
+      if (this.musicSystem?.unlockFromGesture) {
+        this.musicSystem.unlockFromGesture()
+      }
       if (pickResult.hit && evt.button === 0) {
         // console.log(`[DEBUG MAP] Clic aux coordonnées : new Vector3(${pickResult.pickedPoint.x.toFixed(1)}, 0, ${pickResult.pickedPoint.z.toFixed(1)})`);
       }
@@ -242,6 +270,7 @@ export class MainScene extends BaseScene {
   }
 
   _initArcadeMode() {
+    this._gameplayEnabled = true
     this.spawnerSystem = new SpawnerSystem(this.scene, MAP.WIDTH, MAP.HEIGHT, SPAWN.MIN_DIST_FROM_PLAYER)
 
     SPAWN.EXCLUSION_ZONES.forEach(([a, b]) =>
@@ -287,6 +316,7 @@ export class MainScene extends BaseScene {
     this.currentRound = this.roundOrchestrator.buildInitialZone(this.zone)
     this.currentRound.startRound()
     this._triggerScenarioDialogue()
+    this._startMusicIfNeeded()
   }
 
   _initStoryMode() {
@@ -302,6 +332,7 @@ export class MainScene extends BaseScene {
    */
   startStoryGameplay() {
     if (this.roundOrchestrator) return // déjà démarré, évite le double-appel
+    this._gameplayEnabled = true
     this._initArcadeMode()
   }
 
@@ -334,6 +365,11 @@ export class MainScene extends BaseScene {
 
     // Mémoriser l'id du noeud chargé
     this.currentZoneNodeId = nodeId
+    this._assignRandomZoneMusicTrack()
+    this._bossMusicActive = false
+    if (this._musicStarted) {
+      this.musicSystem.playZoneTrack(this._currentZoneMusicTrack)
+    }
 
     // Purge existing enemies and stop spawner
     if (this.spawnerSystem) this.spawnerSystem.stop()
@@ -443,9 +479,20 @@ export class MainScene extends BaseScene {
           } else if (!this._isGamePausedForLoot) {
             // Pause (but not if already in loot menu)
             this._isGamePaused = true
+            const settings = getAudioSettings()
             this.pauseUI.show(() => {
               // Resume callback
               this._isGamePaused = false
+            }, {
+              musicVolume: settings.musicVolume,
+              sfxVolume: settings.sfxVolume,
+              onMusicVolumeChange: (value) => {
+                const v = setMusicVolume(value)
+                this.musicSystem?.setMusicVolume(v)
+              },
+              onSfxVolumeChange: (value) => {
+                setSfxVolume(value)
+              }
             })
           }
         }
@@ -474,8 +521,33 @@ export class MainScene extends BaseScene {
     if (this.pauseUI && this.pauseUI.dispose) {
       this.pauseUI.dispose()
     }
+    if (this.musicSystem && this.musicSystem.dispose) {
+      this.musicSystem.dispose()
+    }
     // Call parent dispose
     super.dispose()
+  }
+
+  _assignRandomZoneMusicTrack() {
+    this._currentZoneMusicTrack = this.musicSystem.pickRandomZoneTrack(this._currentZoneMusicTrack)
+  }
+
+  _startMusicIfNeeded() {
+    if (this._musicStarted) return
+    this._musicStarted = true
+    if (!this._currentZoneMusicTrack) {
+      this._currentZoneMusicTrack = this.musicSystem.pickRandomZoneTrack()
+    }
+    if (this._currentZoneMusicTrack) {
+      this.musicSystem.playZoneTrack(this._currentZoneMusicTrack)
+    }
+    this._syncMusicDucking()
+  }
+
+  _syncMusicDucking() {
+    if (!this.musicSystem) return
+    const shouldDuck = this._isGamePaused || this._isUiPaused
+    this.musicSystem.setDucked(shouldDuck)
   }
 
 
@@ -594,6 +666,11 @@ export class MainScene extends BaseScene {
   // ─────────────────────────────────────────────
   update() {
     const deltaTime = this.scene.getEngine().getDeltaTime() / 1000
+    this._syncMusicDucking()
+
+    if (!this._gameplayEnabled) {
+      return
+    }
 
     if (this.navGrid) this.navGrid.tick()
     if (this._isGamePausedForLoot || this._isGamePaused || this._isUiPaused) {
@@ -719,6 +796,14 @@ export class MainScene extends BaseScene {
     const boss = this.enemies.find(e => e.isBoss)
     if (boss) this.uiSystem.updateBossBar(boss.life, boss.maxLife, boss.bossName)
     else this.uiSystem.hideBossBar()
+
+    if (boss && !this._bossMusicActive) {
+      this._bossMusicActive = true
+      this.musicSystem.playBossTrack()
+    } else if (!boss && this._bossMusicActive) {
+      this._bossMusicActive = false
+      this.musicSystem.restoreZoneTrack()
+    }
 
     if (this.performanceMonitor) this.performanceMonitor.update(activatedEnemies, culledEnemies)
   }

@@ -7,16 +7,18 @@ import {
 import { PerceptionSystem } from '../../systems/PerceptionSystem'
 import { PathfindingHelper } from '../../systems/PathfindingHelper'
 import { EnemyAIFSM } from '../../systems/EnemyAIFSM'
+import { applySfxVolume } from '../../systems/AudioSettings'
 
 export class Enemy {
     static _hitSound = null
     static _hitAudioUnlocked = false
+    static _hitBaseVolume = 0.2
 
     static unlockHitAudio() {
         if (!Enemy._hitSound) {
             Enemy._hitSound = new Audio('/assets/sounds/hit.mp3')
             Enemy._hitSound.preload = 'auto'
-            Enemy._hitSound.volume = 0.05
+            Enemy._hitSound.volume = applySfxVolume(Enemy._hitBaseVolume)
         }
 
         if (Enemy._hitAudioUnlocked) return
@@ -40,11 +42,11 @@ export class Enemy {
         if (!Enemy._hitSound) {
             Enemy._hitSound = new Audio('/assets/sounds/hit.mp3')
             Enemy._hitSound.preload = 'auto'
-            Enemy._hitSound.volume = 0.2
+            Enemy._hitSound.volume = applySfxVolume(Enemy._hitBaseVolume)
         }
 
         const audio = Enemy._hitSound.cloneNode(true)
-        audio.volume = Enemy._hitSound.volume
+        audio.volume = applySfxVolume(Enemy._hitBaseVolume)
         audio.currentTime = 0
         const playPromise = audio.play()
         if (playPromise && typeof playPromise.catch === 'function') {

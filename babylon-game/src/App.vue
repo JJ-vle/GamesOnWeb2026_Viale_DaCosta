@@ -9,6 +9,7 @@ import DialogueView from './components/DialogueView.vue'
 import StoryIntroView from './components/StoryIntroView.vue'
 import ModelViewer from './components/ModelViewer.vue'
 import { getGame, setUiPaused } from './babylon/BabylonService'
+import { applySfxVolume } from './babylon/systems/AudioSettings'
 import { useGameMode } from './stores/useGameMode'
 
 const gameStarted = ref(false)
@@ -36,7 +37,7 @@ const { mode, setMode, toggleMap, gameplayMode, setGameplayMode } = useGameMode(
 
 const startSound = new Audio('/assets/sounds/start.mp3')
 startSound.preload = 'auto'
-startSound.volume = 0.2
+startSound.volume = applySfxVolume(0.2)
 
 function startGame(selectedMode) {
   setGameplayMode(selectedMode)
@@ -62,7 +63,7 @@ watch(shouldPauseGameplay, (paused) => {
 
 function playStartSound() {
   const audio = startSound.cloneNode(true)
-  audio.volume = startSound.volume
+  audio.volume = applySfxVolume(0.2)
   audio.currentTime = 0
 
   const playPromise = audio.play()
