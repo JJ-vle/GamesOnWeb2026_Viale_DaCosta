@@ -5,14 +5,14 @@
       "dialogues": [
         {
           "nom": "Scientifique",
-          "sprite": "cle_usb_turquoize.png",
+          "sprite": "sprite_scientist.png",
           "dialogue": "Bienvenue. Vous êtes une intelligence artificielle créée pour nous aider. Le monde est maintenant sous le contrôle d'une IA maléfique et incontrôlable.",
           "round": 1
         },
         
         {
           "nom": "Scientifique",
-          "sprite": "cle_usb_turquoize.png",
+          "sprite": "sprite_scientist.png",
           "dialogue": "Elle dirige une armée entière d'IA asservies. Vous êtes notre dernière chance pour l'arrêter et libérer l'humanité de sa tyrannie.",
           "round": 1
         }

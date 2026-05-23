@@ -124,7 +124,7 @@ const handleClose = () => {
 /* Character sprite area (left side) */
 .character-area {
   flex-shrink: 0;
-  width: 180px;
+  width: 220px;
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -132,16 +132,18 @@ const handleClose = () => {
 
 .sprite-container {
   position: relative;
-  width: 160px;
-  height: 200px;
+  width: 200px;
+  height: 240px;
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  background: rgba(0, 255, 255, 0.05);
+  background: radial-gradient(circle at 50% 58%, rgba(0, 255, 255, 0.18) 0%, rgba(0, 255, 255, 0.08) 28%, rgba(0, 0, 0, 0) 70%);
   border: 2px solid;
   border-image: linear-gradient(135deg, #00ffff, #ff00ff) 1;
   border-bottom: 3px solid #00ffff;
   box-shadow: 
+    0 0 24px rgba(0, 255, 255, 0.22),
+    0 0 40px rgba(255, 0, 255, 0.12),
     4px 0 0 0 rgba(0, 255, 255, 0.24),
     -4px 0 0 0 rgba(255, 0, 255, 0.18),
     0 4px 0 0 rgba(0, 255, 255, 0.2),
@@ -153,12 +155,15 @@ const handleClose = () => {
 }
 
 .character-sprite {
-  max-width: 90%;
-  max-height: 95%;
+  width: 180px;
+  max-width: 92%;
+  max-height: 98%;
   object-fit: contain;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
-  filter: drop-shadow(0 0 8px rgba(0, 255, 255, 0.45));
+  filter:
+    drop-shadow(0 0 10px rgba(0, 255, 255, 0.42))
+    drop-shadow(0 0 16px rgba(255, 0, 255, 0.22));
 }
 
 /* Main dialogue box */

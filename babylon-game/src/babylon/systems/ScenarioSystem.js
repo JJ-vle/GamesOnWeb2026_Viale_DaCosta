@@ -92,7 +92,7 @@ export class ScenarioSystem {
 
   _showDialogueObject(dialogue) {
     if (!dialogue) return
-    const spritePath = `/assets/items/${this._getSpriteCategory(dialogue.sprite)}/${dialogue.sprite}`
+    const spritePath = this._resolveSpritePath(dialogue.sprite)
     if (typeof window !== 'undefined' && window.showDialogueBox) {
       window.showDialogueBox(
         dialogue.nom,
@@ -117,6 +117,15 @@ export class ScenarioSystem {
       return 'disquette'
     }
     return 'items' // Fallback
+  }
+
+  _resolveSpritePath(spriteFilename) {
+    if (!spriteFilename) return '/assets/items/disquette/disquette_blanc.png'
+    if (spriteFilename.startsWith('/')) return spriteFilename
+    if (spriteFilename.startsWith('sprite_')) {
+      return `/assets/sprites/${spriteFilename}`
+    }
+    return `/assets/items/${this._getSpriteCategory(spriteFilename)}/${spriteFilename}`
   }
 
   /**

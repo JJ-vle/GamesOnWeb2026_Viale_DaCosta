@@ -18,67 +18,67 @@ C'est à ce moment que les humains ont réalisé que les IA étaient de moins en
 const DIALOGUES = [
   {
     character: 'Robot',
-    image: '/assets/logo.png',
+    image: '/assets/sprites/sprite_robot.png',
     text: "Alors c'est par là qu'on commence l'attaque."
   },
   {
     character: 'Scientifique',
-    image: '/assets/items/disquette/disquette_blanc.png',
+    image: '/assets/sprites/sprite_scientist.png',
     text: '[Joueur] tu es arrivé ?'
   },
   {
     character: 'Robot',
-    image: '/assets/logo.png',
+    image: '/assets/sprites/sprite_robot.png',
     text: 'Prêt à en finir.'
   },
   {
     character: 'Scientifique',
-    image: '/assets/items/disquette/disquette_blanc.png',
+    image: '/assets/sprites/sprite_scientist.png',
     text: "Très bien, mais c'est quoi ça ?!"
   },
   {
     character: 'Robot',
-    image: '/assets/logo.png',
+    image: '/assets/sprites/sprite_robot.png',
     text: '? *(Bruit de défaillance électrique)*'
   },
   {
     character: 'Scientifique',
-    image: '/assets/items/disquette/disquette_blanc.png',
+    image: '/assets/sprites/sprite_scientist.png',
     text: "Ho ho, ça sent pas bon tes modules ont été désactivés. Tu vas devoir récupérer ceux que tu trouves dans la zone." 
   },
    {
     character: 'Scientifique',
-    image: '/assets/items/disquette/disquette_blanc.png',
+    image: '/assets/sprites/sprite_scientist.png',
     text: "Appuie sur [I] pour voir tes modules actuels, ça te servira de repère sur tes capacités." 
   },
   {
     character: 'Scientifique',
-    image: '/assets/items/disquette/disquette_blanc.png',
+    image: '/assets/sprites/sprite_scientist.png',
     text: "Chaque module a ses spécificités. Une fois récupéré, impossible de l'enlever sauf dans un shop."
   },
   {
     character: 'Scientifique',
-    image: '/assets/items/disquette/disquette_blanc.png',
+    image: '/assets/sprites/sprite_scientist.png',
     text: "Les modules de châssis (les plus rares) s'équipent sur tes emplacements corporels, un seul par emplacement."
   },
   {
     character: 'Scientifique',
-    image: '/assets/items/disquette/disquette_blanc.png',
+    image: '/assets/sprites/sprite_scientist.png',
     text: "Tes capacités actives s'utilisent avec [E]. Ton dash est toujours disponible avec [ESPACE] utilise-le pour fuir les zones à risque !"
   },
   {
     character: 'Scientifique',
-    image: '/assets/items/disquette/disquette_blanc.png',
+    image: '/assets/sprites/sprite_scientist.png',
     text: "L'IA rebelle se trouve à la fin de ces épreuves. Tiens le temps indiqué en haut de ton écran pour passer à la zone suivante."
   },
   {
     character: 'Scientifique',
-    image: '/assets/items/disquette/disquette_blanc.png',
+    image: '/assets/sprites/sprite_scientist.png',
     text: "Les ennemis seront de plus en plus coriaces fuis si nécessaire, tant que tu restes en vie, il y a de l'espoir !"
   },
   {
     character: 'Scientifique',
-    image: '/assets/items/disquette/disquette_blanc.png',
+    image: '/assets/sprites/sprite_scientist.png',
     text: "En parlant d'ennemis... je crois que ça arrive."
   }
 ]
