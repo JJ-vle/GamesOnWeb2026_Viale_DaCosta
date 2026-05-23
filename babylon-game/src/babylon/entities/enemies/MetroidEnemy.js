@@ -89,6 +89,7 @@ export class MetroidEnemy extends Enemy {
     }
 
     takeDamage(amount) {
+        Enemy.playHitSound()
         this.life -= amount
         this.material.diffuseColor = new Color3(1, 1, 1) // Flash blanc
         this._hitTimer = 0.1

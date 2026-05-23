@@ -11,8 +11,44 @@ export class PistolWeapon extends Weapon {
     this.cooldown = 0.25
     this._cooldownTimer = 0
     this.baseDamage = 2        // dégâts de base avant strength
+    this._shotSound = new Audio('/assets/sounds/blaster.mp3')
+    this._shotSound.preload = 'auto'
+    this._shotSound.volume = 0.001
+    this._audioUnlocked = false
 
     this.isFiring = true;
+  }
+
+  unlockAudio() {
+    if (!this._shotSound || this._audioUnlocked) return
+    this._shotSound.load()
+    const unlockAttempt = this._shotSound.play()
+    if (unlockAttempt && typeof unlockAttempt.then === 'function') {
+      unlockAttempt
+        .then(() => {
+          this._shotSound.pause()
+          this._shotSound.currentTime = 0
+          this._audioUnlocked = true
+        })
+        .catch(() => {
+          // Keep trying on later user gestures / shots
+        })
+    }
+  }
+
+  _playShotSound() {
+    if (!this._shotSound) return
+
+    const audio = this._shotSound.cloneNode(true)
+    audio.volume = this._shotSound.volume
+    audio.currentTime = 0
+
+    const playPromise = audio.play()
+    if (playPromise && typeof playPromise.catch === 'function') {
+      playPromise.catch(() => {
+        // Browser refused playback; ignore silently.
+      })
+    }
   }
 
   update(deltaTime, direction) {
@@ -32,6 +68,8 @@ export class PistolWeapon extends Weapon {
 
   _shoot(direction) {
     if (!direction) return
+
+    this._playShotSound()
 
     // Croix vectorielle pour trouver la "droite" du personnage
     const rightVec = Vector3.Cross(Vector3.Up(), direction).normalize()

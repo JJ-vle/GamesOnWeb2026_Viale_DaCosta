@@ -86,6 +86,8 @@ export class IronBulwark extends Enemy {
             }
         }
 
+        Enemy.playHitSound()
+
         // Damage normal sur le dos/côtés
         this.life -= amount
         this.material.diffuseColor = new Color3(1, 0, 0)

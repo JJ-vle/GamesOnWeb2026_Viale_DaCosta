@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import BabylonScene from './components/BabylonScene.vue'
 import ZoneMapView from './components/ZoneMapView.vue'
 import GameEndView from './components/GameEndView.vue'
@@ -8,7 +8,7 @@ import InventoryView from './components/InventoryView.vue'
 import DialogueView from './components/DialogueView.vue'
 import StoryIntroView from './components/StoryIntroView.vue'
 import ModelViewer from './components/ModelViewer.vue'
-import { getGame } from './babylon/BabylonService'
+import { getGame, setUiPaused } from './babylon/BabylonService'
 import { useGameMode } from './stores/useGameMode'
 
 const gameStarted = ref(false)
@@ -26,7 +26,6 @@ const showInventory = ref(false)
 const inventoryData = ref(null)
 // Dialogue system
 const showDialogue = ref(false)
-const dialoguePausedGame = ref(false)
 const currentDialogue = ref({
   characterName: 'Système',
   dialogueText: 'Bienvenue voyageur...',
@@ -35,9 +34,43 @@ const currentDialogue = ref({
 
 const { mode, setMode, toggleMap, gameplayMode, setGameplayMode } = useGameMode()
 
+const startSound = new Audio('/assets/sounds/start.mp3')
+startSound.preload = 'auto'
+startSound.volume = 0.2
+
 function startGame(selectedMode) {
   setGameplayMode(selectedMode)
   gameStarted.value = true
+  playStartSound()
+}
+
+const shouldPauseGameplay = computed(() => {
+  if (!gameStarted.value) return false
+  return (
+    (gameplayMode.value === 'story' && !storyIntroComplete.value) ||
+    gameEnded.value ||
+    mode.value === 'map' ||
+    showShop.value ||
+    showInventory.value ||
+    showDialogue.value
+  )
+})
+
+watch(shouldPauseGameplay, (paused) => {
+  setUiPaused(paused)
+}, { immediate: true })
+
+function playStartSound() {
+  const audio = startSound.cloneNode(true)
+  audio.volume = startSound.volume
+  audio.currentTime = 0
+
+  const playPromise = audio.play()
+  if (playPromise && typeof playPromise.catch === 'function') {
+    playPromise.catch(() => {
+      // Ignore browser autoplay rejections.
+    })
+  }
 }
 
 function returnToMenu() {
@@ -192,25 +225,7 @@ function onReturnToMenuFromEnd() {
 const noop = () => { /* placeholder for future actions */ }
 
 function setDialogueVisible(isVisible) {
-  const game = getGame()
-
-  if (isVisible) {
-    // In story mode, do not pause the scene when showing dialogues so player can keep moving
-    if (game?.scene && gameplayMode.value !== 'story' && !game.scene._isGamePaused) {
-      game.scene._isGamePaused = true
-      dialoguePausedGame.value = true
-    } else {
-      dialoguePausedGame.value = false
-    }
-    showDialogue.value = true
-    return
-  }
-
-  showDialogue.value = false
-  if (dialoguePausedGame.value && game?.scene && game.scene._isGamePaused) {
-    game.scene._isGamePaused = false
-  }
-  dialoguePausedGame.value = false
+  showDialogue.value = isVisible
 }
 
 // Dialogue system functions

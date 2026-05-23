@@ -37,6 +37,12 @@ export class ActiveAbilitySystem {
         // Référence optionnelle au UISystem pour afficher les notifications de brouillage
         this.uiSystem = null
 
+        // Audio natif navigateur pour le dash
+        this._dashSound = new Audio('/assets/sounds/dash.mp3')
+        this._dashSound.preload = 'auto'
+        this._dashSound.volume = 0.10
+        this._dashAudioUnlocked = false
+
         // Callbacks optionnels
         this.onAbilityUsed = null    // () => void
         this.onItemChanged = null    // (itemType) => void
@@ -47,6 +53,39 @@ export class ActiveAbilitySystem {
         // Pool VFX
         this._healPool = this._createHealPool(8)
         this._explosionMesh = this._createExplosionMesh()
+    }
+
+    unlockAudio() {
+        if (!this._dashSound || this._dashAudioUnlocked) return
+
+        this._dashSound.load()
+        const unlockAttempt = this._dashSound.play()
+        if (unlockAttempt && typeof unlockAttempt.then === 'function') {
+            unlockAttempt
+                .then(() => {
+                    this._dashSound.pause()
+                    this._dashSound.currentTime = 0
+                    this._dashAudioUnlocked = true
+                })
+                .catch(() => {
+                    // Browser policy may still block until the next user gesture.
+                })
+        }
+    }
+
+    _playDashSound() {
+        if (!this._dashSound) return
+
+        const audio = this._dashSound.cloneNode(true)
+        audio.volume = this._dashSound.volume
+        audio.currentTime = 0
+
+        const playPromise = audio.play()
+        if (playPromise && typeof playPromise.catch === 'function') {
+            playPromise.catch(() => {
+                // Ignore playback failures when the browser still blocks audio.
+            })
+        }
     }
 
     _createHealPool(count) {
@@ -246,6 +285,7 @@ export class ActiveAbilitySystem {
             }
         })
 
+        this._playDashSound()
         this._spawnDashVFX(dir)
         if (this.onDash) this.onDash()
     }

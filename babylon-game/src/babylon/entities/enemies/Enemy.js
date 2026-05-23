@@ -9,6 +9,50 @@ import { PathfindingHelper } from '../../systems/PathfindingHelper'
 import { EnemyAIFSM } from '../../systems/EnemyAIFSM'
 
 export class Enemy {
+    static _hitSound = null
+    static _hitAudioUnlocked = false
+
+    static unlockHitAudio() {
+        if (!Enemy._hitSound) {
+            Enemy._hitSound = new Audio('/assets/sounds/hit.mp3')
+            Enemy._hitSound.preload = 'auto'
+            Enemy._hitSound.volume = 0.05
+        }
+
+        if (Enemy._hitAudioUnlocked) return
+
+        Enemy._hitSound.load()
+        const unlockAttempt = Enemy._hitSound.play()
+        if (unlockAttempt && typeof unlockAttempt.then === 'function') {
+            unlockAttempt
+                .then(() => {
+                    Enemy._hitSound.pause()
+                    Enemy._hitSound.currentTime = 0
+                    Enemy._hitAudioUnlocked = true
+                })
+                .catch(() => {
+                    // Browser policy may block until a stronger user gesture.
+                })
+        }
+    }
+
+    static playHitSound() {
+        if (!Enemy._hitSound) {
+            Enemy._hitSound = new Audio('/assets/sounds/hit.mp3')
+            Enemy._hitSound.preload = 'auto'
+            Enemy._hitSound.volume = 0.2
+        }
+
+        const audio = Enemy._hitSound.cloneNode(true)
+        audio.volume = Enemy._hitSound.volume
+        audio.currentTime = 0
+        const playPromise = audio.play()
+        if (playPromise && typeof playPromise.catch === 'function') {
+            playPromise.catch(() => {
+                // Ignore playback failures when the browser still blocks audio.
+            })
+        }
+    }
 
     constructor(scene, contact, maxLife, aiConfig = null) {
         this.scene = scene;
@@ -295,6 +339,7 @@ export class Enemy {
 
     
     takeDamage(amount) {
+        Enemy.playHitSound()
         this.life -= amount
 
         // Sauvegarder la couleur d'origine avant le premier flash rouge

@@ -54,6 +54,7 @@ export class HeavyEnemy extends Enemy {
     }
 
     takeDamage(amount) {
+        Enemy.playHitSound()
         this.life -= amount
 
         // Flash rouge vif au hit

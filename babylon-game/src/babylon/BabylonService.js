@@ -5,7 +5,14 @@ import { Game } from './Game'
 
 const state = {
   game: null,
-  _resizeHandler: null
+  _resizeHandler: null,
+  _uiPaused: false
+}
+
+function applyUiPause(game, paused) {
+  if (game?.scene) {
+    game.scene._isUiPaused = !!paused
+  }
 }
 
 export function initBabylon(canvas, gameplayMode = 'arcade') {
@@ -18,6 +25,8 @@ export function initBabylon(canvas, gameplayMode = 'arcade') {
   if (typeof state.game.start === 'function') {
     state.game.start()
   }
+
+  applyUiPause(state.game, state._uiPaused)
 
   // Global resize handler (registered once)
   const resizeHandler = () => {
@@ -37,6 +46,11 @@ export function getGame() {
   return state.game
 }
 
+export function setUiPaused(paused) {
+  state._uiPaused = !!paused
+  applyUiPause(state.game, state._uiPaused)
+}
+
 export function disposeBabylon() {
   try {
     if (state._resizeHandler) window.removeEventListener('resize', state._resizeHandler)
@@ -46,10 +60,12 @@ export function disposeBabylon() {
   }
   state.game = null
   state._resizeHandler = null
+  state._uiPaused = false
 }
 
 export default {
   initBabylon,
   getGame,
+  setUiPaused,
   disposeBabylon
 }

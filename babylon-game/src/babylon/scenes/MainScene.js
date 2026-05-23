@@ -19,6 +19,7 @@ import { ActiveAbilitySystem } from "../systems/ActiveAbilitySystem"
 import { BuildSystem } from "../systems/BuildSystem"
 import { LootSystem } from "../systems/LootSystem"
 import { XPSystem } from "../systems/XPSystem"
+import { Enemy } from '../entities/enemies/Enemy'
 import { LootUI } from "../ui/LootUI"
 import { PauseUI } from "../ui/PauseUI"
 import { XRaySystem } from "../systems/XRaySystem"
@@ -72,6 +73,7 @@ export class MainScene extends BaseScene {
     this.pauseUI = new PauseUI(this.scene)
     this._isGamePausedForLoot = false
     this._isGamePaused = false  // ── PAUSE: Game pause flag ──
+    this._isUiPaused = false    // ── PAUSE: UI overlay / intro pause flag ──
     this._pauseSwitchLock = false  // ── PAUSE: Prevent spamming ──
     this._pendingLevelUpLootLevel = null
 
@@ -210,6 +212,12 @@ export class MainScene extends BaseScene {
 
     // DEBUG MAP: Clic Gauche pour afficher les coordonnées X,Z dans la console (F12)
     this.scene.onPointerDown = (evt, pickResult) => {
+      if (Enemy?.unlockHitAudio) {
+        Enemy.unlockHitAudio()
+      }
+      if (this.weapon?.unlockAudio) {
+        this.weapon.unlockAudio()
+      }
       if (pickResult.hit && evt.button === 0) {
         // console.log(`[DEBUG MAP] Clic aux coordonnées : new Vector3(${pickResult.pickedPoint.x.toFixed(1)}, 0, ${pickResult.pickedPoint.z.toFixed(1)})`);
       }
@@ -421,6 +429,10 @@ export class MainScene extends BaseScene {
       if (type === 1) {
         this.inputMap[key] = true
 
+        if (key === ' ' && this.activeAbilitySystem?.unlockAudio) {
+          this.activeAbilitySystem.unlockAudio()
+        }
+
         // ── PAUSE: Check for Escape key ──
         if (key === 'Escape' && !this._pauseSwitchLock) {
           this._pauseSwitchLock = true
@@ -584,11 +596,11 @@ export class MainScene extends BaseScene {
     const deltaTime = this.scene.getEngine().getDeltaTime() / 1000
 
     if (this.navGrid) this.navGrid.tick()
-    if (this._isGamePausedForLoot || this._isGamePaused) {
+    if (this._isGamePausedForLoot || this._isGamePaused || this._isUiPaused) {
       // Diagnostic log to help identify why the update loop is paused
       if (!this._pauseLogShown) {
         try {
-          console.warn('[MainScene] update() paused — _isGamePausedForLoot=', this._isGamePausedForLoot, ' _isGamePaused=', this._isGamePaused, ' lootUIVisible=', !!(this.lootUI && this.lootUI.isVisible))
+          console.warn('[MainScene] update() paused — _isGamePausedForLoot=', this._isGamePausedForLoot, ' _isGamePaused=', this._isGamePaused, ' _isUiPaused=', this._isUiPaused, ' lootUIVisible=', !!(this.lootUI && this.lootUI.isVisible))
         } catch (e) { /* ignore logging errors */ }
         this._pauseLogShown = true
       }
