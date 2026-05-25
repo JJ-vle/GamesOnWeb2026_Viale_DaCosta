@@ -833,10 +833,17 @@ export class MainScene extends BaseScene {
     this.uiSystem.updateXP(this.xpSystem.progressToNext, this.xpSystem.level)
 
     if (this.activeAbilitySystem) {
+      const isDashSlot = this.activeAbilitySystem.equippedItem == null
+      const cooldownPercent = isDashSlot
+        ? this.activeAbilitySystem.getDashRechargeRemainingPercent()
+        : this.activeAbilitySystem.getCooldownPercent()
+      const cooldownRemaining = isDashSlot
+        ? this.activeAbilitySystem._dashRechargeTimer || 0
+        : this.activeAbilitySystem.cooldownRemaining
       this.uiSystem.updateActiveAbility(
-        this.activeAbilitySystem.getCooldownPercent(),
+        cooldownPercent,
         this.activeAbilitySystem.equippedItem,
-        this.activeAbilitySystem.cooldownRemaining
+        cooldownRemaining
       )
     }
 

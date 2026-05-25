@@ -323,12 +323,13 @@ export class UISystem {
         this._uiObservers.push(sweepObs);
 
         this.activeLabel = new TextBlock("activeLabel");
-        this.activeLabel.text = "ACTIVABLE";
+        this.activeLabel.text = "";
         this.activeLabel.color = "#ffffff99";
         this.activeLabel.fontSize = 9;
         this.activeLabel.fontFamily = "monospace";
         this.activeLabel.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
         this.activeLabel.top = "8px";
+        this.activeLabel.isVisible = false;
         container.addControl(this.activeLabel);
 
         this.abilityIcon = new TextBlock("abilityIcon");
@@ -348,25 +349,40 @@ export class UISystem {
         this.abilityIconImage.isVisible = false;
         container.addControl(this.abilityIconImage);
 
-        this.abilityCooldownOverlay = new Rectangle("abilityCooldownOverlay");
-        this.abilityCooldownOverlay.width = "100%";
-        this.abilityCooldownOverlay.height = "0%";
-        this.abilityCooldownOverlay.background = "#000000aa";
-        this.abilityCooldownOverlay.thickness = 0;
-        this.abilityCooldownOverlay.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
-        container.addControl(this.abilityCooldownOverlay);
+        const ringContainer = new Rectangle("abilityCooldownRing");
+        ringContainer.width = "88%";
+        ringContainer.height = "88%";
+        ringContainer.background = "transparent";
+        ringContainer.thickness = 0;
+        ringContainer.verticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
+        ringContainer.top = "8px";
+        ringContainer.isVisible = false;
+        ringContainer.isHitTestVisible = false;
+        container.addControl(ringContainer);
+        this.abilityCooldownRing = ringContainer;
 
-        this.abilityCooldownText = new TextBlock("abilityCooldownText");
-        this.abilityCooldownText.text = "";
-        this.abilityCooldownText.color = "#f4cc69";
-        this.abilityCooldownText.fontSize = 16;
-        this.abilityCooldownText.fontFamily = "monospace";
-        this.abilityCooldownText.fontStyle = "bold";
-        this.abilityCooldownText.outlineColor = "#000000";
-        this.abilityCooldownText.outlineWidth = 3;
-        this.abilityCooldownText.verticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
-        this.abilityCooldownText.top = "12px";
-        container.addControl(this.abilityCooldownText);
+        this._abilityCooldownSegments = [];
+        const segmentCount = 24;
+        const segmentRadius = 34;
+        for (let i = 0; i < segmentCount; i++) {
+            const segment = new Rectangle(`abilityCooldownSegment_${i}`);
+            segment.width = "7px";
+            segment.height = "16px";
+            segment.background = "rgba(255,255,255,0.72)";
+            segment.thickness = 0;
+            segment.cornerRadius = 3;
+            segment.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
+            segment.verticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
+            segment.isHitTestVisible = false;
+
+            const angle = -Math.PI / 2 + (i / segmentCount) * Math.PI * 2;
+            segment.leftInPixels = Math.round(Math.cos(angle) * segmentRadius);
+            segment.topInPixels = Math.round(Math.sin(angle) * segmentRadius);
+            segment.rotation = angle + Math.PI / 2;
+            segment.isVisible = false;
+            ringContainer.addControl(segment);
+            this._abilityCooldownSegments.push(segment);
+        }
     }
 
     // ─────────────────────────────────────────────────────
@@ -699,8 +715,8 @@ export class UISystem {
         this._lastItemType = itemType;
 
         if (itemType == null) {
-            // show image when there's no emoji-type item
-            try { this.abilityIconImage.source = "/assets/items/disquette/disquette_gris.png"; } catch (e) { /* ignore */ }
+            // show dash icon when the active slot represents the dash ability
+            try { this.abilityIconImage.source = "/assets/items/dash.png"; } catch (e) { /* ignore */ }
             this.abilityIconImage.isVisible = true;
             this.abilityIcon.isVisible = false;
         } else {
@@ -709,23 +725,18 @@ export class UISystem {
             if (this.abilityIconImage) this.abilityIconImage.isVisible = false;
         }
 
-        const overlayHeight = Math.round(cooldownPercent * 100);
-        this.abilityCooldownOverlay.height = overlayHeight + "%";
-        this.abilityCooldownOverlay.background = cooldownPercent > 0.5 ? "#ff7ac844" : "#68f0ff33";
+        if (this.abilityIconImage) {
+            const dimmed = cooldownRemaining > 0.05 || cooldownPercent > 0.01;
+            this.abilityIconImage.alpha = dimmed ? 0.45 : 1;
+            this.abilityIconImage.color = dimmed ? "#767676" : "#ffffff";
+        }
+
+        this._updateAbilityCooldownRing(cooldownPercent);
 
         const onCooldown = cooldownRemaining > 0.05 || cooldownPercent > 0.01;
-        if (onCooldown) {
-            const hasSeconds = cooldownRemaining > 0.05;
-            const display = hasSeconds
-                ? `${Math.max(1, Math.ceil(cooldownRemaining))}s`
-                : `${Math.max(1, Math.ceil(cooldownPercent * 100))}%`;
-            this.activeLabel.text = display;
-            this.activeLabel.color = "#f4cc69";
-            this.abilityCooldownText.text = display;
-        } else {
-            this.activeLabel.text = "ACTIVABLE";
-            this.activeLabel.color = "#ffffff99";
-            this.abilityCooldownText.text = "";
+        if (this.activeLabel) {
+            this.activeLabel.isVisible = false;
+            this.activeLabel.text = "";
         }
     }
 
@@ -734,6 +745,35 @@ export class UISystem {
         // Redirige vers updateActiveAbility si disponible
         const percent = total > 0 ? remaining / total : 0;
         this.updateActiveAbility(percent, this._lastItemType ?? "heal", remaining);
+    }
+
+    _updateAbilityCooldownRing(cooldownPercent) {
+        if (!this.abilityCooldownRing || !this._abilityCooldownSegments) return;
+
+        const remainingPercent = Math.max(0, Math.min(1, cooldownPercent));
+        if (remainingPercent <= 0.01) {
+            this.abilityCooldownRing.isVisible = false;
+            for (const segment of this._abilityCooldownSegments) {
+                segment.isVisible = false;
+            }
+            return;
+        }
+
+        this.abilityCooldownRing.isVisible = true;
+
+        const activeSegments = Math.max(0, Math.ceil(this._abilityCooldownSegments.length * remainingPercent));
+        const segmentAlpha = 0.22 + remainingPercent * 0.5;
+
+        this._abilityCooldownSegments.forEach((segment, index) => {
+            const visible = index < activeSegments;
+            segment.isVisible = visible;
+            if (visible) {
+                segment.alpha = segmentAlpha;
+                segment.background = index % 6 === 0
+                    ? "rgba(255,255,255,0.9)"
+                    : "rgba(255,255,255,0.7)";
+            }
+        });
     }
 
     /**

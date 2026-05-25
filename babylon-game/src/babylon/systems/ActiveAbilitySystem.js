@@ -237,6 +237,12 @@ export class ActiveAbilitySystem {
         return 1 - (this._dashRechargeTimer / this.DASH_RECHARGE_TIME)
     }
 
+    /** Fraction de cooldown restante du dash [0..1] pour l'UI */
+    getDashRechargeRemainingPercent() {
+        if (this.dashCharges >= this.maxDashCharges) return 0
+        return Math.max(0, Math.min(1, this._dashRechargeTimer / this.DASH_RECHARGE_TIME))
+    }
+
     // ─────────────────────────────────────────────
     //  DASH
     // ─────────────────────────────────────────────
