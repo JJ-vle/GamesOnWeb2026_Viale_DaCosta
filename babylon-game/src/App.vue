@@ -4,6 +4,7 @@ import BabylonScene from './components/BabylonScene.vue'
 import ZoneMapView from './components/ZoneMapView.vue'
 import GameEndView from './components/GameEndView.vue'
 import ShopView from './components/ShopView.vue'
+import RestAreaView from './components/RestAreaView.vue'
 import InventoryView from './components/InventoryView.vue'
 import DialogueView from './components/DialogueView.vue'
 import StoryIntroView from './components/StoryIntroView.vue'
@@ -22,6 +23,8 @@ const playerNodeId = ref(null)
 const currentSelectedNodeId = ref(null)  // Pour tracker le nœud sélectionné
 // Shop overlay
 const showShop = ref(false)
+// Rest area overlay
+const showRestArea = ref(false)
 // Inventory overlay
 const showInventory = ref(false)
 const inventoryData = ref(null)
@@ -52,6 +55,7 @@ const shouldPauseGameplay = computed(() => {
     gameEnded.value ||
     mode.value === 'map' ||
     showShop.value ||
+    showRestArea.value ||
     showInventory.value ||
     showDialogue.value
   )
@@ -187,14 +191,23 @@ function onIntroComplete() {
 })
 
 function onSelectZone(id) {
-  // Check if selected node is a Shop
+  // Check if selected node is a Shop or Rest Area
   const g = getGame()
   if (g?.scene?.zone?.tree) {
     const node = g.scene.zone.tree.nodes.find(n => n.id === id)
-    if (node && node.type && node.type.toLowerCase().includes('shop')) {
+    const type = (node?.type || '').toLowerCase()
+
+    if (node && type.includes('shop')) {
       // Show the shop instead of loading the zone
       currentSelectedNodeId.value = id
       showShop.value = true
+      return
+    }
+
+    if (node && (type.includes('rest') || type.includes('heal'))) {
+      // Show the rest area instead of loading a combat zone
+      currentSelectedNodeId.value = id
+      showRestArea.value = true
       return
     }
   }
@@ -212,11 +225,23 @@ function onSelectZone(id) {
 function onShopClose() {
   // Close shop and return to map
   showShop.value = false
+  showRestArea.value = false
   // Return to map showing the current node
   if (currentSelectedNodeId.value != null) {
     playerNodeId.value = currentSelectedNodeId.value
     setMode('map')
   }
+}
+
+function onRestAreaHeal() {
+  const g = getGame()
+  const scene = g?.scene
+  const player = scene?.playerEntry
+  if (!player) return
+
+  player.life = player.maxLife
+  scene.uiSystem?.updateLife(player.life, player.maxLife)
+  scene.uiSystem?.showNotification('Robot entièrement réparé.', '#00ff88', 1800)
 }
 
 function onReturnToMenuFromEnd() {
@@ -312,6 +337,7 @@ if (typeof window !== 'undefined') {
       />
       <ZoneMapView v-if="mode === 'map' && !gameEnded" :playerNodeId="playerNodeId" @selectZone="onSelectZone" @close="setMode('combat')" />
       <ShopView v-if="showShop" @close="onShopClose" />
+      <RestAreaView v-if="showRestArea" @close="onShopClose" @healPlayer="onRestAreaHeal" />
       <InventoryView v-if="showInventory && inventoryData" :inventory="inventoryData" @close="showInventory = false" />
       <DialogueView
         :isVisible="showDialogue"

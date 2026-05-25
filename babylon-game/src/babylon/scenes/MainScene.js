@@ -646,7 +646,13 @@ export class MainScene extends BaseScene {
 6. %cremoveItem(itemId) %c- Retire un item spécifique de l'inventaire.
    Ex: %cremoveItem('plume')%c      (Enlève l'item 'plume')
 
-6. %chelp() %c- Affiche ce menu.
+7. %cforceNextRestArea(index?) %c- Transforme un noeud successeur en 'Rest Area'.
+  Ex: %cforceNextRestArea()%c      (Prend le premier successeur)
+
+8. %ctestRestAreaFlow() %c- Force un successeur en Rest Area et ouvre la map.
+  (Clique ensuite le noeud pour vérifier l'UI scientifique + soin)
+
+9. %chelp() %c- Affiche ce menu.
       `,
         "font-size: 14px; font-weight: bold; color: #ffcc00;", "",
         "color: #00ffaa; font-weight: bold;", "",
@@ -658,8 +664,58 @@ export class MainScene extends BaseScene {
         "color: #ff55bb;", "",
         "color: #00ffaa; font-weight: bold;", "",
         "color: #ff55bb;", "",
+        "color: #00ffaa; font-weight: bold;", "",
+        "color: #ff55bb;", "",
+        "color: #00ffaa; font-weight: bold;", "",
         "color: #00ffaa; font-weight: bold;", ""
       )
+    }
+
+    // 8. forceNextRestArea(index?) pour transformer rapidement le prochain noeud en zone de repos
+    window.forceNextRestArea = (index = 0) => {
+      const tree = this.zone?.tree
+      if (!tree || !Array.isArray(tree.nodes)) {
+        console.warn('[Cheat] Arbre de zones introuvable.')
+        return null
+      }
+
+      const currentNode = tree.nodes.find(n => n.id === this.currentZoneNodeId)
+      if (!currentNode) {
+        console.warn('[Cheat] Noeud courant introuvable.')
+        return null
+      }
+
+      const nextIds = Array.isArray(currentNode.next) ? currentNode.next : []
+      const targetId = nextIds[index] ?? nextIds[0]
+      if (!targetId) {
+        console.warn('[Cheat] Aucun noeud successeur à convertir en Rest Area.')
+        return null
+      }
+
+      const targetNode = tree.nodes.find(n => n.id === targetId)
+      if (!targetNode) {
+        console.warn('[Cheat] Noeud successeur introuvable.')
+        return null
+      }
+
+      targetNode.type = 'Rest Area'
+      targetNode.effect = 'none'
+      targetNode.corrupted = false
+
+      console.log(`[Cheat] Noeud ${targetNode.id} forcé en Rest Area.`)
+      return targetNode.id
+    }
+
+    // 9. testRestAreaFlow() : accélère la vérification de bout en bout
+    window.testRestAreaFlow = () => {
+      const targetId = window.forceNextRestArea(0)
+      if (!targetId) return
+
+      window.dispatchEvent(new CustomEvent('openZoneMap', {
+        detail: { nodeId: this.currentZoneNodeId }
+      }))
+
+      console.log(`[Cheat] Map ouverte. Clique le noeud ${targetId} pour tester la Rest Area.`)
     }
   }
 
