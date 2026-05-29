@@ -436,6 +436,35 @@ export class MainScene extends BaseScene {
     this.uiSystem && this.uiSystem.showNotification(`Chargé: zone ${nodeId} (${node.type})`, '#88ccff', 2000)
   }
 
+  _pickRandomEncounterType() {
+    const encounterTypes = ['Battle', 'Rest Area', 'Shop']
+    return encounterTypes[Math.floor(Math.random() * encounterTypes.length)]
+  }
+
+  resolveRandomEncounterNode(nodeId) {
+    if (!this.zone || !this.zone.tree) {
+      console.warn('[MainScene] No zone tree available to resolve random encounter', nodeId)
+      return null
+    }
+
+    const node = (this.zone.tree.nodes || []).find(n => n.id === nodeId)
+    if (!node) {
+      console.warn('[MainScene] Random encounter node not found:', nodeId)
+      return null
+    }
+
+    if ((node.type || '').toLowerCase() !== 'random') {
+      return node
+    }
+
+    const resolvedType = this._pickRandomEncounterType()
+    node.type = resolvedType
+    node.effect = 'none'
+    node.corrupted = false
+    console.log(`[MainScene] Random encounter node ${nodeId} resolved to ${resolvedType}`)
+    return node
+  }
+
   /**
    * Déclenche un dialogue de scénario au début d'un round (story mode seulement)
    */
@@ -649,10 +678,13 @@ export class MainScene extends BaseScene {
 7. %cforceNextRestArea(index?) %c- Transforme un noeud successeur en 'Rest Area'.
   Ex: %cforceNextRestArea()%c      (Prend le premier successeur)
 
-8. %ctestRestAreaFlow() %c- Force un successeur en Rest Area et ouvre la map.
+8. %cforceNextRandomEncounter(index?) %c- Transforme un noeud successeur en rencontre aléatoire.
+  Ex: %cforceNextRandomEncounter()%c (Prend le premier successeur)
+
+9. %ctestRestAreaFlow() %c- Force un successeur en Rest Area et ouvre la map.
   (Clique ensuite le noeud pour vérifier l'UI scientifique + soin)
 
-9. %chelp() %c- Affiche ce menu.
+10. %chelp() %c- Affiche ce menu.
       `,
         "font-size: 14px; font-weight: bold; color: #ffcc00;", "",
         "color: #00ffaa; font-weight: bold;", "",
@@ -660,6 +692,8 @@ export class MainScene extends BaseScene {
         "color: #ff55bb;", "",
         "color: #00ffaa; font-weight: bold;", "",
         "color: #00ffaa; font-weight: bold;", "",
+        "color: #00ffaa; font-weight: bold;", "",
+        "color: #ff55bb;", "",
         "color: #00ffaa; font-weight: bold;", "",
         "color: #ff55bb;", "",
         "color: #00ffaa; font-weight: bold;", "",
@@ -703,6 +737,41 @@ export class MainScene extends BaseScene {
       targetNode.corrupted = false
 
       console.log(`[Cheat] Noeud ${targetNode.id} forcé en Rest Area.`)
+      return targetNode.id
+    }
+
+    // 8. forceNextRandomEncounter(index?) pour transformer rapidement le prochain noeud en rencontre aléatoire
+    window.forceNextRandomEncounter = (index = 0) => {
+      const tree = this.zone?.tree
+      if (!tree || !Array.isArray(tree.nodes)) {
+        console.warn('[Cheat] Arbre de zones introuvable.')
+        return null
+      }
+
+      const currentNode = tree.nodes.find(n => n.id === this.currentZoneNodeId)
+      if (!currentNode) {
+        console.warn('[Cheat] Noeud courant introuvable.')
+        return null
+      }
+
+      const nextIds = Array.isArray(currentNode.next) ? currentNode.next : []
+      const targetId = nextIds[index] ?? nextIds[0]
+      if (!targetId) {
+        console.warn('[Cheat] Aucun noeud successeur à convertir en rencontre aléatoire.')
+        return null
+      }
+
+      const targetNode = tree.nodes.find(n => n.id === targetId)
+      if (!targetNode) {
+        console.warn('[Cheat] Noeud successeur introuvable.')
+        return null
+      }
+
+      targetNode.type = 'Random'
+      targetNode.effect = 'none'
+      targetNode.corrupted = false
+
+      console.log(`[Cheat] Noeud ${targetNode.id} forcé en Random encounter.`)
       return targetNode.id
     }
 

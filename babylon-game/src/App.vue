@@ -197,14 +197,21 @@ function onSelectZone(id) {
     const node = g.scene.zone.tree.nodes.find(n => n.id === id)
     const type = (node?.type || '').toLowerCase()
 
-    if (node && type.includes('shop')) {
+    if (node && type.includes('random') && typeof g.scene.resolveRandomEncounterNode === 'function') {
+      g.scene.resolveRandomEncounterNode(id)
+    }
+
+    const resolvedNode = g.scene.zone.tree.nodes.find(n => n.id === id)
+    const resolvedType = (resolvedNode?.type || '').toLowerCase()
+
+    if (resolvedNode && resolvedType.includes('shop')) {
       // Show the shop instead of loading the zone
       currentSelectedNodeId.value = id
       showShop.value = true
       return
     }
 
-    if (node && (type.includes('rest') || type.includes('heal'))) {
+    if (resolvedNode && (resolvedType.includes('rest') || resolvedType.includes('heal'))) {
       // Show the rest area instead of loading a combat zone
       currentSelectedNodeId.value = id
       showRestArea.value = true
