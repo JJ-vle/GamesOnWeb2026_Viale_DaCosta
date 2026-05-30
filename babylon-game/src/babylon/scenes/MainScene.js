@@ -790,7 +790,9 @@ export class MainScene extends BaseScene {
 
   // ─────────────────────────────────────────────
   update() {
-    const deltaTime = this.scene.getEngine().getDeltaTime() / 1000
+    // Cap the simulation step so a long freeze / tab switch does not replay
+    // several seconds of cooldowns and sound-triggering actions in one frame.
+    const deltaTime = Math.min(this.scene.getEngine().getDeltaTime() / 1000, 0.1)
     this._syncMusicDucking()
 
     if (!this._gameplayEnabled) {
