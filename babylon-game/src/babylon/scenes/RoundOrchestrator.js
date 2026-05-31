@@ -36,9 +36,10 @@ const pickRandom = (arr, count) => [...arr].sort(() => 0.5 - Math.random()).slic
  * Peuple un Round avec des mobs selon la progression globale.
  * @param {Round} round
  * @param {number} globalDifficulty - (node.depth - 1) + r, croît à chaque node ET à chaque round local
+ * @param {number} nodeDepth - profondeur du nœud actuel, utilisée pour densifier les zones plus profondes
  * @param {boolean} [isBossRound=false] - si true, uniquement le NEON-LEVIATHAN
  */
-function populateRound(round, globalDifficulty, isBossRound = false) {
+function populateRound(round, globalDifficulty, nodeDepth, isBossRound = false) {
   // ── Round de boss : tiré aléatoirement parmi CAT_BOSS ──
   if (isBossRound) {
     const BossType = CAT_BOSS[Math.floor(Math.random() * CAT_BOSS.length)]
@@ -46,7 +47,12 @@ function populateRound(round, globalDifficulty, isBossRound = false) {
     return
   }
 
-  const totalMobs = ROUND.MOBS_BASE + globalDifficulty * ROUND.MOBS_STEP
+  const depthMultiplier = Math.min(
+    ROUND.DEPTH_MOBS_BONUS_MAX,
+    1 + Math.max(0, (nodeDepth ?? 1) - 1) * ROUND.DEPTH_MOBS_BONUS_PER_LEVEL
+  )
+  const baseMobs = ROUND.MOBS_BASE + globalDifficulty * ROUND.MOBS_STEP
+  const totalMobs = Math.max(1, Math.round(baseMobs * depthMultiplier))
 
   const frac1 = Math.max(ROUND.FRAC_CAT1_MIN, ROUND.FRAC_CAT1 - globalDifficulty * ROUND.FRAC_CAT1_DECAY)
   const types1 = pickRandom(CAT1, CAT1.length)
@@ -140,7 +146,7 @@ export class RoundOrchestrator {
       round.zoneRoundIndex = r
       round.zoneRoundCount = nb
       round.isLastZoneRound = r === nb - 1
-      populateRound(round, globalDifficulty, isBossRound)
+      populateRound(round, globalDifficulty, nodeDepth, isBossRound)
       newZone.addRound(round)
       this._attachRoundEndHandler(round)
     }

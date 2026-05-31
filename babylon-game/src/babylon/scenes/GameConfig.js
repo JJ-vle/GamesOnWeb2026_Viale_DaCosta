@@ -83,6 +83,8 @@ export const ROUND = {
   // Composition des mobs (basé sur globalDifficulty = node.depth - 1 + r)
   MOBS_BASE: 6,      // totalMobs = MOBS_BASE + globalDifficulty * MOBS_STEP
   MOBS_STEP: 4,
+  DEPTH_MOBS_BONUS_PER_LEVEL: 0.14,
+  DEPTH_MOBS_BONUS_MAX: 2.2,
   FRAC_CAT1: 0.7,        // fraction de départ (depth 1)
   FRAC_CAT1_DECAY: 0.06, // réduction par niveau de globalDifficulty
   FRAC_CAT1_MIN: 0.2,    // plancher : CAT1 ne disparaît jamais complètement

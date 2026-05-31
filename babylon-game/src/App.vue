@@ -3,6 +3,7 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import BabylonScene from './components/BabylonScene.vue'
 import ZoneMapView from './components/ZoneMapView.vue'
 import GameEndView from './components/GameEndView.vue'
+import CreditsView from './components/CreditsView.vue'
 import ShopView from './components/ShopView.vue'
 import RestAreaView from './components/RestAreaView.vue'
 import InventoryView from './components/InventoryView.vue'
@@ -18,6 +19,7 @@ const gameEnded = ref(false)
 const gameEndResult = ref('win')
 // Vrai quand l'intro histoire est terminée et le gameplay peut démarrer
 const storyIntroComplete = ref(false)
+const showCredits = ref(false)
 // current player node id to pass to ZoneMapView
 const playerNodeId = ref(null)
 const currentSelectedNodeId = ref(null)  // Pour tracker le nœud sélectionné
@@ -44,6 +46,7 @@ startSound.volume = applySfxVolume(0.2)
 
 function startGame(selectedMode) {
   setGameplayMode(selectedMode)
+  showCredits.value = false
   gameStarted.value = true
   playStartSound()
 }
@@ -83,8 +86,17 @@ function returnToMenu() {
   gameEnded.value = false
   gameEndResult.value = 'win'
   storyIntroComplete.value = false
+  showCredits.value = false
   setMode('combat')
   setGameplayMode(null)
+}
+
+function openCredits() {
+  showCredits.value = true
+}
+
+function closeCredits() {
+  showCredits.value = false
 }
 
 function onIntroComplete() {
@@ -307,8 +319,10 @@ if (typeof window !== 'undefined') {
       <button @click="startGame('arcade')" class="play-button">Mode Arcade</button>
       <button @click="noop" class="menu-button">Avancement</button>
       <a href="https://github.com/JJ-vle/GamesOnWeb2026_Viale_DaCosta" target="_blank" rel="noopener" class="menu-link"><button class="menu-button">Github</button></a>
-      <button @click="noop" class="menu-button">Crédits</button>
+      <button @click="openCredits" class="menu-button">Crédits</button>
     </div>
+
+    <CreditsView v-if="showCredits" @close="closeCredits" />
 
     <div class="right-frame">
       <ModelViewer model-src="/assets/models/mecha01.glb" />
