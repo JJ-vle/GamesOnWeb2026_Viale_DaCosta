@@ -317,7 +317,7 @@ if (typeof window !== 'undefined') {
     <div class="left-bottom">
       <button @click="startGame('story')" class="play-button play-button--story">Mode Histoire</button>
       <button @click="startGame('arcade')" class="play-button">Mode Arcade</button>
-      <button @click="noop" class="menu-button">Avancement</button>
+      <button @click="noop" class="menu-button menu-button--muted">Avancement</button>
       <a href="https://github.com/JJ-vle/GamesOnWeb2026_Viale_DaCosta" target="_blank" rel="noopener" class="menu-link"><button class="menu-button">Github</button></a>
       <button @click="openCredits" class="menu-button">Crédits</button>
     </div>
@@ -587,9 +587,43 @@ if (typeof window !== 'undefined') {
       -8px -8px 0 -4px rgba(255,255,255,0.15);
   }
 
+  .menu-button--muted {
+    color: rgba(255, 255, 255, 0.58);
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.08);
+    box-shadow:
+      8px 0 0 -4px rgba(255, 255, 255, 0.08),
+      -8px 0 0 -4px rgba(255, 255, 255, 0.08),
+      0 8px 0 -4px rgba(255, 255, 255, 0.08),
+      0 -8px 0 -4px rgba(255, 255, 255, 0.08),
+      8px 8px 0 -4px rgba(255, 255, 255, 0.08),
+      -8px 8px 0 -4px rgba(255, 255, 255, 0.08),
+      8px -8px 0 -4px rgba(255, 255, 255, 0.08),
+      -8px -8px 0 -4px rgba(255, 255, 255, 0.08);
+    cursor: default;
+    opacity: 0.8;
+  }
+
   .menu-button:hover, .menu-link:hover button {
     transform: translateY(-3px);
     background: rgba(255,255,255,0.06);
+  }
+
+  .menu-button--muted:hover {
+    transform: none;
+    color: rgba(255, 235, 235, 0.92);
+    background: rgba(120, 10, 10, 0.34);
+    border-color: rgba(255, 90, 90, 0.42);
+    box-shadow:
+      8px 0 0 -4px rgba(255, 90, 90, 0.28),
+      -8px 0 0 -4px rgba(255, 90, 90, 0.28),
+      0 8px 0 -4px rgba(255, 90, 90, 0.28),
+      0 -8px 0 -4px rgba(255, 90, 90, 0.28),
+      8px 8px 0 -4px rgba(255, 90, 90, 0.28),
+      -8px 8px 0 -4px rgba(255, 90, 90, 0.28),
+      8px -8px 0 -4px rgba(255, 90, 90, 0.28),
+      -8px -8px 0 -4px rgba(255, 90, 90, 0.28),
+      0 0 30px 3px rgba(255, 70, 70, 0.34);
   }
 
   .menu-link button { background: transparent; }
