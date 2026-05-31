@@ -8,6 +8,7 @@ import { PerceptionSystem } from '../../systems/PerceptionSystem'
 import { PathfindingHelper } from '../../systems/PathfindingHelper'
 import { EnemyAIFSM } from '../../systems/EnemyAIFSM'
 import { applySfxVolume } from '../../systems/AudioSettings'
+import { ENEMY } from '../../scenes/GameConfig'
 
 export class Enemy {
     static _hitSound = null
@@ -64,7 +65,7 @@ export class Enemy {
         this.verticalVelocity = 0;
         this.contact = contact;
 
-        this.maxLife = maxLife
+        this.maxLife = maxLife * ENEMY.HP_MULT
         this.life = this.maxLife
 
         // Valeurs par défaut — chaque classe fille peut les surcharger

@@ -81,8 +81,8 @@ export const ROUND = {
   INFINITE_MOBS_STEP: 5,
 
   // Composition des mobs (basé sur globalDifficulty = node.depth - 1 + r)
-  MOBS_BASE: 6,      // totalMobs = MOBS_BASE + globalDifficulty * MOBS_STEP
-  MOBS_STEP: 4,
+  MOBS_BASE: 10,     // totalMobs = MOBS_BASE + globalDifficulty * MOBS_STEP
+  MOBS_STEP: 6,
   DEPTH_MOBS_BONUS_PER_LEVEL: 0.14,
   DEPTH_MOBS_BONUS_MAX: 2.2,
   FRAC_CAT1: 0.7,        // fraction de départ (depth 1)
@@ -92,10 +92,20 @@ export const ROUND = {
   GLOBAL_DIFF_CAT2: 1,   // globalDifficulty minimum pour que les CAT2 apparaissent
   GLOBAL_DIFF_CAT3: 3,   // globalDifficulty minimum pour que les CAT3 apparaissent
 
+  // Multiplicateurs de count par catégorie (+300% CAT1/CAT2, +200% CAT3)
+  CAT1_MULT: 4,
+  CAT2_MULT: 4,
+  CAT3_MULT: 3,
+
   // Intervalles de spawn par catégorie (secondes)
   INTERVAL_CAT1: 1.5,
   INTERVAL_CAT2: 3.0,
   INTERVAL_CAT3: 6.0,
+}
+
+// ── Ennemis ───────────────────────────────────────────────────────────
+export const ENEMY = {
+  HP_MULT: 2,
 }
 
 // ── Arbre de zones ────────────────────────────────────────────────────

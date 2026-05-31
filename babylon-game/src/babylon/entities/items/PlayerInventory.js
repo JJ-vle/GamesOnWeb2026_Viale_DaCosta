@@ -52,7 +52,7 @@ export class PlayerInventory {
     /** Capacités par défaut des slots (hors 'none' = infini) */
     static DEFAULT_SLOT_CAPACITY = {
         head:   1,
-        arm:    1,
+        arm:    2,
         leg:    1,
         body:   1,
         active: 1,

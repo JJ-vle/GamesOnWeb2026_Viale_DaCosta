@@ -56,17 +56,17 @@ function populateRound(round, globalDifficulty, nodeDepth, isBossRound = false) 
 
   const frac1 = Math.max(ROUND.FRAC_CAT1_MIN, ROUND.FRAC_CAT1 - globalDifficulty * ROUND.FRAC_CAT1_DECAY)
   const types1 = pickRandom(CAT1, CAT1.length)
-  const c1 = Math.ceil(totalMobs * frac1 / Math.max(1, types1.length))
+  const c1 = Math.ceil(totalMobs * frac1 / Math.max(1, types1.length)) * ROUND.CAT1_MULT
   types1.forEach(T => round.addMob({ type: T, count: c1, spawnInterval: ROUND.INTERVAL_CAT1 }))
 
   if (globalDifficulty >= ROUND.GLOBAL_DIFF_CAT2) {
     const types2 = pickRandom(CAT2, 2)
-    const c2 = Math.ceil(totalMobs * ROUND.FRAC_CAT2 / Math.max(1, types2.length))
+    const c2 = Math.ceil(totalMobs * ROUND.FRAC_CAT2 / Math.max(1, types2.length)) * ROUND.CAT2_MULT
     types2.forEach(T => round.addMob({ type: T, count: c2, spawnInterval: ROUND.INTERVAL_CAT2 }))
   }
 
   if (globalDifficulty >= ROUND.GLOBAL_DIFF_CAT3) {
-    const cat3Total = Math.min(5, globalDifficulty - 2)
+    const cat3Total = Math.min(5, globalDifficulty - 2) * ROUND.CAT3_MULT
     const types3 = pickRandom(CAT3, Math.min(cat3Total, CAT3.length))
     const c3 = Math.ceil(cat3Total / types3.length)
     types3.forEach(T => round.addMob({ type: T, count: c3, spawnInterval: ROUND.INTERVAL_CAT3 }))
